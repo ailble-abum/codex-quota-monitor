@@ -13,7 +13,7 @@ jobs:
         # The overlay runs under the system python3, which is still 3.9 on the
         # systems this plugin supports. Testing on the runner default let an
         # evaluated 3.10-only annotation reach a commit, so pin the floor.
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.9'
       - name: Python tests
