@@ -33,4 +33,5 @@ class SessionJournal:
         return {'session': self.state.snapshot(), 'status': batch.status,
                 'thread_id': self.thread_id, 'identity_status': self.identity_status,
                 'reset': batch.reset, 'more': batch.more,
+                'pending': batch.pending,
                 'bytes_read': batch.bytes_read, 'invalid_lines': batch.invalid_lines}

@@ -6,7 +6,7 @@
 
 输入为调用方明确指定的 UTF-8 JSONL 普通文件，单实例串行调用 `JournalReader.poll()`。每次最多读取 read_budget 字节（默认 256 KiB）；每条记录最多 line_limit 字节（默认 1 MiB）。超过限制的行跳过一次并计错，直到换行恢复。空行忽略，非对象 JSON、编码错误、非有限数值和递归解码失败计错。末尾未结束的行等待后续换行，不提前提交。
 
-输出 ReadBatch 包含 records、bytes_read、invalid_lines、reset、more、status。more 表示采样文件大小以内尚有未读取字节，不代表没有待补全半行。初次读取 reset=false；文件身份改变或观测到截断时 reset=true，消费者必须先清除旧会话状态再应用同批记录。打开/读取失败返回 unavailable，保留游标与半行以便重试，不回显异常中的路径或原文。
+输出 ReadBatch 包含 records、bytes_read、invalid_lines、reset、more、status、pending。more 表示采样文件大小以内尚有未读取字节，不代表没有待补全半行；pending 表示缓存了半行或仍在丢弃超长半行（受限发现阶段新增）。初次读取 reset=false；文件身份改变或观测到截断时 reset=true，消费者必须先清除旧会话状态再应用同批记录。打开/读取失败返回 unavailable，保留游标与半行以便重试，不回显异常中的路径或原文。
 
 records 为内部原始输入，可能包含正文，不能直接作为公开快照；后续归约器必须按字段白名单裁剪。repr 不包含 records。本模块不写盘、不联网、不打印日志。
 
@@ -20,6 +20,8 @@ records 为内部原始输入，可能包含正文，不能直接作为公开快
 以上为官方接口文档依据；代码按本契约新写，未复制旧解析器。本 Agent 曾检查旧项目，不能据此声称严格洁净室隔离。软件全部来源和发行许可审计仍未完成。
 
 ## 验证
+
+以下 15 项为首批提交的验收记录；受限发现阶段新增 pending/不可读恢复测试后，读取器现为 16 项，全套为 67 项，两版本均通过，见 [受限查找](discovery-contract.md)。
 
 `/usr/bin/python3 -m unittest discover -s tests -v`：Python 3.9.6，15 项通过。
 `python3 -m unittest discover -s tests -q`：Python 3.14，15 项通过。

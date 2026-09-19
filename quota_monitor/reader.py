@@ -20,6 +20,7 @@ class ReadBatch:
     reset: bool = False
     more: bool = False
     status: str = 'ok'
+    pending: bool = False
 
 
 def reject_constant(value):
@@ -46,7 +47,7 @@ class JournalReader:
         self._discarding = False
 
     def poll(self):
-        result = ReadBatch()
+        result = ReadBatch(pending=bool(self._pending) or self._discarding)
         try:
             descriptor = os.open(self.path, os.O_RDONLY | getattr(os, 'O_NONBLOCK', 0))
             with os.fdopen(descriptor, 'rb') as stream:
@@ -99,4 +100,5 @@ class JournalReader:
                     result.records.append(record)
             self._pending = b''
             self._discarding = False
+        result.pending = bool(self._pending) or self._discarding
         return result

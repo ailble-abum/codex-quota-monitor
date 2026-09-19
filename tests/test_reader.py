@@ -44,6 +44,21 @@ class JournalReaderTests(unittest.TestCase):
             stream.write(data[cut:])
         self.assertEqual(self.drain(), [{'s': '猫'}])
 
+    def test_pending_survives_unavailability_then_clears_on_newline(self):
+        self.path.write_bytes(b'{"n":1}')
+        self.assertTrue(self.reader.poll().pending)
+        parked = self.path.with_suffix('.parked')
+        self.path.rename(parked)
+        batch = self.reader.poll()
+        self.assertEqual(batch.status, 'unavailable')
+        self.assertTrue(batch.pending)
+        parked.rename(self.path)
+        with self.path.open('ab') as stream:
+            stream.write(b'\n')
+        batch = self.reader.poll()
+        self.assertFalse(batch.pending)
+        self.assertEqual(batch.records, [{'n': 1}])
+
     def test_invalid_lines_are_counted_without_exposing_content(self):
         self.path.write_bytes(b'not-secret-json\n[]\n\xff\n{"n":3}\n')
         batch = self.reader.poll()

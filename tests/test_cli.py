@@ -49,6 +49,40 @@ class PreviewTests(unittest.TestCase):
     def test_invalid_budget_rejected(self):
         self.assertEqual(self.run_preview('--max-polls', '0').returncode, 2)
 
+    def test_discovery_mode_selects_metadata_and_hides_paths(self):
+        self.path.mkdir()
+        (self.path / 'unknown-name.jsonl').write_text(
+            '{"type":"session_meta","payload":{"id":"demo","cwd":"SECRET"}}\n')
+        result = self.run_preview('--discover')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        value = json.loads(result.stdout)
+        self.assertEqual(value['status'], 'ok')
+        self.assertEqual(value['payload']['selectedThreadId'], 'demo')
+        self.assertNotIn('SECRET', result.stdout)
+        self.assertNotIn(str(self.path), result.stdout)
+
+    def test_discovery_duplicate_exits_without_summary(self):
+        self.path.mkdir()
+        for name in ('first.jsonl', 'second.jsonl'):
+            (self.path / name).write_text('{"type":"session_meta","payload":{"id":"demo"}}\n')
+        result = self.run_preview('--discover')
+        self.assertEqual(result.returncode, 2)
+        value = json.loads(result.stdout)
+        self.assertEqual(value['status'], 'ambiguous')
+        self.assertEqual(value['payload']['summaries'], [])
+
+    def test_discovery_uses_one_global_read_budget(self):
+        self.path.mkdir()
+        for name in ('first.jsonl', 'second.jsonl'):
+            (self.path / name).write_bytes(
+                b'{"type":"session_meta","payload":{"id":"demo"}}\n' + b'{}\n' * 60000)
+        result = self.run_preview('--discover', '--max-polls', '1')
+        self.assertEqual(result.returncode, 2)
+        value = json.loads(result.stdout)
+        self.assertEqual(value['status'], 'incomplete')
+        self.assertLessEqual(value['bytes_read'], 262144)
+        self.assertEqual(value['payload']['summaries'], [])
+
     def test_unverified_identity_never_publishes(self):
         for expected, rows in (
                 ('identity_missing', []),
