@@ -81,6 +81,19 @@ const {chromium, webkit} = require('playwright');
       assert.ok((await page.locator('[data-health]').textContent()).includes('尚未观察'));
       delete payload.health; delete payload.healthThreadId;
       await publish();
+      await page.evaluate(() => { window.savedNow = Date.now; Date.now = () => 2000000000000; });
+      payload.observedAt = 2000000000;
+      for (const [timestamp, fresh] of [[2000000000, true], [1999999880, false], [2000000001, false], [undefined, false], ['2000000000', false]]) {
+        payload.quota = {status: 'live', updatedAt: timestamp, windows: [{remaining: 80, duration: 300}]};
+        await publish();
+        assert.equal(await page.locator('[data-quota] [role=meter]').count(), fresh ? 1 : 0);
+        assert.equal(await page.locator('.cti-hud').getAttribute('data-tone'), fresh ? 'safe' : 'unknown');
+        assert.equal(await page.locator('[data-gauge]').getAttribute('data-state'), fresh ? 'live' : 'empty');
+        assert.ok((await page.locator('[data-freshness]').textContent()).includes(fresh ? '刚刚更新' : '账户配额未更新'));
+      }
+      await page.evaluate(() => { Date.now = window.savedNow; delete window.savedNow; });
+      delete payload.quota; payload.observedAt = Date.now()/1000;
+      await publish();
       assert.ok((await page.locator('[data-quota]').textContent()).includes('暂时无法读取配额'));
       assert.equal(await page.locator('[data-refresh]').isDisabled(), true);
       assert.equal(await page.locator('.cti-hud').count(), 1);

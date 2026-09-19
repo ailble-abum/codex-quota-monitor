@@ -1,4 +1,12 @@
-  // Account freshness is supplied by the caller; this function only renders text.
+  function accountFreshness(quota, now = Date.now() / 1000) {
+    const timestamp = quota?.updatedAt;
+    const elapsed = Number.isFinite(timestamp) && Number.isFinite(now) ? now - timestamp : NaN;
+    const validTime = Number.isFinite(elapsed) && elapsed >= 0;
+    return {age: validTime ? Math.floor(elapsed) : null,
+      live: quota?.status === 'live' && validTime && elapsed < 120};
+  }
+
+  // Account freshness comes from the shared predicate; this function only renders text.
   function renderAccountStatus(body, quota, live, age) {
     const zh = uiLanguage() === 'zh';
     const text = (chinese, english) => zh ? chinese : english;

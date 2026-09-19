@@ -106,6 +106,15 @@ def build(directory):
                             '    renderAccountStatus(body, quota, live, age);\n    const stamp = payload.build', 1)
     script = script.replace("payload.quota || {status:'loading', windows:[]}",
                             "payload.quota || {status:'unavailable', windows:[]}", 1)
+    script = cut(script, '    const age=quota.updatedAt?', '    const windows=live&&')
+    script = script.replace('    const windows=live&&',
+                            '    const {live} = accountFreshness(quota);\n    const windows=live&&', 1)
+    script = cut(script, '    const age = quota.updatedAt ?', '    const stoppedAccount =')
+    script = script.replace('    const stoppedAccount =',
+                            '    const {age, live} = accountFreshness(quota);\n    const stoppedAccount =', 1)
+    script = cut(script, "    const live = q?.status === 'live'", '    const windows = live ?')
+    script = script.replace('    const windows = live ?',
+                            '    const {live} = accountFreshness(q);\n    const windows = live ?', 1)
     tail = '  function clearFooters('
     if script.count(tail) != 1:
         raise ValueError('unexpected lifecycle boundary')
@@ -149,7 +158,7 @@ def main():
     manifest = {'sourceCommit': BASE, 'sourceSHA256': HASHES,
                 'consumer': {'path': 'consumer.js', 'sha256': hashlib.sha256(script.encode()).hexdigest()},
                 'status': 'derived-isolated-candidate',
-                'changes': 'Removed host/sidebar/message scans and observer lifecycle; V2 snapshot-only adapter, owned DOM lifecycle, pruned and attribute-scoped retained CSS, V2 finite-number formatting and control state/language projection with lazy unit preferences; text-only session detail, context meter and validated health projection; text-only account status with unavailable default.'}
+                'changes': 'Removed host/sidebar/message scans and observer lifecycle; V2 snapshot-only adapter, owned DOM lifecycle, pruned and attribute-scoped retained CSS, V2 finite-number formatting and control state/language projection with lazy unit preferences; text-only session detail, context meter and validated health projection; text-only account status with unavailable default and shared freshness checks.'}
     (args.output_dir / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     print(json.dumps(manifest['consumer']))
 

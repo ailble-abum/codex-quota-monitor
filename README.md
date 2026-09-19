@@ -44,3 +44,5 @@ python3 -m unittest discover -s tests -v
 [V2 本地健康提示正文](docs/panel-health-contract.md) 使用文本 DOM 和明确输入校验，统一建议与警告状态；真实健康数据生产链路仍待实现。
 
 [V2 账户默认状态与底部文字](docs/panel-account-status-contract.md) 缺失账户数据不再显示读取中，底部状态改为纯文本；真实账户通路尚未接通。
+
+[统一账户时效判断](docs/account-freshness-contract.md) 正文、标题和伴宠共用严格的 120 秒规则，拒绝缺失、未来及非数值时间。
