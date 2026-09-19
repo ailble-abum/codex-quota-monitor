@@ -125,6 +125,9 @@ class UpdateLoop:
             key = await self.client.evaluate(
                 'location.href === ' + expected + ' ? window.__quotaMonitorV2Thread : null')
             key = thread_key(key)
+            if key is None:
+                self.status = 'unselected'
+                return self.status
             payload = self.source.read(key)
             # JSON is data only. Recheck page/task in the same JS turn as assignment.
             expression = '''(() => {

@@ -31,6 +31,11 @@ async def probe(origin):
         loop = UpdateLoop(origin, url, paths)
         try:
             async with CDPClient(endpoint) as page:
+                for value in ('undefined', 'null', '7', '""', '"invalid/key"', '{}'):
+                    await page.evaluate('delete window.__quotaMonitorV2Snapshot; '
+                                        'window.__quotaMonitorV2Thread = ' + value)
+                    assert await loop.step() == 'unselected'
+                    assert await page.evaluate("Object.hasOwn(window, '__quotaMonitorV2Snapshot')") is False
                 await page.evaluate('window.__quotaMonitorV2Thread = "one"')
                 runner = asyncio.create_task(loop.run(interval=.02))
                 try:
@@ -84,7 +89,7 @@ async def probe(origin):
                 assert await page.evaluate('window.__quotaMonitorV2Snapshot') is None
                 await page.evaluate('delete performance.now; location.reload(); true')
                 for _ in range(30):
-                    if await loop.step() == 'updated':
+                    if await loop.step() == 'unselected':
                         break
                     await asyncio.sleep(.05)
                 async with CDPClient(endpoint) as refreshed:
