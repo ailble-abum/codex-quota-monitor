@@ -475,7 +475,7 @@ INJECTION_SCRIPT = r"""
   // new script: stacked observers and timers are torn down, and the companion
   // bitmap is rebuilt from the new data URIs. A renderer may still contain an
   // observer from an older plugin release.
-  const RUNTIME_VERSION = 18;
+  const RUNTIME_VERSION = 19;
   const ROOT_ID = 'codex-context-token-inspector-root';
   const STYLE_ID = 'codex-context-token-inspector-style';
   const FOOTER_ATTR = 'data-context-token-footer';
@@ -764,6 +764,11 @@ INJECTION_SCRIPT = r"""
       .cti-hud[data-snap-edge] { box-shadow:0 0 0 2px color-mix(in srgb,var(--cti-safe) 55%,transparent),0 12px 36px #0002; }
       .cti-edge-mascot {
         --cti-mascot-accent:#70d4a6;
+        /* The gauge speaks the panel's tier palette, but the companion is a
+           body child and inherits none of .cti-hud's variables. */
+        --cti-safe: light-dark(#18734e, #70d4a6);
+        --cti-watch: light-dark(#285dc1, #8ab5ff);
+        --cti-low: light-dark(#bb3443, #ff929c);
         position:fixed;
         z-index:2147483647;
         display:none;
@@ -797,13 +802,48 @@ INJECTION_SCRIPT = r"""
       .cti-edge-mascot[data-art="true"]:hover,.cti-edge-mascot[data-art="true"]:focus-visible { filter:drop-shadow(0 6px 16px #0004) drop-shadow(0 0 12px color-mix(in srgb,var(--cti-mascot-accent) 60%,transparent)); }
       .cti-edge-mascot[data-edge="left"]:not([data-art="true"]) { border-radius:0 16px 16px 0; }
       .cti-edge-mascot[data-edge="left"]:hover,.cti-edge-mascot[data-edge="left"]:focus-visible { transform:translateX(3px) scale(1.04); }
-      .cti-edge-mascot::after { content:''; position:absolute; width:22px; height:7px; bottom:-3px; border-radius:6px; background:var(--cti-mascot-accent); opacity:.8; }
-      .cti-edge-mascot[data-edge="left"]::after { right:-3px; top:13px; width:7px; height:22px; }
-      .cti-edge-mascot[data-edge="right"]::after { left:-3px; top:13px; width:7px; height:22px; }
-      /* With the plate gone the pill has to clear the artwork itself rather
+      /* The companion carries the account gauge: one cell per reported quota
+         window, so the cell count itself states how many independent limits
+         are in force. An account reporting a five-hour and a weekly window
+         gets two cells; one reporting a single window gets one. Each cell
+         fills with its own window's remaining share, so an untouched
+         five-hour limit can no longer hide a weekly one close to spent. */
+      /* The gauge sits outside the artwork's box for a bitmap companion, and it
+         stays inside the button's hit area there, so sweeping from the
+         character onto it does not count as leaving the companion. */
+      .cti-edge-mascot [data-gauge] {
+        position:absolute; top:50%; transform:translateY(-50%);
+        display:flex; flex-direction:column; gap:4px; width:7px;
+      }
+      .cti-edge-mascot [data-gauge] .cti-gauge-cell {
+        position:relative; display:block; box-sizing:border-box;
+        width:7px; height:17px; border-radius:4px; overflow:hidden;
+        background:color-mix(in srgb,CanvasText 14%,transparent);
+        box-shadow:inset 0 0 0 1px color-mix(in srgb,CanvasText 9%,transparent);
+      }
+      .cti-edge-mascot [data-gauge] .cti-gauge-cell i {
+        position:absolute; left:0; bottom:0; display:block; width:100%;
+        background:var(--cti-gauge-color,var(--cti-mascot-accent));
+        border-radius:3px; transition:height .3s ease;
+      }
+      /* No reading yet: an outlined empty slot, never a full one. A gauge that
+         defaults to full reports a healthy account while knowing nothing. */
+      .cti-edge-mascot [data-gauge][data-state="empty"] .cti-gauge-cell {
+        background:transparent; box-shadow:none;
+        border:1px dashed color-mix(in srgb,CanvasText 34%,transparent);
+      }
+      /* A reached window stops the account even while the other still has
+         headroom, which a pair of healthy fills cannot express on its own. */
+      .cti-edge-mascot [data-gauge][data-blocked="true"] .cti-gauge-cell {
+        background:color-mix(in srgb,var(--cti-low) 16%,transparent);
+        box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--cti-low) 72%,transparent);
+      }
+      .cti-edge-mascot[data-edge="left"] [data-gauge] { right:-3px; }
+      .cti-edge-mascot[data-edge="right"] [data-gauge] { left:-3px; }
+      /* With the plate gone the gauge has to clear the artwork itself rather
          than the plate's padding, or it lands on top of the character. */
-      .cti-edge-mascot[data-art="true"][data-edge="right"]::after { left:-10px; }
-      .cti-edge-mascot[data-art="true"][data-edge="left"]::after { right:-10px; }
+      .cti-edge-mascot[data-art="true"][data-edge="right"] [data-gauge] { left:-10px; }
+      .cti-edge-mascot[data-art="true"][data-edge="left"] [data-gauge] { right:-10px; }
       .cti-hud, .cti-hud * { -webkit-app-region:no-drag !important; }
       .cti-hud-head, .cti-hud-body { zoom:var(--cti-scale,1); }
       .cti-hud [data-resize] { position:absolute;right:2px;bottom:2px;width:16px;height:16px;cursor:nwse-resize;touch-action:none;z-index:5;opacity:.4;background:linear-gradient(135deg,transparent 60%,CanvasText 60%,CanvasText 65%,transparent 65%,transparent 78%,CanvasText 78%,CanvasText 83%,transparent 83%);border-radius:4px; }
@@ -1103,8 +1143,56 @@ INJECTION_SCRIPT = r"""
     mascot.innerHTML=mascotMarkup(id,'cti-mascot-art');mascot.dataset.skin=id;
     mascot.dataset.art=String(!!art);
     mascot.style.setProperty('--cti-mascot-accent',skin.accent);
-    mascot.setAttribute('aria-label',`${uiLanguage()==='zh'?skin.zh:skin.en} · ${uiLanguage()==='zh'?'悬停查看，点击保持展开':'Hover to view; click to pin'}`);
-    mascot.title=mascot.getAttribute('aria-label');
+    // Replacing the markup above also removes the gauge, so it is re-attached
+    // here, and the base label is kept on the element rather than composed
+    // into the accessible name -- otherwise every redraw would append to the
+    // label the previous pass had already written.
+    mascot.dataset.skinLabel=`${uiLanguage()==='zh'?skin.zh:skin.en} · ${uiLanguage()==='zh'?'悬停查看，点击保持展开':'Hover to view; click to pin'}`;
+    applyMascotGauge(root);
+  }
+  function gaugeColor(tone) {
+    return tone==='low'?'var(--cti-low)':tone==='watch'?'var(--cti-watch)':tone==='safe'?'var(--cti-safe)':'color-mix(in srgb,CanvasText 45%,transparent)';
+  }
+  function gaugeReading() {
+    const quota=window.__codexContextTokenInspectorPayload?.quota||{};
+    const age=quota.updatedAt?Math.max(0,Math.floor(Date.now()/1000-quota.updatedAt)):null;
+    // Same freshness window the panel uses, so the gauge and the readout can
+    // never disagree about whether the account figure is still current.
+    const live=quota.status==='live'&&age!=null&&age<120;
+    const windows=live&&Array.isArray(quota.windows)?quota.windows:[];
+    return {quota,live,windows,blocked:live&&(quota.ordinaryUsageAllowed===false||!!quota.rateLimitReachedType)};
+  }
+  function applyMascotGauge(root) {
+    // A pure update: the companion is built by ensureMascot on a skin or dock
+    // change, and this must not be the thing that brings one into existence.
+    const mascot=document.getElementById(MASCOT_ID);
+    if(!mascot)return;
+    let gauge=mascot.querySelector('[data-gauge]');
+    if(!gauge){
+      gauge=document.createElement('span');
+      gauge.setAttribute('data-gauge','');
+      gauge.setAttribute('aria-hidden','true');
+      mascot.appendChild(gauge);
+    }
+    const {quota,live,windows,blocked}=gaugeReading();
+    // The cell count is the message. An account with no reading still gets one
+    // empty slot, so an absent figure reads as absent instead of vanishing.
+    const readings=windows.length?windows:[null];
+    gauge.dataset.cells=String(readings.length);
+    gauge.dataset.state=windows.length?'live':'empty';
+    gauge.dataset.blocked=String(blocked);
+    const html=readings.map(item=>item
+      ?`<span class="cti-gauge-cell" style="--cti-gauge-color:${gaugeColor(quotaTone(item.remaining))}"><i style="height:${Math.max(0,Math.min(100,Number(item.remaining)||0))}%"></i></span>`
+      :'<span class="cti-gauge-cell"></span>').join('');
+    if(gauge.innerHTML!==html)gauge.innerHTML=html;
+    const zh=uiLanguage()==='zh';
+    // The pill has no room for text, so the numbers live in the accessible
+    // name and the hover title, which is the same place the skin is named.
+    const parts=windows.map(item=>`${windowLabel(item,true)} ${Math.round(item.remaining)}%`);
+    if(!live)parts.push(quota.status==='loading'?(zh?'正在读取配额…':'Reading quota…'):(zh?'配额暂不可用':'Quota unavailable'));
+    if(blocked)parts.push(zh?'已达上限，等待重置':'Limit reached, awaiting reset');
+    const label=[mascot.dataset.skinLabel,parts.join(' · ')].filter(Boolean).join(' · ');
+    mascot.setAttribute('aria-label',label);mascot.title=label;
   }
   function undockHud(root) {
     if(!root.__ctiLayout)return;
@@ -1681,6 +1769,11 @@ INJECTION_SCRIPT = r"""
     // window that keeps the same skin selected. Rebuild it once per new
     // runtime, the same signal that tears down stale observers.
     if (runtimeChanged) applyMascotSkin(root);
+    // The gauge rides on the companion, but the companion is rebuilt only when
+    // the skin or the dock changes. Quota arrives on its own schedule, so the
+    // gauge is refreshed on every pass or its cells freeze at the reading
+    // taken when the skin last changed.
+    applyMascotGauge(root);
     if (!body.querySelector('[data-quota]') || root.__ctiBodyLanguage!==uiLanguage()) {
       const units=root.querySelector('.cti-unit-group');
       root.__ctiBodyLanguage=uiLanguage();
@@ -1779,6 +1872,14 @@ INJECTION_SCRIPT = r"""
     }
     if (!quotaHtml) quotaHtml = `<div class="cti-muted">${quota.status==='loading' ?
       (zh?'正在读取账户配额…':'Reading quota…') : live && quota.windowStatus==='not_reported'?(zh?'账户未报告周期配额窗口':'No periodic quota windows reported'):(zh?'暂时无法读取配额':'Quota: unavailable')}</div>`;
+    // A healthy short window is not permission to keep working, so the AND
+    // relationship the gauge only implies gets stated once here.
+    if (live && (quota.windows.length > 1 || quota.ordinaryUsageAllowed === false || quota.rateLimitReachedType)) {
+      const notes = [];
+      if (quota.windows.length > 1) notes.push(zh?'两个窗口均需有余量才能继续。':'Every window must have headroom to continue.');
+      if (quota.ordinaryUsageAllowed === false || quota.rateLimitReachedType) notes.push(zh?'账户当前已达上限。':'The account is at its limit right now.');
+      quotaHtml += `<div class="cti-muted">${notes.join(' ')}</div>`;
+    }
     const usage=quota.usage||{};
     const usageSummary=usage.summary||{};
     const daily=Array.isArray(usage.dailyUsageBuckets)?usage.dailyUsageBuckets:[];
@@ -1824,8 +1925,11 @@ INJECTION_SCRIPT = r"""
       put('[data-explanation]', '');
     }
     const errorLabels={cli_missing:zh?'找不到 Codex CLI':'Codex CLI missing',timeout:zh?'账户读取超时':'Account read timed out',app_server:zh?'App Server 不可用':'App Server unavailable',account_unavailable:zh?'账户暂不可用':'Account unavailable'};
+    // Which plan an account is on is what decides how many windows it reports,
+    // so naming it here explains why the gauge has the number of cells it has.
+    const plan = typeof quota.planType==='string' && quota.planType ? ` · ${quota.planType.charAt(0).toUpperCase()}${quota.planType.slice(1)}` : '';
     put('[data-freshness]', live ?
-      `${zh?'账户接口':'Account'} · ${age<10?(zh?'刚刚更新':'just updated'):`${age}s ${zh?'前更新':'ago'}`}` :
+      `${zh?'账户接口':'Account'}${plan} · ${age<10?(zh?'刚刚更新':'just updated'):`${age}s ${zh?'前更新':'ago'}`}` :
       `${zh?'账户配额未更新':'Account unavailable'}${quota.errorCode?` · ${errorLabels[quota.errorCode]||quota.errorCode}`:''} · ${zh?'本地 Token 独立读取':'local tokens independent'}`);
     updateHudTitle(root);
     updateUnitButtons(root);

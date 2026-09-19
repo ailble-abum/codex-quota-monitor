@@ -110,6 +110,57 @@ class InspectorTests(unittest.TestCase):
         self.assertIn("top: 0", head)
         self.assertIn("background: Canvas", head)
 
+    def test_the_companion_gauge_maps_one_cell_per_quota_window(self):
+        # An account can be constrained by more than one window at a time, and
+        # every one of them needs headroom. One bar could not say that, so the
+        # cell count follows what the account reports rather than a plan name
+        # the plugin would have to hardcode.
+        gauge = block("function applyMascotGauge", "function undockHud")
+        self.assertIn("quota.windows", INJECTION_SCRIPT)
+        self.assertIn("const readings=windows.length?windows:[null];", gauge)
+        self.assertIn("gauge.dataset.cells=String(readings.length);", gauge)
+        self.assertIn("gauge.dataset.state=windows.length?'live':'empty';", gauge)
+
+    def test_the_gauge_never_shows_a_full_bar_it_cannot_vouch_for(self):
+        # A full default would report a healthy account while the plugin knows
+        # nothing, which is how the old decorative pill behaved.
+        self.assertIn('[data-state="empty"] .cti-gauge-cell', INJECTION_SCRIPT)
+        self.assertIn("border:1px dashed", INJECTION_SCRIPT)
+        self.assertIn("'<span class=\"cti-gauge-cell\"></span>'", INJECTION_SCRIPT)
+
+    def test_a_reached_limit_is_shown_on_the_gauge(self):
+        # Reaching one window stops the account even while the other still has
+        # headroom, so it is flagged separately from the fills.
+        gauge = block("function gaugeReading", "function applyMascotGauge")
+        self.assertIn("quota.ordinaryUsageAllowed===false", gauge)
+        self.assertIn("quota.rateLimitReachedType", gauge)
+        self.assertIn("blocked:live&&", gauge)
+        self.assertIn('data-blocked="true"', INJECTION_SCRIPT)
+        self.assertIn("gauge.dataset.blocked=String(blocked);", INJECTION_SCRIPT)
+
+    def test_the_gauge_follows_quota_and_not_only_the_skin(self):
+        # The companion is rebuilt only when the skin or the dock changes, so a
+        # gauge reached through that path alone would freeze at the reading
+        # taken when the skin last changed.
+        refresh = block("function applyHud", "if (!body.querySelector")
+        self.assertIn("applyMascotGauge(root);", refresh)
+        # Replacing the markup on a skin change drops the gauge with it.
+        self.assertIn("applyMascotGauge(root);", block("function applyMascotSkin", "function gaugeColor"))
+
+    def test_the_gauge_stays_inside_the_companion_hit_area(self):
+        # It is drawn outside the artwork's box for a bitmap companion, and a
+        # pointer-events opt-out there would turn a sweep from the character
+        # onto the gauge into a pointerleave, hiding the panel.
+        gauge = block('.cti-edge-mascot [data-gauge] {', '.cti-edge-mascot [data-gauge] .cti-gauge-cell')
+        self.assertNotIn("pointer-events", gauge)
+
+    def test_the_bitmap_caption_is_not_written_back_on_every_pass(self):
+        # The accessible name is composed from a base kept on the element;
+        # reading it back from the element would append to it each pass.
+        skin = block("function applyMascotSkin", "function gaugeColor")
+        self.assertIn("mascot.dataset.skinLabel=", skin)
+        self.assertNotIn("mascot.getAttribute('aria-label')", skin)
+
     def test_latest_model_and_effort_are_reported(self):
         rows = [
             {'type':'session_meta','payload':{'id':'thread','cwd':'/tmp'}},
