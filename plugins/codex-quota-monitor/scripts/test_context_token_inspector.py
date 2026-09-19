@@ -25,6 +25,32 @@ def run_js(source: str, expression: str):
 
 
 class InspectorTests(unittest.TestCase):
+    def test_docked_companion_drag_moves_vertically_without_stealing_clicks(self):
+        """A short pointer wobble stays a click; a drag clamps to the dock range."""
+        self.assertIn("function mascotDragGeometry", INJECTION_SCRIPT)
+        self.assertIn("cursor:ns-resize", INJECTION_SCRIPT)
+        geometry = block("function dockVerticalY", "function ensureMascot")
+        values = run_js(
+            geometry,
+            "["
+            "mascotDragGeometry({pointerY:200,top:180},202,800,300),"
+            "mascotDragGeometry({pointerY:200,top:180},230,800,300),"
+            "mascotDragGeometry({pointerY:200,top:180,moved:true},202,800,300),"
+            "mascotDragGeometry({pointerY:200,top:180},-100,800,300),"
+            "mascotDragGeometry({pointerY:200,top:180},900,800,300)"
+            "]",
+        )
+        self.assertEqual(
+            values,
+            [
+                {"moved": False, "y": 180},
+                {"moved": True, "y": 210},
+                {"moved": True, "y": 182},
+                {"moved": True, "y": 64},
+                {"moved": True, "y": 492},
+            ],
+        )
+
     def test_four_invisible_corners_resize_from_their_own_edge(self):
         """Removing the visible grip must not leave left corners resizing rightward."""
         self.assertIn("function resizeGeometry", INJECTION_SCRIPT)

@@ -86,7 +86,7 @@ INJECTION_SCRIPT = r"""
   // new script: stacked observers and timers are torn down, and the companion
   // bitmap is rebuilt from the new data URIs. A renderer may still contain an
   // observer from an older plugin release.
-  const RUNTIME_VERSION = 28;
+  const RUNTIME_VERSION = 29;
   const ROOT_ID = 'codex-context-token-inspector-root';
   const STYLE_ID = 'codex-context-token-inspector-style';
   const FOOTER_ATTR = 'data-context-token-footer';
@@ -433,8 +433,9 @@ INJECTION_SCRIPT = r"""
         width:44px;
         height:48px;
         padding:0;
+        cursor:ns-resize;
+        touch-action:none;
         color:CanvasText;
-        cursor:pointer;
         user-select:none;
         -webkit-app-region:no-drag !important;
         transition:transform .16s ease,box-shadow .16s ease,filter .16s ease;
@@ -836,6 +837,15 @@ INJECTION_SCRIPT = r"""
     if(root.dataset.docked!=='true')return;
     clearDockHide(root);root.dataset.revealed=String(revealed);applyStoredHudPosition(root);
   }
+  function dockVerticalY(y,viewportHeight,panelHeight) {
+    const top=Math.min(64,Math.max(8,viewportHeight-100));
+    const bottom=Math.max(top,viewportHeight-Math.max(panelHeight,48)-8);
+    return Math.max(top,Math.min(bottom,y));
+  }
+  function mascotDragGeometry(start,clientY,viewportHeight,panelHeight) {
+    const delta=clientY-start.pointerY,moved=start.moved||Math.abs(delta)>=4;
+    return {moved,y:moved?dockVerticalY(start.top+delta,viewportHeight,panelHeight):start.top};
+  }
   function ensureMascot(root) {
     let mascot=document.getElementById(MASCOT_ID);
     if(mascot)return mascot;
@@ -845,7 +855,31 @@ INJECTION_SCRIPT = r"""
     mascot.addEventListener('pointerleave',()=>scheduleDockHide(root));
     mascot.addEventListener('focus',()=>revealDock(root,true));
     mascot.addEventListener('blur',()=>scheduleDockHide(root));
-    mascot.addEventListener('click',()=>{
+    mascot.addEventListener('pointerdown',event=>{
+      if(event.button!==0 || root.dataset.docked!=='true')return;
+      clearDockHide(root);
+      mascot.__ctiGesture={pointerY:event.clientY,top:mascot.getBoundingClientRect().top,moved:false};
+      mascot.setPointerCapture(event.pointerId);
+    });
+    mascot.addEventListener('pointermove',event=>{
+      const gesture=mascot.__ctiGesture;if(!gesture)return;
+      const next=mascotDragGeometry(gesture,event.clientY,innerHeight,root.getBoundingClientRect().height);
+      if(!next.moved)return;
+      gesture.moved=true;event.preventDefault();
+      const mode=hudMode(root),previous=root.__ctiLayout[mode]||{};
+      root.__ctiLayout[mode]={...previous,y:next.y};
+      saveLayout(root);applyStoredHudPosition(root);
+    });
+    const endDrag=event=>{
+      const gesture=mascot.__ctiGesture;if(!gesture)return;
+      mascot.__ctiGesture=null;
+      if(gesture.moved)mascot.__ctiSuppressClickUntil=performance.now()+400;
+      try{mascot.releasePointerCapture(event.pointerId);}catch{}
+    };
+    mascot.addEventListener('pointerup',endDrag);
+    mascot.addEventListener('pointercancel',endDrag);
+    mascot.addEventListener('click',event=>{
+      if(performance.now()<(mascot.__ctiSuppressClickUntil||0)){event.preventDefault();return;}
       const pinned=root.dataset.dockPinned!=='true';root.dataset.dockPinned=String(pinned);
       mascot.setAttribute('aria-pressed',String(pinned));revealDock(root,true);
     });
@@ -868,7 +902,7 @@ INJECTION_SCRIPT = r"""
     // here, and the base label is kept on the element rather than composed
     // into the accessible name -- otherwise every redraw would append to the
     // label the previous pass had already written.
-    mascot.dataset.skinLabel=`${uiLanguage()==='zh'?skin.zh:skin.en} · ${uiLanguage()==='zh'?'悬停查看，点击保持展开':'Hover to view; click to pin'}`;
+    mascot.dataset.skinLabel=`${uiLanguage()==='zh'?skin.zh:skin.en} · ${uiLanguage()==='zh'?'上下拖动调整位置，点击保持展开':'Drag vertically to move; click to pin'}`;
     applyMascotGauge(root);
     applyMascotContext(root, root.__ctiContext);
     positionContextHint(root);
@@ -970,7 +1004,7 @@ INJECTION_SCRIPT = r"""
     // panel clears the tallest companion plus its shadow.
     mascot.style.left=edge==='left'?'0px':'auto';
     mascot.style.right=edge==='right'?'0px':'auto';
-    const y=Math.max(topMin,Math.min(innerHeight-Math.max(rect.height,48)-8,Number.isFinite(wanted.y)?wanted.y:topMin));
+    const y=dockVerticalY(Number.isFinite(wanted.y)?wanted.y:topMin,innerHeight,rect.height);
     const gap=52;
     mascot.style.top=`${y}px`;
     root.style.left=edge==='left'?(revealed?`${gap}px`:`${-rect.width-2}px`):(revealed?`${innerWidth-rect.width-gap}px`:`${innerWidth+2}px`);
