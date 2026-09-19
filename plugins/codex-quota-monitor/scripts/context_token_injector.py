@@ -268,8 +268,17 @@ def runtime_state(client: CDPClient) -> dict[str, Any]:
     null;
   const refresh = window.__ctiRefreshRequested === true;
   window.__ctiRefreshRequested = false;
+  // Which selectors landed is what separates "Codex updated its DOM" from
+  // "the overlay stopped updating". A thread list with no marked-active row,
+  // or a page with no thread rows at all, is drift and is reported rather
+  // than silently drawing a smaller panel.
+  const dom = {
+    sidebarRows: document.querySelectorAll('[data-app-action-sidebar-thread-row]').length,
+    activeRow: !!activeRow,
+    conversationId: !!activeId
+  };
   return { href: location.href, title: document.title, activeThreadId: activeId,
-    refresh, alerts: localStorage.getItem('cti-alerts') === 'true',
+    dom, refresh, alerts: localStorage.getItem('cti-alerts') === 'true',
     language: String(document.documentElement.lang || navigator.language || 'en').startsWith('zh') ? 'zh' : 'en' };
 })()
 """
@@ -477,7 +486,7 @@ INJECTION_SCRIPT = r"""
   // new script: stacked observers and timers are torn down, and the companion
   // bitmap is rebuilt from the new data URIs. A renderer may still contain an
   // observer from an older plugin release.
-  const RUNTIME_VERSION = 22;
+  const RUNTIME_VERSION = 23;
   const ROOT_ID = 'codex-context-token-inspector-root';
   const STYLE_ID = 'codex-context-token-inspector-style';
   const FOOTER_ATTR = 'data-context-token-footer';
@@ -1872,6 +1881,8 @@ INJECTION_SCRIPT = r"""
             <span class="cti-status" data-tone="safe">&gt;50%</span><span class="cti-status" data-tone="watch">20–50%</span><span class="cti-status" data-tone="low">≤20%</span>
           </div>
           <div class="cti-muted" data-build></div>
+          <div class="cti-muted" data-dom></div>
+          <div class="cti-muted">${zh?'只读 · 本机 · 不上传':'Read-only · local · never uploaded'}</div>
         </div>
         <div class="cti-muted" data-freshness></div>`;
       body.querySelector('[data-units]').appendChild(units);
@@ -2030,6 +2041,18 @@ INJECTION_SCRIPT = r"""
     if (typeof stamp.runtimeVersion === 'number') stampParts.push(`${zh?'运行时':'runtime'} ${stamp.runtimeVersion}`);
     if (typeof stamp.installedAt === 'number') stampParts.push(`${zh?'安装于':'installed'} ${new Date(stamp.installedAt*1000).toLocaleString(zh?'zh-CN':'en',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}`);
     put('[data-build]', stampParts.length ? stampParts.join(' · ') : (zh?'版本信息未记录':'Build information not recorded'));
+    // The selectors the overlay relies on to find the active thread can drift
+    // under a Codex update. Reporting which landed makes that drift visible
+    // instead of silently drawing a smaller panel.
+    const probe = payload.dom || {};
+    const probeParts = [];
+    if (typeof probe.sidebarRows === 'number') probeParts.push(`${zh?'会话':'threads'} ${probe.sidebarRows}`);
+    probeParts.push(probe.activeRow ? (zh?'活动行 ✓':'active ✓') : (zh?'活动行 ✗':'active ✗'));
+    probeParts.push(probe.conversationId ? (zh?'会话ID ✓':'id ✓') : (zh?'会话ID ✗':'id ✗'));
+    const drift = (typeof probe.sidebarRows === 'number' && probe.sidebarRows > 0 && !probe.activeRow)
+      || (typeof probe.sidebarRows === 'number' && probe.sidebarRows === 0);
+    if (drift) probeParts.push(zh?'界面可能已更新':'UI may have changed');
+    put('[data-dom]', `${zh?'界面探测':'DOM probe'} · ${probeParts.join(' · ')}`);
     updateHudTitle(root);
     updateUnitButtons(root);
     const toggle = root.querySelector('[data-cti-toggle]');
@@ -2219,6 +2242,7 @@ INJECTION_SCRIPT = r"""
     currentDetailThreadId: payload.currentDetailThreadId || null,
     assistantNodes: assistantNodes().length,
     replyChips: document.querySelectorAll(`[${CHIP_ATTR}]`).length,
+    dom: payload.dom,
   };
 })
 """
@@ -2267,6 +2291,7 @@ def inject_once(client: CDPClient, roots: list[str], limit: int, detail_limit: i
     payload = build_payload(roots, limit, state.get("activeThreadId"), detail_limit=detail_limit)
     payload['quota'] = QUOTA_READER.snapshot(force=state.get('refresh', False))
     payload['build'] = BUILD_STAMP
+    payload['dom'] = state.get('dom')
     active = normalize_thread_id(state.get('activeThreadId') or payload.get('selectedThreadId') or '')
     selected = next((s for s in payload['summaries'] if normalize_thread_id(s.get('thread_id') or '') == active), None)
     if selected is None and payload['summaries']:

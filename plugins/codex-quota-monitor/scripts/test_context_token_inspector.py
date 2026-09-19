@@ -5,7 +5,7 @@ from pathlib import Path
 
 from companion_art import COMPANION_ART
 from context_token_inspector import summarize_session, summarize_session_fast
-from context_token_injector import BUILD_STAMP, INJECTION_SCRIPT, RUNTIME_VERSION, build_payload
+from context_token_injector import BUILD_STAMP, INJECTION_SCRIPT, RUNTIME_VERSION, build_payload, runtime_state
 
 
 def block(start: str, end: str) -> str:
@@ -199,6 +199,49 @@ class InspectorTests(unittest.TestCase):
         self.assertIsInstance(RUNTIME_VERSION, int)
         self.assertIn(f"const RUNTIME_VERSION = {RUNTIME_VERSION};", INJECTION_SCRIPT)
         self.assertEqual(BUILD_STAMP['runtimeVersion'], RUNTIME_VERSION)
+
+    def test_the_panel_probes_the_selectors_it_depends_on(self):
+        # A Codex update can drift the selectors the overlay uses to find the
+        # active thread; reporting which landed keeps that from silently
+        # drawing a smaller panel.
+        settings = block("<div data-settings hidden>", "data-freshness")
+        self.assertIn("data-dom", settings)
+        self.assertIn("payload.dom", INJECTION_SCRIPT)
+        self.assertIn("put('[data-dom]'", INJECTION_SCRIPT)
+        self.assertIn("sidebarRows", INJECTION_SCRIPT)
+        self.assertIn("conversationId", INJECTION_SCRIPT)
+        # A thread list with no marked-active row, or none at all, is named as
+        # drift rather than left to the user to infer.
+        self.assertIn("UI may have changed", INJECTION_SCRIPT)
+        self.assertIn("界面可能已更新", INJECTION_SCRIPT)
+        # The probe also travels back into the injector's own log line.
+        self.assertIn("dom: payload.dom", INJECTION_SCRIPT)
+
+    def test_runtime_state_collects_the_dom_probe(self):
+        class FakeClient:
+            def evaluate(self, expression):
+                self.expression = expression
+                return {
+                    'href': 'https://x', 'title': 'y', 'activeThreadId': None,
+                    'dom': {'sidebarRows': 3, 'activeRow': True, 'conversationId': True},
+                }
+
+        client = FakeClient()
+        state = runtime_state(client)
+        self.assertEqual(
+            state['dom'],
+            {'sidebarRows': 3, 'activeRow': True, 'conversationId': True},
+        )
+        # The probe is read from the live page, not synthesized from the payload.
+        self.assertIn("document.querySelectorAll('[data-app-action-sidebar-thread-row]')", client.expression)
+
+    def test_the_settings_footer_names_the_privacy_promise(self):
+        # The strongest differentiator lives in the README today; the panel is
+        # where a user who never reads docs still gets told, in one line, that
+        # nothing leaves the machine.
+        settings = block("<div data-settings hidden>", "data-freshness")
+        self.assertIn("只读 · 本机 · 不上传", settings)
+        self.assertIn("Read-only · local · never uploaded", settings)
 
     def test_the_gauge_follows_quota_and_not_only_the_skin(self):
         # The companion is rebuilt only when the skin or the dock changes, so a
