@@ -91,6 +91,19 @@ const {chromium, webkit} = require('playwright');
         assert.equal(await page.locator('[data-gauge]').getAttribute('data-state'), fresh ? 'live' : 'empty');
         assert.ok((await page.locator('[data-freshness]').textContent()).includes(fresh ? '刚刚更新' : '账户配额未更新'));
       }
+      for (const windows of [null, {}, [null], [{remaining: '80'}], [{remaining: 101}], [{remaining: 80}, {remaining: -1}], [{remaining: 80, resetsAt: 1e20}]]) {
+        payload.quota = {status: 'live', updatedAt: 2000000000, windows};
+        await publish();
+        assert.equal(await page.locator('[data-quota] [role=meter]').count(), 0);
+        assert.equal(await page.locator('.cti-hud').getAttribute('data-tone'), 'unknown');
+        assert.equal(await page.locator('[data-gauge]').getAttribute('data-state'), 'empty');
+        assert.ok((await page.locator('[data-freshness]').textContent()).includes('账户配额未更新'));
+        assert.equal(await page.locator('[data-context] [role=meter]').getAttribute('aria-valuenow'), '50');
+      }
+      payload.quota.windows = [{remaining: 0}, {remaining: 100}];
+      await publish();
+      assert.equal(await page.locator('[data-quota] [role=meter]').count(), 2);
+      assert.equal(await page.locator('[data-gauge]').getAttribute('data-state'), 'live');
       await page.evaluate(() => { Date.now = window.savedNow; delete window.savedNow; });
       delete payload.quota; payload.observedAt = Date.now()/1000;
       await publish();

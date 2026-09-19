@@ -1,9 +1,24 @@
+  function validAccountWindows(windows) {
+    if (!Array.isArray(windows)) return false;
+    for (const item of windows) {
+      if (!item || typeof item !== 'object' || Array.isArray(item) ||
+          !Number.isFinite(item.remaining) || item.remaining < 0 || item.remaining > 100) return false;
+      if (item.duration != null && (!Number.isFinite(item.duration) || item.duration <= 0)) return false;
+      if (item.paceDelta != null && !Number.isFinite(item.paceDelta)) return false;
+      if (item.exhaustInSec != null && (!Number.isFinite(item.exhaustInSec) || item.exhaustInSec < 0)) return false;
+      for (const timestamp of [item.resetsAt, item.projectedExhaustAt]) {
+        if (timestamp != null && (!Number.isFinite(timestamp) || timestamp < 0 || timestamp > 8.64e12)) return false;
+      }
+    }
+    return true;
+  }
+
   function accountFreshness(quota, now = Date.now() / 1000) {
     const timestamp = quota?.updatedAt;
     const elapsed = Number.isFinite(timestamp) && Number.isFinite(now) ? now - timestamp : NaN;
     const validTime = Number.isFinite(elapsed) && elapsed >= 0;
     return {age: validTime ? Math.floor(elapsed) : null,
-      live: quota?.status === 'live' && validTime && elapsed < 120};
+      live: quota?.status === 'live' && validTime && elapsed < 120 && validAccountWindows(quota.windows)};
   }
 
   // Account freshness comes from the shared predicate; this function only renders text.
