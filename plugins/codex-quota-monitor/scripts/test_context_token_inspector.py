@@ -110,6 +110,15 @@ class InspectorTests(unittest.TestCase):
         self.assertIn("top: 0", head)
         self.assertIn("background: Canvas", head)
 
+    def test_only_the_body_scrolls_so_the_resize_grip_stays_put(self):
+        hud = block(".cti-hud {", ".cti-hud[data-docked")
+        body = block(".cti-hud-body {", ".cti-quota-budget")
+        self.assertIn("display: flex", hud)
+        self.assertIn("flex-direction: column", hud)
+        self.assertIn("overflow: hidden", hud)
+        self.assertIn("overflow: auto", body)
+        self.assertIn("min-height: 0", body)
+
     def test_the_companion_gauge_maps_one_cell_per_quota_window(self):
         # An account can be constrained by more than one window at a time, and
         # every one of them needs headroom. One bar could not say that, so the

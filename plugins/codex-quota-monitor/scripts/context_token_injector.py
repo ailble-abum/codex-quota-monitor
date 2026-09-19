@@ -86,7 +86,7 @@ INJECTION_SCRIPT = r"""
   // new script: stacked observers and timers are torn down, and the companion
   // bitmap is rebuilt from the new data URIs. A renderer may still contain an
   // observer from an older plugin release.
-  const RUNTIME_VERSION = 26;
+  const RUNTIME_VERSION = 27;
   const ROOT_ID = 'codex-context-token-inspector-root';
   const STYLE_ID = 'codex-context-token-inspector-style';
   const FOOTER_ATTR = 'data-context-token-footer';
@@ -412,6 +412,8 @@ INJECTION_SCRIPT = r"""
         backdrop-filter: blur(16px);
         font: 12px/1.35 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
         overflow: hidden;
+        display: flex;
+        flex-direction: column;
         user-select: none;
         transition: left .2s ease, top .2s ease, opacity .15s ease, box-shadow .15s ease;
       }
@@ -630,6 +632,8 @@ INJECTION_SCRIPT = r"""
       }
       .cti-hud-body {
         display: grid;
+        overflow: auto;
+        min-height: 0;
         gap: 14px;
         padding: 4px 16px 14px;
         color: color-mix(in srgb, CanvasText 78%, transparent);
@@ -651,7 +655,7 @@ INJECTION_SCRIPT = r"""
          matches the usage-details disclosure above it. */
       [data-skins] summary em { font-style:normal; font-weight:650; color:var(--cti-safe); opacity:1; }
       [data-explanation] { line-height:1.7; }
-      .cti-hud { max-height:calc(100vh - 24px); overflow:auto; }
+      .cti-hud { max-height:calc(100vh - 24px); }
       .cti-line { display:flex; justify-content:space-between; align-items:center; gap:8px; }
       .cti-muted { color:color-mix(in srgb,CanvasText 62%,Canvas); font-size:11px; }
       .cti-value { font-variant-numeric:tabular-nums; font-weight:600; color:CanvasText; }
