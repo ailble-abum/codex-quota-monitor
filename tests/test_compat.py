@@ -1,4 +1,5 @@
 import unittest
+import time
 
 from quota_monitor.compat import panel_payload, panel_summary
 
@@ -15,6 +16,14 @@ def reading(status='ok', more=False):
 
 
 class CompatibilityTests(unittest.TestCase):
+    def test_payload_carries_generation_time_for_consumer_expiry(self):
+        before = time.time()
+        payload = panel_payload({'one': reading()}, 'one')
+        after = time.time()
+        self.assertIsInstance(payload.get('observedAt'), (int, float))
+        self.assertLessEqual(before, payload['observedAt'])
+        self.assertLessEqual(payload['observedAt'], after)
+
     def test_identity_cannot_be_bypassed_by_mapping_key(self):
         for changes in ({'thread_id': 'two'}, {'identity_status': 'missing'},
                         {'identity_status': 'conflict'}, {'identity_status': None}):

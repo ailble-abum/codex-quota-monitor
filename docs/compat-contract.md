@@ -16,6 +16,8 @@
 
 兼容旧字段命名不意味着认可 UI 的“本轮”标签精确等同用户回合。后续接入需要明确该文案，不能把最后一次请求误报为整轮统计。
 
+后续面板探针核对外部版本 2705f32 已改为“最近请求”；见 [隔离面板验证](panel-probe.md)。桥接器现提供 observedAt 载荷组装时间供消费者过期保护使用，不能用重新组装掩盖未来缓存读数的陈旧状态。
+
 ## 选择与可用性
 
 调用者指定预期任务，SessionJournal 读取 session_meta.id；桥接器要求 identity_status=verified 且 thread_id 与选中任务一致，不再只信 readings 的字典键。桥接器不猜文件名、不自动查找其他任务。readings 字典使用规范任务 ID，活动 ID 可有 local: 前缀。

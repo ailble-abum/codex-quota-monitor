@@ -4,6 +4,7 @@ Journal metadata must agree with the selected task. This adapter is not a file
 discovery service or a replacement for the complete legacy payload builder.
 """
 from .session import FIELDS
+import time
 
 
 def thread_key(value):
@@ -36,7 +37,7 @@ def panel_summary(thread_id, reading):
 
 def panel_payload(readings, active_thread_id):
     key = thread_key(active_thread_id)
-    result = {'activeThreadId': key, 'selectedThreadId': None,
+    result = {'activeThreadId': key, 'selectedThreadId': None, 'observedAt': time.time(),
               'summaries': [], 'detail': None, 'detailsByThread': {}}
     # The legacy renderer may fall back to the first summary. Restrict this
     # bridge to the selected task so a failed lookup cannot show another task.

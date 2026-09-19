@@ -11,3 +11,5 @@
 ```sh
 python3 -m unittest discover -s tests -v
 ```
+
+新数据已通过 [隔离面板兼容验证](docs/panel-probe.md)：Chromium/WebKit 深浅主题、任务切换、缺失与过期清空。该验证使用外部现有面板，尚未独立替换其注入实现或接入现用安装。
