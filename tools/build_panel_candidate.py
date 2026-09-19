@@ -79,6 +79,14 @@ def build(directory):
     visual = ('  const panelCSS = () => ' + panel_css(template('ensureStyle', 'const css')) + ';\n'
               + '  const panelHeader = () => ' + template('ensureHud', 'root.innerHTML') + ';\n'
               + '  const panelBodyTemplate = zh => ' + template('applyHud', 'body.innerHTML') + ';\n')
+    # V2 has no quota notification producer or sender. Keep the legacy preference untouched.
+    for old, new in (
+            ('<input type="checkbox" data-alerts>', '<input type="checkbox" data-alerts disabled aria-describedby="cti-quota-alerts-unavailable">'),
+            ('''<div class="cti-muted">${zh?'每个配额窗口仅提醒一次。系统需允许通知。':'Once per quota window. System notifications must be allowed.'}</div>''',
+             '''<div class="cti-muted" id="cti-quota-alerts-unavailable">${zh?'配额通知尚未接通。':'Quota notifications are not connected yet.'}</div>''')):
+        if visual.count(old) != 1:
+            raise ValueError('unexpected quota notification template')
+        visual = visual.replace(old, new)
     # Exact source digests make these bounded spans safe; unknown revisions stop.
     for start, end in (
             ('  function n(', '  function quotaTone('),
@@ -104,6 +112,7 @@ def build(directory):
         if script.count(old) != expected:
             raise ValueError('unexpected companion preference readers')
         script = script.replace(old, new)
+    script = cut(script, "      const alerts = body.querySelector('[data-alerts]');", "      body.querySelector('[data-position-reset]').addEventListener(")
     # Remove these after the intervening old mount/sidebar spans are gone.
     script = cut(script, '  function updateUnitButtons(', '  function applyHud(')
     start, end = '    if (selected) {', '    const errorLabels='

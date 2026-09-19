@@ -30,9 +30,25 @@ const {chromium, webkit} = require('playwright');
           '<details data-skins open><summary>Skin<em>Label</em></summary><div>Body</div></details>';
         document.body.append(host);
       });
+      await page.evaluate(() => {
+        localStorage.setItem('cti-alerts', 'true');
+        window.alertPreferenceReads = 0;
+        window.alertGetItem = Storage.prototype.getItem;
+        Storage.prototype.getItem = function(key) {
+          if (key === 'cti-alerts') window.alertPreferenceReads++;
+          return window.alertGetItem.call(this, key);
+        };
+      });
       const before = await hostStyle();
       assert.equal(await call({...base, action: 'initialize', consumer: {source: script}}), 'ready');
       assert.deepEqual(await hostStyle(), before, 'panel CSS must not style host attributes');
+      assert.equal(await page.locator('[data-alerts]').isDisabled(), true);
+      assert.equal(await page.locator('[data-alerts]').isChecked(), false);
+      assert.equal(await page.evaluate(() => window.alertPreferenceReads), 0);
+      await page.evaluate(() => { Storage.prototype.getItem = window.alertGetItem; });
+      assert.equal(await page.evaluate(() => localStorage.getItem('cti-alerts')), 'true');
+      assert.ok((await page.locator('#cti-quota-alerts-unavailable').textContent()).includes('尚未接通'));
+
       await page.locator('#host-probe').evaluate(node => node.remove());
       assert.equal(await page.evaluate(() => localStorage.getItem('codex-context-token-inspector-unit')), 'k');
       assert.equal(await page.evaluate(() => localStorage.getItem('codex-context-token-inspector-unit-defaulted')), null);
@@ -188,6 +204,10 @@ const {chromium, webkit} = require('playwright');
         assert.equal(await page.locator('[data-settings-toggle]').getAttribute('aria-expanded'), 'true');
         assert.equal(await page.evaluate(() => document.querySelector('.cti-unit-group') === window.originalUnits), true);
         assert.equal(await page.locator('.cti-unit-group').count(), 1);
+        assert.equal(await page.locator('[data-alerts]').isDisabled(), true);
+        assert.equal(await page.locator('[data-alerts]').isChecked(), false);
+        assert.ok((await page.locator('#cti-quota-alerts-unavailable').textContent()).includes(language === 'en' ? 'not connected' : '尚未接通'));
+
         assert.equal(await page.locator('[data-details]').evaluate(node => node.open), true);
         assert.equal(await page.locator('[data-skins]').evaluate(node => node.open), true);
       }

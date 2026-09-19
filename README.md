@@ -66,3 +66,5 @@ python3 -m unittest discover -s tests -v
 [V2 详情与皮肤展开偏好](docs/panel-disclosures-contract.md) 用根节点捕获事件替换旧绑定，初始化不写存储，语言重建保留当前展开状态，忽略旧节点事件。
 
 [V2 伴宠动作与提醒偏好](docs/panel-companion-preferences-contract.md) 统一三个开关和五处行为读取，写入失败时保留当前挂载的临时选择，避免界面与行为不一致。
+
+[配额通知可用性](docs/quota-notification-availability.md) 禁用尚未接通的通知开关，移除误导说明与无效偏好读写，保留原有存储值。
