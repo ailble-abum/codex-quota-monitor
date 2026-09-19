@@ -66,6 +66,21 @@ const {chromium, webkit} = require('playwright');
       payload.summaries.push(summary);
       await publish();
 
+      payload.healthThreadId = 'one';
+      payload.health = {count: 2, after: 500, afterPercent: 50, recommendHandoff: true, reason: 'baseline'};
+      await publish();
+      assert.equal(await page.locator('[data-health]').getAttribute('data-warning'), 'true');
+      assert.ok((await page.locator('[data-health]').textContent()).includes('50.0%'));
+      payload.health.count = '<b>2</b>';
+      await publish();
+      assert.equal(await page.locator('[data-health] b').count(), 0);
+      assert.equal(await page.locator('[data-health]').getAttribute('data-warning'), 'false');
+      assert.ok((await page.locator('[data-health]').textContent()).includes('暂不可用'));
+      payload.healthThreadId = 'other';
+      await publish();
+      assert.ok((await page.locator('[data-health]').textContent()).includes('尚未观察'));
+      delete payload.health; delete payload.healthThreadId;
+      await publish();
       assert.equal(await page.locator('[data-refresh]').isDisabled(), true);
       assert.equal(await page.locator('.cti-hud').count(), 1);
       for (const [language, htmlLang, autoLabel, rawLabel, groupLabel] of [

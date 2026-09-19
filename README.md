@@ -40,3 +40,5 @@ python3 -m unittest discover -s tests -v
 [V2 会话详情正文投影](docs/panel-details-contract.md) 将详情卡片和说明改为文本 DOM，模型字符串不再解析为 HTML，空数据清空且重复更新保留原节点。
 
 [V2 上下文正文投影](docs/panel-context-contract.md) 替换上下文数值和进度条构建，保留双语、边界值、无障碍及重复刷新行为。
+
+[V2 本地健康提示正文](docs/panel-health-contract.md) 使用文本 DOM 和明确输入校验，统一建议与警告状态；真实健康数据生产链路仍待实现。
