@@ -18,3 +18,5 @@ python3 -m unittest discover -s tests -v
 新数据已通过 [隔离面板兼容验证](docs/panel-probe.md)：Chromium/WebKit 深浅主题、任务切换、缺失与过期清空。该验证使用外部现有面板，尚未独立替换其注入实现或接入现用安装。
 
 [页面选择与更新循环](docs/runtime-contract.md) 已提供显式回环目标、增量日志更新与可过期的页面数值桥，通过临时 Chromium 恢复/切换测试。后续 [宿主活动任务与面板更新桥](docs/host-panel-contract.md) 已基于当前宿主资源核对属性，并在隔离 Chromium/WebKit 与外部面板中验证；真实原生窗口与安装接入仍未完成。
+
+[独立前台运行入口](docs/live-contract.md)：`python -m quota_monitor.live --config /absolute/synthetic/config.json`，支持状态变化诊断、失败退避、信号退出与本实例页面释放。需显式目标和日志映射，暂无安装/自启动或真实原生验收。

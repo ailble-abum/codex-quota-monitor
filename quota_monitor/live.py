@@ -1,0 +1,141 @@
+"""Explicit foreground runner. No installation, application launch or port scan."""
+import argparse
+import asyncio
+import json
+import math
+from pathlib import Path
+import signal
+import sys
+
+from .compat import thread_key
+from .reader import reject_constant
+
+
+def emit(event, *, error=False, **fields):
+    print(json.dumps({'event': event, **fields}), file=sys.stderr if error else sys.stdout, flush=True)
+
+
+class Parser(argparse.ArgumentParser):
+    def error(self, message):
+        # argparse's default diagnostics may echo private paths or endpoints.
+        raise ValueError('invalid_arguments')
+
+
+def unique_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError('duplicate key')
+        result[key] = value
+    return result
+
+
+def load_config(path):
+    path = Path(path).absolute()
+    with path.open('rb') as stream:
+        raw = stream.read(65537)
+    if len(raw) > 65536:
+        raise ValueError('config limit')
+    config = json.loads(raw, object_pairs_hook=unique_object, parse_constant=reject_constant)
+    if (not isinstance(config, dict) or set(config) - {'origin', 'page_url', 'journals', 'host', 'panel'}
+            or not {'origin', 'page_url', 'journals'} <= set(config)):
+        raise ValueError('invalid config fields')
+    paths = config.pop('journals')
+    if not isinstance(paths, dict) or not 1 <= len(paths) <= 256:
+        raise ValueError('invalid journals')
+    for key, value in paths.items():
+        if (thread_key(key) != key or not isinstance(value, str) or not value or '\0' in value):
+            raise ValueError('invalid journal mapping')
+    url = config['page_url']
+    if not isinstance(url, str) or not 1 <= len(url) <= 8192 or any(ord(c) < 32 for c in url):
+        raise ValueError('invalid page URL')
+    config['paths'] = {key: path.parent / value for key, value in paths.items()}
+    return config
+
+
+async def supervise(loop, *, interval, max_failures, once):
+    task = asyncio.current_task()
+    event_loop = asyncio.get_running_loop()
+    stopped_by = None
+    finishing = False
+    previous_handlers = {}
+
+    def stop(signum, frame):
+        nonlocal stopped_by
+        if stopped_by is None:
+            stopped_by = signum
+            event_loop.call_soon_threadsafe(lambda: None if finishing else task.cancel())
+
+    reason, code, previous_status, failures = 'error', 3, None, 0
+    try:
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            previous_handlers[sig] = signal.signal(sig, stop)
+        while True:
+            status = await loop.step()
+            if status != previous_status:
+                emit('state', status=status)
+                previous_status = status
+            if once:
+                reason, code = 'once', 0 if status == 'updated' else 2
+                break
+            failures = 0 if status in ('updated', 'unselected', 'changed') else failures + 1
+            if failures >= max_failures:
+                reason, code = 'failure_limit', 2
+                break
+            await asyncio.sleep(min(60, interval * 2 ** min(max(0, failures - 1), 10)))
+    except asyncio.CancelledError:
+        reason = 'sigterm' if stopped_by == signal.SIGTERM else 'sigint' if stopped_by == signal.SIGINT else 'cancelled'
+        code = 143 if stopped_by == signal.SIGTERM else 130
+    except Exception:
+        emit('error', error=True, status='runtime_error')
+    finally:
+        finishing = True
+        try:
+            try:
+                cleanup = await loop.shutdown()
+            except Exception:
+                cleanup = 'cleanup_failed'
+                emit('error', error=True, status=cleanup)
+                if code == 0:
+                    code = 3
+            if stopped_by is not None:
+                reason = 'sigterm' if stopped_by == signal.SIGTERM else 'sigint'
+                code = 143 if stopped_by == signal.SIGTERM else 130
+            emit('stopped', reason=reason, cleanup=cleanup)
+        finally:
+            for sig, handler in previous_handlers.items():
+                signal.signal(sig, handler)
+    return code
+
+
+def main():
+    parser = Parser(description=__doc__)
+    parser.add_argument('--config', required=True, help='Explicit JSON configuration file')
+    parser.add_argument('--once', action='store_true', help='Check and publish once, then release')
+    parser.add_argument('--interval', type=float, default=1.0)
+    parser.add_argument('--max-failures', type=int, default=5)
+    try:
+        args = parser.parse_args()
+        if not math.isfinite(args.interval) or not 0.1 <= args.interval <= 60 or not 1 <= args.max_failures <= 100:
+            raise ValueError('invalid_arguments')
+    except ValueError:
+        emit('error', error=True, status='invalid_arguments')
+        return 2
+    try:
+        config = load_config(args.config)
+        from .runtime import UpdateLoop
+        loop = UpdateLoop(**config)
+    except ModuleNotFoundError:
+        emit('error', error=True, status='dependency_unavailable')
+        return 2
+    except (OSError, ValueError, TypeError, RecursionError):
+        emit('error', error=True, status='invalid_config')
+        return 2
+    try:
+        return asyncio.run(supervise(loop, interval=args.interval, max_failures=args.max_failures, once=args.once))
+    except KeyboardInterrupt:
+        return 130
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

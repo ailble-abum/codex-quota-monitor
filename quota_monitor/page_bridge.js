@@ -17,9 +17,21 @@
     };
     if (location.href !== options.expected) return options.action === 'read' ? null : false;
     if (options.action === 'read') return current();
-    if (options.action === 'invalidate') {
+    if (options.action === 'invalidate' || options.action === 'release') {
         const previous = window.__quotaMonitorV2Delivery;
-        if (previous && !previous.invalidate()) throw new Error('panel consumer unavailable');
+        if (!previous || previous.owner !== options.owner) return true;
+        let cleared = false;
+        try { cleared = previous.invalidate(); }
+        finally {
+            if (options.action === 'release') {
+                previous.stop();
+                if (window.__quotaMonitorV2Delivery === previous) {
+                    cleared = Reflect.deleteProperty(window, '__quotaMonitorV2Snapshot') && cleared;
+                    Reflect.deleteProperty(window, '__quotaMonitorV2Delivery');
+                }
+            }
+        }
+        if (!cleared) throw new Error('panel consumer unavailable');
         return true;
     }
     if (!options.key || current() !== options.key) return false;
@@ -37,7 +49,13 @@
     Object.defineProperty(window, '__quotaMonitorV2Snapshot', {
         configurable: true, get: snapshot
     });
-    if (!options.panel) { if (previous) previous.stop(); return true; }
+    if (!options.panel) {
+        if (previous) { previous.invalidate(); previous.stop(); }
+        window.__quotaMonitorV2Delivery = {
+            owner: options.owner, stop: () => {}, invalidate: () => { valid = false; return true; }
+        };
+        return true;
+    }
 
     let timer;
     let last;
@@ -68,7 +86,7 @@
     if (!refresh()) throw new Error('panel consumer unavailable');
     timer = setInterval(refresh, 250);
     window.__quotaMonitorV2Delivery = {
-        stop,
+        owner: options.owner, stop,
         invalidate: () => { valid = false; return refresh(); }
     };
     if (previous) previous.stop();

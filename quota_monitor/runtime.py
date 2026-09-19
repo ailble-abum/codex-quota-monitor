@@ -6,6 +6,7 @@ import json
 import math
 import socket
 import threading
+import uuid
 from urllib.parse import urlsplit
 from pathlib import Path
 
@@ -120,11 +121,29 @@ class UpdateLoop:
         self.source = JournalSource(paths)
         self.client = None
         self.status = 'idle'
+        self.owner = uuid.uuid4().hex
+        self._published = False
 
     async def close(self):
         client, self.client = self.client, None
         if client is not None:
             await client.close()
+
+    async def shutdown(self):
+        """Release this runner's page state when connected, without reconnecting."""
+        result = 'lease_pending' if self._published else 'closed'
+        try:
+            if self._published and self.client is not None:
+                released = await self.client.evaluate(page_expression(
+                    action='release', expected=self.page_url, owner=self.owner))
+                if released is True:
+                    self._published = False
+                    result = 'released'
+        except CDPError:
+            result = 'lease_pending'
+        finally:
+            await self.close()
+        return result
 
     async def step(self):
         try:
@@ -140,14 +159,16 @@ class UpdateLoop:
             if key is None:
                 if self.panel:
                     await self.client.evaluate(page_expression(
-                        action='invalidate', expected=self.page_url))
+                        action='invalidate', expected=self.page_url, owner=self.owner))
                 self.status = 'unselected'
                 return self.status
             payload = self.source.read(key)
             applied = await self.client.evaluate(page_expression(
                 action='publish', expected=self.page_url, key=key,
-                payload=payload, panel=self.panel, host=self.host))
+                payload=payload, panel=self.panel, host=self.host, owner=self.owner))
             self.status = 'updated' if applied is True else 'changed'
+            if applied is True:
+                self._published = True
         except (CDPError, asyncio.TimeoutError) as error:
             await self.close()
             self.status = str(error) if isinstance(error, CDPError) else 'discovery_timeout'

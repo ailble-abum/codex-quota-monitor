@@ -92,6 +92,13 @@ async function main() {
       assert.equal(await readHost(), null); // Never falls back to explicit opt-in or a selected row.
       await page.evaluate(() => { window.__quotaMonitorV2Thread = 'one'; });
       assert.equal(await call(options), true);
+      assert.equal(await call({action: 'release', expected: 'about:blank', owner: 'different'}), true);
+      assert.equal(await page.evaluate(() => Boolean(window.__quotaMonitorV2Snapshot)), true);
+      assert.equal(await call({action: 'release', expected: 'about:blank'}), true);
+      assert.equal(await page.evaluate(() => Object.hasOwn(window, '__quotaMonitorV2Snapshot')), false);
+      assert.equal(await page.evaluate(() => Object.hasOwn(window, '__quotaMonitorV2Delivery')), false);
+      assert.equal(await page.evaluate(() => window.deliveries.at(-1).summaries.length), 0);
+      assert.equal(await call(options), true);
       await page.evaluate(() => Object.defineProperty(window, '__quotaMonitorV2Snapshot', {configurable: false}));
       await assert.rejects(call(options));
       await page.evaluate(() => { window.__quotaMonitorV2Thread = 'two'; });
