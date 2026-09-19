@@ -34,11 +34,25 @@ async function main() {
           });
           const page = await context.newPage();
           const errors = [];
+          const candidate = Boolean(process.env.QUOTA_PANEL_CANDIDATE);
           page.on('pageerror', error => errors.push(error.message));
           await page.goto('http://panel.invalid/');
           await page.evaluate(() => {
             localStorage.setItem('cti-language', 'zh');
             localStorage.setItem('cti-layout-v2', JSON.stringify({ expanded: { edge: 'right', y: 120 } }));
+          });
+          if (candidate) await page.evaluate(() => {
+            window.originalObserver = window.MutationObserver;
+            window.MutationObserver = class { constructor() { throw Error('unexpected legacy observer'); } };
+            const message = document.createElement('article');
+            message.id = 'private-message';
+            message.setAttribute('data-message-author-role', 'assistant');
+            message.textContent = 'Synthetic private conversation: must not be scanned';
+            document.body.appendChild(message);
+            for (const key of ['textContent', 'innerText']) Object.defineProperty(message, key, {
+              get() { throw Error('private conversation read'); }
+            });
+            window.originalRows = [...document.querySelectorAll('[data-app-action-sidebar-thread-row]')].map(row => row.outerHTML);
           });
           const push = key => page.evaluate(({payload, bridge}) => {
             if (!bridge) return window.__codexContextTokenInspectorUpdate(payload);
@@ -56,14 +70,39 @@ async function main() {
           const empty = () => page.waitForFunction(() => {
             return !document.querySelector('[data-context] [role="meter"]') && document.querySelector('[data-metrics]')?.textContent === '';
           });
+          if (candidate) {
+            await page.evaluate(() => {
+              const existing = document.createElement('section');
+              existing.id = 'codex-context-token-inspector-root';
+              existing.textContent = 'Existing consumer must survive';
+              document.body.appendChild(existing);
+            });
+            await assert.rejects(page.evaluate(script => (0, eval)(script)({summaries: []}), fixture.script));
+            assert.equal(await page.evaluate(() => document.getElementById('codex-context-token-inspector-root').textContent), 'Existing consumer must survive');
+            await page.evaluate(() => document.getElementById('codex-context-token-inspector-root').remove());
+          }
           await page.evaluate(({script, payload, bridge}) => {
             if (!bridge) return (0, eval)(script)(payload);
             return (0, eval)(bridge)({action: 'initialize', expected: location.href, key: 'one',
               host: 'codex-sidebar', consumer: {source: script, digest: 'external-fixture'}});
           }, {script: fixture.script, payload: fixture.payloads.one, bridge});
+          if (candidate) await page.evaluate(() => { window.MutationObserver = window.originalObserver; });
           await select('one');
           await push('one');
           await meter(25);
+          if (candidate) {
+            assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('[data-app-action-sidebar-thread-row]')].map(row => row.outerHTML)),
+              await page.evaluate(() => window.originalRows));
+            assert.equal(await page.locator('[data-context-token-chip],[data-context-token-footer]').count(), 0);
+            // A copied stale payload cannot bypass the bridge after task switching.
+            await page.evaluate(() => { window.savedPayload = window.__codexContextTokenInspectorPayload; });
+            await select('two');
+            await page.evaluate(() => window.__codexContextTokenInspectorUpdate(window.savedPayload));
+            await empty();
+            await select('one');
+            await push('one');
+            await meter(25);
+          }
           await page.locator('.cti-edge-mascot').focus();
           await page.locator('[data-details] summary').click();
           assert.match(await page.locator('[data-metrics]').innerText(), /700/);

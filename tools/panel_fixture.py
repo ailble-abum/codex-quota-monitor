@@ -6,6 +6,7 @@ asset. Its source/artwork are only emitted to the isolated test process.
 import argparse
 import ast
 import json
+import os
 import sys
 import tempfile
 from pathlib import Path
@@ -59,7 +60,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('legacy_scripts', type=Path)
     args = parser.parse_args()
-    print(json.dumps({'script': renderer(args.legacy_scripts), 'payloads': fixtures()}))
+    candidate = os.environ.get('QUOTA_PANEL_CANDIDATE')
+    script = Path(candidate).read_text(encoding='utf-8') if candidate else renderer(args.legacy_scripts)
+    print(json.dumps({'script': script, 'payloads': fixtures()}))
 
 
 if __name__ == '__main__':

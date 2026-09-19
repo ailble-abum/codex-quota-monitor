@@ -43,3 +43,5 @@
 复现工具：`tools/verify_consumer.cjs`、`tools/verify_live.cjs`、`tools/verify_runtime_panel.cjs LEGACY_SCRIPTS ARTIFACT_DIR`、`tools/verify_panel.cjs LEGACY_SCRIPTS ARTIFACT_DIR --bridge`。仅临时 profile 和合成会话；没有真实原生窗口、Windows、安装或发行证据。
 
 下一步为消费者来源拆分：按来源审计保留本项目面板设计，替换 renderer 中剩余继承的宿主/消息匹配与挂载逻辑，然后做隔离原生闭环。当前初始化入口解决启动顺序，不代替该源码工作。
+
+后续进度：[Renderer 首次拆分](panel-split-contract.md)已实现仅接收有效 V2 快照的候选；保留视图继续携带原许可，剩余来源审计仍开放。

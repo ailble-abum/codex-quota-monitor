@@ -22,3 +22,5 @@ python3 -m unittest discover -s tests -v
 [独立前台运行入口](docs/live-contract.md)：`python -m quota_monitor.live --config /absolute/synthetic/config.json`，支持状态变化诊断、失败退避、信号退出与本实例页面释放。需显式目标；日志可选逐文件映射或[受限目录自动关联](docs/directory-index-contract.md)，暂无安装/自启动或真实原生验收。
 
 [显式消费者初始化](docs/consumer-contract.md) 支持启动前脚本摘要校验、缺失时挂载和刷新恢复；外部 renderer 的来源替换与原生验收仍未完成。
+
+[Renderer 首次拆分](docs/panel-split-contract.md) 提供带完整来源/许可的隔离候选，移除旧宿主扫描与观察器，保留现有面板视图；尚未完成整份 renderer 的来源替换。
