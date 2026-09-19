@@ -66,6 +66,10 @@ class InspectorTests(unittest.TestCase):
     def test_context_hint_uses_the_docked_companion_as_its_anchor(self):
         """A docked panel is off-screen, so its hint must use the visible companion."""
         self.assertIn("function contextHintGeometry", INJECTION_SCRIPT)
+        self.assertIn(
+            "addEventListener('load',()=>positionContextHint(root),{once:true})",
+            INJECTION_SCRIPT,
+        )
         geometry = block("function contextHintGeometry", "function positionContextHint")
         values = run_js(
             geometry,

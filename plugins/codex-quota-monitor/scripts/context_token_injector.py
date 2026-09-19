@@ -855,6 +855,9 @@ INJECTION_SCRIPT = r"""
   function applyMascotSkin(root) {
     const mascot=ensureMascot(root),id=mascotSkin(),skin=MASCOT_SKINS[id],art=mascotArt(id);
     mascot.innerHTML=mascotMarkup(id,'cti-mascot-art');mascot.dataset.skin=id;
+    const image=mascot.querySelector('img');
+    if(image?.complete)queueMicrotask(()=>positionContextHint(root));
+    else image?.addEventListener('load',()=>positionContextHint(root),{once:true});
     mascot.dataset.art=String(!!art);
     mascot.style.setProperty('--cti-mascot-accent',skin.accent);
     const [ringX,ringY,ringSize]=skin.ring;
