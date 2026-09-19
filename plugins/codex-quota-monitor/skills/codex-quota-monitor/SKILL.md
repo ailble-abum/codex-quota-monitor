@@ -21,6 +21,8 @@ A reached limit is a state, not a magnitude. The gauge then stops filling per wi
 
 The settings panel footer and `monitorctl.py status` both name the installed build: the declared plugin version, the cachebuster Codex keys its cache directory on, the injected runtime version, and the install time. A plugin cache does not refresh on its own, and the injected runtime version is read back out of the script the injector actually holds. When the overlay looks unchanged, read that line before reading the diff -- a runtime version below the one in the source means the long-lived injector has not restarted, not that the code is wrong.
 
+At most once per day, the resident monitor fetches the public repository `plugin.json` and compares its cachebuster with the installed build. The request sends no local version, account data, or conversation content. Only a newer build is promoted; network and parse failures remain silent so offline use is unchanged.
+
 Context hints last seven seconds, default at 75%/85% of the reported window, and can be disabled in settings. These are heuristic workflow reminders, not researched universal cost-optimal values. Different models, cached input, repeated prefix reuse, and compaction policy matter; never promise a fixed-token handoff saves money. Preserve settings and avoid repeated prompts for the same task/stage.
 
 Use `python3 scripts/monitorctl.py status` before starting to avoid duplicate monitors. Paths below are relative to the plugin root (two levels above this skill directory). The overlay defaults to the bottom-left and can be dragged or collapsed.

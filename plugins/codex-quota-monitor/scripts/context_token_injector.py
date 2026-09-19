@@ -34,10 +34,12 @@ from quota_reader import QuotaReader
 from quota_alerts import QuotaAlerts
 import context_health
 from companion_art import COMPANION_ART
+from update_check import UpdateChecker
 from usage_history import History, recent_breakdown
 
 QUOTA_READER = QuotaReader()
 QUOTA_ALERTS = QuotaAlerts()
+UPDATE_CHECKER = UpdateChecker()
 HISTORY = History()
 
 
@@ -486,7 +488,7 @@ INJECTION_SCRIPT = r"""
   // new script: stacked observers and timers are torn down, and the companion
   // bitmap is rebuilt from the new data URIs. A renderer may still contain an
   // observer from an older plugin release.
-  const RUNTIME_VERSION = 23;
+  const RUNTIME_VERSION = 24;
   const ROOT_ID = 'codex-context-token-inspector-root';
   const STYLE_ID = 'codex-context-token-inspector-style';
   const FOOTER_ATTR = 'data-context-token-footer';
@@ -959,6 +961,16 @@ INJECTION_SCRIPT = r"""
       .cti-hud [data-settings] { border-top:1px solid color-mix(in srgb,CanvasText 8%,transparent); padding-top:10px; }
       .cti-setting { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:10px 0; font-size:11px; }
       .cti-setting input { accent-color:var(--cti-safe); width:14px; height:14px; }
+      [data-update] { margin:8px 0; }
+      .cti-update-row { display:flex; align-items:center; gap:7px; font-size:11px; }
+      .cti-update-row strong { font-weight:650; }
+      .cti-update-badge {
+        display:inline-flex; align-items:center; gap:5px;
+        font-size:10px; font-weight:600; letter-spacing:.2px;
+        color:var(--cti-safe); background:color-mix(in srgb,var(--cti-safe) 12%,transparent);
+        padding:3px 8px; border-radius:999px;
+      }
+      .cti-update-badge::before { content:''; width:6px; height:6px; border-radius:50%; background:var(--cti-safe); }
       .cti-hud .cti-text-button { width:auto; font:inherit; padding:4px 7px; background:color-mix(in srgb,CanvasText 4%,transparent); }
       .cti-hud [hidden] { display:none !important; }
       .cti-hud-tools {
@@ -1881,6 +1893,7 @@ INJECTION_SCRIPT = r"""
             <span class="cti-status" data-tone="safe">&gt;50%</span><span class="cti-status" data-tone="watch">20–50%</span><span class="cti-status" data-tone="low">≤20%</span>
           </div>
           <div class="cti-muted" data-build></div>
+          <div data-update></div>
           <div class="cti-muted" data-dom></div>
           <div class="cti-muted">${zh?'只读 · 本机 · 不上传':'Read-only · local · never uploaded'}</div>
         </div>
@@ -2041,6 +2054,32 @@ INJECTION_SCRIPT = r"""
     if (typeof stamp.runtimeVersion === 'number') stampParts.push(`${zh?'运行时':'runtime'} ${stamp.runtimeVersion}`);
     if (typeof stamp.installedAt === 'number') stampParts.push(`${zh?'安装于':'installed'} ${new Date(stamp.installedAt*1000).toLocaleString(zh?'zh-CN':'en',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}`);
     put('[data-build]', stampParts.length ? stampParts.join(' · ') : (zh?'版本信息未记录':'Build information not recorded'));
+    // A newer published build is the one thing a local-only monitor cannot see
+    // on its own, so the check result rides in with the payload. Only an
+    // available update is spoken aloud; "up to date" is a muted line and a
+    // failed or in-flight check stays silent rather than nagging.
+    const upd = payload.update || {};
+    const updNode = body.querySelector('[data-update]');
+    if (updNode) {
+      if (upd.status === 'update_available' && upd.latestSemver) {
+        const updHtml = `<div class="cti-update-row"><span class="cti-update-badge">${zh?'新版本可用':'Update available'}</span><strong>v${upd.latestSemver}</strong><button type="button" class="cti-text-button" data-update-open>${zh?'查看':'View'}</button></div>`;
+        if (updNode.innerHTML !== updHtml) {
+          updNode.innerHTML = updHtml;
+          updNode.querySelector('[data-update-open]').addEventListener('click', async event => {
+            const url = upd.url || 'https://github.com/ailble-abum/codex-quota-monitor/releases';
+            const opened = window.open(url, '_blank', 'noopener');
+            if (!opened) {
+              try { await navigator.clipboard.writeText(url); event.target.textContent = zh?'链接已复制':'Link copied'; }
+              catch { event.target.textContent = url; }
+            }
+          });
+        }
+      } else if (upd.status === 'up_to_date') {
+        put('[data-update]', `<span class="cti-muted">${zh?'已是最新版本':'Up to date'}</span>`);
+      } else {
+        put('[data-update]', '');
+      }
+    }
     // The selectors the overlay relies on to find the active thread can drift
     // under a Codex update. Reporting which landed makes that drift visible
     // instead of silently drawing a smaller panel.
@@ -2234,6 +2273,15 @@ INJECTION_SCRIPT = r"""
   installSidebarHoverDelegation();
   installObserver(payload);
   applyAll(payload);
+  // Leave a data-only entry point behind. The resident injector pushes a fresh
+  // reading every ten seconds, and once this runtime is applied it can do so
+  // through this handle instead of re-parsing the whole script (which carries
+  // the companion bitmaps) each time. The observer holds the payload; applyAll
+  // re-renders from the one passed here.
+  window.__codexContextTokenInspectorUpdate = nextPayload => {
+    installObserver(nextPayload);
+    applyAll(nextPayload);
+  };
   return {
     ok: true,
     summaries: (payload.summaries || []).length,
@@ -2286,11 +2334,32 @@ def build_stamp() -> dict:
 BUILD_STAMP = build_stamp()
 
 
+def push(client: CDPClient, payload: dict[str, Any]) -> Any:
+    """Deliver a payload, re-parsing the script only when the renderer is stale.
+
+    The injected script is large because it carries the companion bitmaps. A
+    renderer already running this runtime has left a data-only entry point
+    behind, so a fresh reading can go through it instead of re-sending and
+    re-parsing the whole script every ten seconds. The probe falls back to a
+    full injection when the renderer was replaced (the version handle is gone)
+    or when the entry point did not survive.
+    """
+    serialized = json.dumps(payload, ensure_ascii=False)
+    applied = client.evaluate(
+        f"window.__codexContextTokenInspectorRuntimeVersion === {RUNTIME_VERSION}"
+        f" && typeof window.__codexContextTokenInspectorUpdate === 'function'"
+    )
+    if applied:
+        return client.evaluate(f"window.__codexContextTokenInspectorUpdate({serialized})")
+    return client.evaluate(f"({INJECTION_SCRIPT})({serialized})")
+
+
 def inject_once(client: CDPClient, roots: list[str], limit: int, detail_limit: int) -> Any:
     state = runtime_state(client)
     payload = build_payload(roots, limit, state.get("activeThreadId"), detail_limit=detail_limit)
     payload['quota'] = QUOTA_READER.snapshot(force=state.get('refresh', False))
     payload['build'] = BUILD_STAMP
+    payload['update'] = UPDATE_CHECKER.snapshot()
     payload['dom'] = state.get('dom')
     active = normalize_thread_id(state.get('activeThreadId') or payload.get('selectedThreadId') or '')
     selected = next((s for s in payload['summaries'] if normalize_thread_id(s.get('thread_id') or '') == active), None)
@@ -2305,8 +2374,7 @@ def inject_once(client: CDPClient, roots: list[str], limit: int, detail_limit: i
     except OSError:
         pass
     QUOTA_ALERTS.check(payload['quota'], enabled=state.get('alerts', False), language=state.get('language', 'zh'))
-    expression = f"({INJECTION_SCRIPT})({json.dumps(payload, ensure_ascii=False)})"
-    return client.evaluate(expression)
+    return push(client, payload)
 
 
 def build_arg_parser() -> argparse.ArgumentParser:

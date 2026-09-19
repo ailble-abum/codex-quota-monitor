@@ -22,7 +22,7 @@ Codex Quota Monitor 把这些信息放回工作现场。它在 Codex 桌面窗�
 
 每个配额窗口都是一个"与"条件：每个窗口都要有余量，任一窗口见底就停止服务，哪怕另一个还剩很多。所以面板不会只报一个百分比——它按当前速度折算成剩余时间。如果某个窗口会在耗尽之前先重置，它会显示"至少还能用"加一个下限，而不是一个会被读成截止时间的数字。已达上限时，伴宠旁边的配额计整条转成停止态并给出最近的重置时间，因为"一格空、一格还满"看起来像"部分可用"，而账户其实已经停了。
 
-设置面板底部会显示当前安装的版本：插件版本、Codex 用来命名缓存目录的 cachebuster、注入脚本的运行时版本，以及最近一次安装时间。`monitorctl.py status` 输出同一串信息。插件缓存不会自行刷新，这一行就是"更新没生效"和"根本没有更新"的分界。
+设置面板底部会显示当前安装的版本：插件版本、Codex 用来命名缓存目录的 cachebuster、注入脚本的运行时版本，以及最近一次安装时间。`monitorctl.py status` 输出同一串信息。插件缓存不会自行刷新，这一行就是"更新没生效"和"根本没有更新"的分界。监视器每天最多一次读取 GitHub 上的公开 `plugin.json`，有新版本时在这里提示；请求不携带本地版本、账户信息或会话内容，失败时静默保持离线功能。
 
 面板有迷你、标准和大字三种尺寸。位置、展开状态、显示单位和提醒设置都会保留。
 
@@ -165,7 +165,7 @@ Display settings offer six companions. Docking covers the two side walls only, b
 
 Beside the companion sits the account gauge: one cell per quota window the account reports, each filled by its own remaining share. When any window reaches its limit the gauge stops filling per window and becomes a single stopped bar with a bar drawn across it -- under the AND gate a half-empty pair of cells reads as "partly usable" while the account is in fact stopped. Hovering names each window's exact percentage and the nearest reset.
 
-The collapsed bar and the quota headline answer with a time budget rather than a share: how long the account can keep working at the pace it has been spending. A window that would refill before it runs out is shown as "at least", so a comfortable account is not handed a number that reads like a deadline. The settings panel and `monitorctl.py status` both name the installed build, because a plugin cache does not refresh on its own.
+The collapsed bar and the quota headline answer with a time budget rather than a share: how long the account can keep working at the pace it has been spending. A window that would refill before it runs out is shown as "at least", so a comfortable account is not handed a number that reads like a deadline. The settings panel and `monitorctl.py status` both name the installed build, because a plugin cache does not refresh on its own. At most once a day, the monitor reads the public `plugin.json` on GitHub and shows a notice here when a newer build exists. That request carries no local version, account data, or conversation content; failure is silent and the offline monitor keeps working.
 
 macOS is the tested platform. The Windows adapter is included but still needs full validation on real hardware.
 

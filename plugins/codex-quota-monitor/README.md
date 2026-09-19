@@ -26,6 +26,8 @@ Windows adapters are provided separately from the macOS LaunchAgent/AppKit layer
 
 Local macOS overlay: remaining account quota and reset times first, current context second, expandable request/session statistics. No model calls, telemetry, session uploads, or direct authentication-file edits.
 
+The settings footer names the installed build and checks the public repository `plugin.json` at most once per day. A newer cachebuster produces an update notice and link. The request sends no local version, account data, or conversation content; failures are silent and do not affect offline monitoring.
+
 The expanded local statistics and menu-bar menu show the latest session model and reasoning effort when a `turn_context` record provides them. This helps explain usage differences without guessing from Token totals.
 
 The offline history page also compares cumulative session Tokens for the most recent 100 local sessions by model and by project-folder name. It stores only the short project folder name in the numeric history snapshot, not conversation text or full project paths. These rankings are relative local diagnostics, not billing totals.

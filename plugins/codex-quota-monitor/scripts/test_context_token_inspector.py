@@ -5,7 +5,7 @@ from pathlib import Path
 
 from companion_art import COMPANION_ART
 from context_token_inspector import summarize_session, summarize_session_fast
-from context_token_injector import BUILD_STAMP, INJECTION_SCRIPT, RUNTIME_VERSION, build_payload, runtime_state
+from context_token_injector import BUILD_STAMP, INJECTION_SCRIPT, RUNTIME_VERSION, build_payload, push, runtime_state
 
 
 def block(start: str, end: str) -> str:
@@ -242,6 +242,39 @@ class InspectorTests(unittest.TestCase):
         settings = block("<div data-settings hidden>", "data-freshness")
         self.assertIn("只读 · 本机 · 不上传", settings)
         self.assertIn("Read-only · local · never uploaded", settings)
+
+    def test_the_script_leaves_a_data_only_update_handle(self):
+        # A resident renderer already carrying this runtime must not have the
+        # whole script, companion bitmaps and all, re-parsed every ten seconds.
+        tail = block("window.__codexContextTokenInspectorUpdate =", "return {")
+        self.assertIn("installObserver(nextPayload)", tail)
+        self.assertIn("applyAll(nextPayload)", tail)
+
+    def test_push_skips_the_script_when_the_runtime_is_applied(self):
+        class Recorder:
+            def __init__(self, applied):
+                self._applied = applied
+                self.expressions = []
+
+            def evaluate(self, expression):
+                self.expressions.append(expression)
+                if len(self.expressions) == 1:
+                    return self._applied
+                return {'ok': True}
+
+        applied = Recorder(True)
+        self.assertEqual(push(applied, {'quota': {}}), {'ok': True})
+        self.assertEqual(len(applied.expressions), 2)
+        # First the probe, then a data-only call -- never the full script.
+        self.assertIn('__codexContextTokenInspectorRuntimeVersion === ', applied.expressions[0])
+        self.assertIn('__codexContextTokenInspectorUpdate(', applied.expressions[1])
+        self.assertNotIn('RUNTIME_VERSION = ', applied.expressions[1])
+
+        stale = Recorder(False)
+        push(stale, {'quota': {}})
+        self.assertEqual(len(stale.expressions), 2)
+        # A replaced renderer has no version handle, so the full script lands.
+        self.assertIn('RUNTIME_VERSION = ', stale.expressions[1])
 
     def test_the_gauge_follows_quota_and_not_only_the_skin(self):
         # The companion is rebuilt only when the skin or the dock changes, so a
