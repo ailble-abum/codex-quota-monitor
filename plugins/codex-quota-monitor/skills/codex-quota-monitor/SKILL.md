@@ -9,7 +9,9 @@ Creator: Ailble. On Windows use the Windows adapter through `python scripts/moni
 
 The compact meters themselves are drag handles. Use the bottom-right resize grip or its arrow keys for resizing. Compact/expanded layouts are stored separately; reserve the top safe area and apply `-webkit-app-region: no-drag`. Position reset must clear both the legacy position key and `cti-layout-v2`, otherwise the new geometry will restore old coordinates.
 
-The overlay can softly dock when released close to an edge. A docked overlay leaves only its selected companion skin visible; hover to reveal it, leave to hide it, click the companion to pin it open, or drag the revealed header to detach it. Docking can be disabled and the companion changed in display settings. Free-floating overlays remain the ordinary full panel.
+The overlay can softly dock when released close to the left or right wall. Only the side walls dock, because every companion is drawn as a figure peeking in from a vertical edge; a layout stored by an older build that used the top or bottom edge is migrated to a free-floating panel. A docked overlay leaves only its selected companion visible; hover to reveal it, leave to hide it, click the companion to pin it open, or drag the revealed header to detach it. Docking can be disabled and the companion changed in display settings. Free-floating overlays remain the ordinary full panel.
+
+Companion skins ship as WebP artwork inlined into the injected script as data URIs, because the installer copies only the scripts directory and the renderer cannot read the plugin's assets. Run `python3 scripts/build_companion_art.py` after adding or replacing a render in `assets/companions`; it needs pillow and numpy at build time only. A skin whose artwork is missing falls back to its bundled inline vector, so do not describe every skin as illustrated.
 
 Quota labels derive from actual window durations, not primary/secondary array positions. A missing 5h window must not be synthesized. Unknown/absent limits are neither zero remaining nor unlimited.
 
