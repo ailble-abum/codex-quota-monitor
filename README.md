@@ -115,6 +115,8 @@ swiftc -typecheck plugins/codex-quota-monitor/scripts/QuotaMenu.swift
 
 提交问题时，请附上操作系统、Codex/ChatGPT 版本以及 `monitorctl.py doctor` 的输出。不要提交认证文件或完整会话日志。
 
+遇到问题、发现 Bug，或者有改进建议，可以提交 [GitHub Issue](https://github.com/ailble-abum/codex-quota-monitor/issues)，也可以直接写信给我：[ailblechase@gmail.com](mailto:ailblechase@gmail.com)。
+
 ### 来源与许可
 
 桌面注入和会话解析部分最初基于 Kevin Ke 的 [Codex Monitor](https://github.com/KevinKE93/Codex-Monitor)。这个分支增加了账户额度、历史趋势、菜单栏、提醒、压缩观察、模型/项目分析和 Windows 适配。
@@ -139,5 +141,7 @@ python3 scripts/monitorctl.py install
 Start a new Codex task and ask it to start Codex Quota Monitor. For diagnostics, run `python3 scripts/monitorctl.py doctor` from the installed plugin directory.
 
 macOS is the tested platform. The Windows adapter is included but still needs full validation on real hardware.
+
+Bug reports, questions, and suggestions are welcome through [GitHub Issues](https://github.com/ailble-abum/codex-quota-monitor/issues) or by email at [ailblechase@gmail.com](mailto:ailblechase@gmail.com).
 
 MIT licensed. The desktop injection and session parsing work began from [KevinKE93/Codex-Monitor](https://github.com/KevinKE93/Codex-Monitor); attribution is preserved.
