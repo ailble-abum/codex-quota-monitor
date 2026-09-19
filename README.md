@@ -24,3 +24,5 @@ python3 -m unittest discover -s tests -v
 [显式消费者初始化](docs/consumer-contract.md) 支持启动前脚本摘要校验、缺失时挂载和刷新恢复；外部 renderer 的来源替换与原生验收仍未完成。
 
 [Renderer 首次拆分](docs/panel-split-contract.md) 提供带完整来源/许可的隔离候选，移除旧宿主扫描与观察器，保留现有面板视图；尚未完成整份 renderer 的来源替换。
+
+[候选视图挂载替换](docs/panel-mount-contract.md) 已替换旧 ensureHud/ensureStyle，增加节点所有权保护和一次性事件绑定；HTML/CSS 视图资产继续归因。

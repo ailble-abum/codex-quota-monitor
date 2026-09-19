@@ -47,16 +47,27 @@ def build(directory):
             raise ValueError('unrecognized source revision')
         texts[name] = data.decode('utf-8')
     script = literal(texts['context_token_injector.py'], 'INJECTION_SCRIPT')
+    # Extract only retained visual templates; replace their mounting functions.
+    def template(function, declaration):
+        section = script.split('  function ' + function + '(', 1)[1]
+        value = section.split(declaration + ' = `', 1)[1].split('`;', 1)[0]
+        return '`' + value + '`'
+    visual = ('  const panelCSS = () => ' + template('ensureStyle', 'const css') + ';\n'
+              + '  const panelHeader = () => ' + template('ensureHud', 'root.innerHTML') + ';\n')
     # Exact source digests make these bounded spans safe; unknown revisions stop.
     for start, end in (
             ('  function summaryHover(', '  function ensureStyle('),
+            ('  function ensureStyle(', '  function cleanOriginalTitle('),
+            ('  function ensureHud(', '  function applySidebar('),
             ('  function cleanOriginalTitle(', '  function hudMode('),
             ('  function applySidebar(', '  function applyHud(')):
         script = cut(script, start, end)
     tail = '  function clearFooters('
     if script.count(tail) != 1:
         raise ValueError('unexpected lifecycle boundary')
-    script = script[:script.index(tail)] + (Path(__file__).parents[1] / 'quota_monitor/panel_adapter.js').read_text()
+    assets = Path(__file__).parents[1] / 'quota_monitor'
+    script = (script[:script.index(tail)] + visual + (assets / 'panel_mount.js').read_text()
+              + (assets / 'panel_adapter.js').read_text())
     guard = """(payload => {
   if (document.getElementById('codex-context-token-inspector-root') ||
       document.getElementById('codex-context-token-inspector-style') ||
@@ -88,7 +99,7 @@ def main():
     manifest = {'sourceCommit': BASE, 'sourceSHA256': HASHES,
                 'consumer': {'path': 'consumer.js', 'sha256': hashlib.sha256(script.encode()).hexdigest()},
                 'status': 'derived-isolated-candidate',
-                'changes': 'Removed host/sidebar/message scans and observer lifecycle; V2 snapshot-only adapter.'}
+                'changes': 'Removed host/sidebar/message scans and observer lifecycle; V2 snapshot-only adapter and owned DOM mounting.'}
     (args.output_dir / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     print(json.dumps(manifest['consumer']))
 

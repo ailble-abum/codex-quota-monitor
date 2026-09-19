@@ -54,3 +54,5 @@ QUOTA_PANEL_CANDIDATE=/absolute/new-candidate/consumer.js \
 ## 开放边界
 
 消息级对应与侧栏 tooltip 本轮明确不提供，不以旧正文猜测作为回退。账号配额、历史、伴宠完整交互仍没有生产数据验收。本轮展示继承保留视图，不声称整份脚本独立原创；尚需对共享样式、格式化和 ensureHud 等展示挂载部分逐项追溯/替换，并补齐消费者卸载契约，再安排隔离原生闭环。没有真实用户会话、原生窗口、Windows 或发行验收。
+
+后续进度：[候选视图挂载替换](panel-mount-contract.md)已移除旧 ensureHud/ensureStyle 函数；原视觉模板及其他保留函数仍须继续审计。
