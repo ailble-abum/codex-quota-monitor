@@ -15,6 +15,7 @@ Codex Quota Monitor is a local, read-only monitor for Codex quota, token usage, 
 - Context occupancy and cached-input share trends are included when local records provide them.
 - Soft edge docking tucks the overlay behind a companion on the left or right wall. Six selectable companions are included, all six shipping illustrated artwork. A docked companion carries no card or plate -- just the character against the window edge, with the account gauge beside it. The gauge draws one cell per quota window the account reports, so a plan reporting a weekly window alone shows one cell while a plan reporting a short and a weekly window shows both.
 - The installed build is named in the settings panel and by `monitorctl.py status`: the declared plugin version, the cachebuster Codex keys its cache directory on, the injected runtime version, and when the last install landed. A plugin cache does not refresh on its own, so this is what distinguishes "the update did not apply" from "there was no update".
+- The settings panel also probes the page elements the overlay reads the active thread from, and names the miss instead of quietly drawing a smaller panel when a Codex update moves them. The same footer states the privacy posture in one line: read-only, local, never uploaded.
 - macOS menu bar support is available.
 - A Windows adapter and tray companion are included; real-machine runtime verification is still pending.
 
@@ -31,5 +32,6 @@ Codex Quota Monitor 是一个本地只读的 Codex 配额监视器，用于查�
 - 本地记录具备相应字段时，会展示上下文占用和缓存输入占比趋势。
 - 左右边缘软吸附可把悬浮层收成角色伴宠，提供六款角色，六款均带插画。位图伴宠不套卡片边框，直接浮在窗口边缘，旁边是账户配额计。账户上报几个配额窗口就画几格：只上报每周窗口的套餐显示一格，同时上报短周期与每周窗口的套餐两格都显示。
 - 设置面板与 `monitorctl.py status` 都会标出当前安装的版本：声明的插件版本、Codex 用来命名缓存目录的 cachebuster、注入脚本的运行时版本，以及最近一次安装时间。插件缓存不会自行刷新，因此这一行正是「更新没生效」与「根本没有更新」的分界。
+- 设置面板同时探测悬浮层读取活动会话所依赖的页面元素，Codex 改版导致选择器失配时会点名未命中项，而不是悄悄少画一部分。同一处页脚还用一行写明隐私立场：只读、本机、不上传。
 - 已支持 macOS 菜单栏。
 - 已包含 Windows 适配器与托盘组件；Windows 实机运行验证仍待完成。
