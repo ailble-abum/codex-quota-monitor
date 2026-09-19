@@ -31,6 +31,38 @@ def recent_breakdown(summaries, limit=6):
     return {key:sorted(values.items(),key=lambda pair:pair[1],reverse=True)[:limit] for key,values in groups.items()}
 
 
+def weekly_report(rows):
+    """Compact seven-day summary derived only from the retained local samples."""
+    valid=[row for row in rows if isinstance(row,dict)]
+    times=[row.get('at') for row in valid if isinstance(row.get('at'),(int,float)) and not isinstance(row.get('at'),bool)]
+    spans=max(times)-min(times) if times else 0
+    remaining=[];contexts=[];cached=[]
+    for row in valid:
+        for window in row.get('windows') or []:
+            value=window.get('remaining') if isinstance(window,dict) else None
+            if isinstance(value,(int,float)) and not isinstance(value,bool) and math.isfinite(value):remaining.append(value)
+        context=row.get('context') or {}
+        if not isinstance(context,dict):context={}
+        value=context.get('latest_context_percent')
+        if isinstance(value,(int,float)) and not isinstance(value,bool) and math.isfinite(value):contexts.append(value)
+        total=context.get('latest_turn_input_tokens');hit=context.get('latest_turn_cached_input_tokens')
+        if isinstance(total,(int,float)) and not isinstance(total,bool) and total>0 and isinstance(hit,(int,float)) and not isinstance(hit,bool):
+            cached.append(100*hit/total)
+    cards=[(str(len(valid)),'采样点'),(f'{spans/3600:.1f}h','覆盖时长')]
+    if remaining:cards.append((f'{min(remaining):.0f}%','期间最低配额'))
+    if contexts:cards.append((f'{max(contexts):.1f}%','上下文峰值'))
+    if cached:cards.append((f'{sum(cached)/len(cached):.1f}%','平均缓存占比'))
+    card_html=''.join(f'<div><strong>{html.escape(value)}</strong><span>{label}</span></div>' for value,label in cards)
+    latest=(valid[-1].get('breakdown') or {}) if valid else {}
+    if not isinstance(latest,dict):latest={}
+    notes=[]
+    for label,key in (('主要模型','models'),('主要项目','projects')):
+        items=latest.get(key) or []
+        if items:notes.append(f'{label}：{html.escape(str(items[0][0]))}')
+    note=' · '.join(notes) or '数据不足时仅显示已采集项，不补造历史。'
+    return f'<section><h2>本地 7 天周报</h2><div class="cards">{card_html}</div><p>{note}</p><p>基于本机保留的数值快照；配额来自官方账户读取，上下文与缓存来自本地会话日志。</p></section>'
+
+
 class History:
     def __init__(self, root=ROOT):
         self.root=root
@@ -60,6 +92,7 @@ class History:
         start=rows[0]['at'] if rows else now
         end=max(now,start+60)
         charts=[]
+        report=weekly_report(rows)
         usage=(rows[-1].get('usage') or {}) if rows else {}
         breakdown=(rows[-1].get('breakdown') or {}) if rows else {}
         summary=usage.get('summary') or {}
@@ -139,4 +172,4 @@ class History:
             metric_charts.append(metric_chart('上下文占用趋势',context_points,'#285dc1','当前上下文窗口占用；超过 70%／85% 时对应监视器的注意／高压提示。'))
         if cached_points:
             metric_charts.append(metric_chart('缓存输入占比趋势',cached_points,'#18734e','最近请求中缓存输入占全部输入的比例；用于观察复用情况，不代表账户额度。'))
-        return '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>Codex · 用量趋势</title><style>body{max-width:850px;margin:40px auto;padding:0 24px;background:#f4f5f4;color:#24312b;font:14px/1.6 system-ui}section{background:white;padding:24px;border-radius:18px;margin:20px 0}h1{font-size:24px}h2{font-size:15px}svg{width:100%}text{font:11px system-ui;fill:#68716e}p{color:#68716e}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}.cards div{padding:14px;border-radius:12px;background:#f4f7f6}.cards strong,.cards span{display:block}.cards strong{font-size:20px}.cards span{color:#68716e}.bars{height:150px;display:flex;gap:4px;align-items:end;border-bottom:1px solid #dfe5e2}.bar{flex:1;min-width:3px;background:#285dc1;border-radius:3px 3px 0 0}.rank{display:grid;grid-template-columns:minmax(120px,1fr) 3fr auto;gap:10px;align-items:center;margin:10px 0}.rank b{display:block;height:9px;background:#285dc1;border-radius:9px}.rank strong{font-variant-numeric:tabular-nums}</style><h1>用量趋势</h1><p>本地记录 · 最近 7 天 · 仅当前采集账户 · '+str(len(rows))+' 个采样点。配额重置与超过 3 分钟的空档分段绘制。只从启用后开始记录，不补造历史。</p>'+usage_summary+breakdown_html+''.join(charts)+''.join(metric_charts)+'<p>数据更新时间：'+time.strftime('%Y-%m-%d %H:%M:%S')+'。重新打开本页查看更新。关闭 Codex 时采集暂停。</p></html>'
+        return '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>Codex · 本地周报</title><style>body{max-width:850px;margin:40px auto;padding:0 24px;background:#f4f5f4;color:#24312b;font:14px/1.6 system-ui}section{background:white;padding:24px;border-radius:18px;margin:20px 0}h1{font-size:24px}h2{font-size:15px}svg{width:100%}text{font:11px system-ui;fill:#68716e}p{color:#68716e}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}.cards div{padding:14px;border-radius:12px;background:#f4f7f6}.cards strong,.cards span{display:block}.cards strong{font-size:20px}.cards span{color:#68716e}.bars{height:150px;display:flex;gap:4px;align-items:end;border-bottom:1px solid #dfe5e2}.bar{flex:1;min-width:3px;background:#285dc1;border-radius:3px 3px 0 0}.rank{display:grid;grid-template-columns:minmax(120px,1fr) 3fr auto;gap:10px;align-items:center;margin:10px 0}.rank b{display:block;height:9px;background:#285dc1;border-radius:9px}.rank strong{font-variant-numeric:tabular-nums}</style><h1>本地用量周报</h1><p>本地记录 · 最近 7 天 · 仅当前采集账户 · '+str(len(rows))+' 个采样点。配额重置与超过 3 分钟的空档分段绘制。只从启用后开始记录，不补造历史。</p>'+report+usage_summary+breakdown_html+''.join(charts)+''.join(metric_charts)+'<p>数据更新时间：'+time.strftime('%Y-%m-%d %H:%M:%S')+'。重新打开本页查看更新。关闭 Codex 时采集暂停。</p></html>'

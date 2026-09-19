@@ -20,6 +20,8 @@ Settings now include Chinese/English/automatic language and context hints. Hints
 
 Display settings now include Mini, Standard, and Large presets. The offline seven-day history page also records context occupancy and cached-input share when those local token fields are available, so a user can see pressure and reuse trends rather than infer them from one reading.
 
+Small trust badges mark official account reads, local-session observations, and estimates. Message-level chips are parsed and delivered only for the active task instead of carrying several unrelated histories every ten seconds. Injection health is stored as an owner-only marker: the menu bar warns after a failed injection and `monitorctl.py doctor` reports the same state. The history page begins with a local seven-day report card covering sample span, lowest observed quota, peak context, average cache share, and the leading model/project.
+
 Official reference: [prompt caching](https://developers.openai.com/api/docs/guides/prompt-caching) explains that cost depends on reuse and model pricing, and recommends measuring actual cached/input counts. [Compaction](https://developers.openai.com/api/docs/guides/compaction) describes configurable thresholds, not a fixed universally optimal handoff point. The monitor uses the window reported in local token events instead of assuming every model has a 258K window. Cached-input share is shown in details.
 
 Windows adapters are provided separately from the macOS LaunchAgent/AppKit layer. The common quota reader uses a queue-backed pipe reader compatible with Windows, and runtime files go to `%LOCALAPPDATA%/CodexQuotaMonitor`. Windows OS integration requires real-machine validation; macOS/browser regression tests do not substitute for it.
@@ -63,6 +65,8 @@ The separate app-server reads the local CLI account. If desktop and CLI use diff
 `python3 scripts/test_quota_reader.py`
 
 `python3 scripts/monitorctl.py doctor`
+
+The Python injector keeps orchestration in `context_token_injector.py`; CDP/WebSocket transport, payload construction, update checking, and injector health live in separate modules.
 
 ## Limitations
 

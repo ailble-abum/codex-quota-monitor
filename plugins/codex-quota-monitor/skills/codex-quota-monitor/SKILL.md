@@ -33,6 +33,8 @@ For first install or after a plugin update, run `python3 scripts/monitorctl.py i
 
 Run `python3 scripts/monitorctl.py doctor` to verify the service, display connection, and authenticated quota independently. Do not report successful launch as proof that the overlay or quota works.
 
+The menu bar prefixes its title with a warning after an injector failure, and `doctor` reports the owner-only injector health marker. A successful injection clears the warning. Message-level details are parsed and sent only for the task the renderer currently marks active; task switches populate on the next monitor tick.
+
 Use `python3 scripts/monitorctl.py stop` to unload the service and remove the overlay. Use `python3 scripts/monitorctl.py show` to show or expand it without changing its saved layout, and `python3 scripts/monitorctl.py reset-position` to restore the overlay to the bottom-left. The current helper diagnoses the default CDP port 9222; if the launcher selected another port, inspect its log and use the injector's explicit `--port` option.
 
 The monitor reads local Codex session JSONL files for token and context data. It separately reads `account/rateLimits/read` through the installed local Codex app-server, every 60 seconds, without model calls. Account credentials are not passed to the renderer. Missing quota is unavailable, never zero. Cached percentages are hidden on read failure or after 120 seconds because current account identity cannot then be verified. Do not infer an account balance from local token counts.
@@ -41,7 +43,7 @@ Explain that latest-request tokens are not a full user turn; cached input is par
 
 When local `turn_context` records include them, show the latest model and reasoning effort as descriptive session metadata. Do not infer either value from token volume, context size, or account quota.
 
-The history page may rank cumulative session Tokens for up to 100 recent local sessions by model and short project-folder name. Treat this as a relative local breakdown, not billing data; do not persist conversation bodies or full project paths for this feature.
+The history page starts with a local seven-day report card and may rank cumulative session Tokens for up to 100 recent local sessions by model and short project-folder name. Treat both as relative local diagnostics, not billing data; do not persist conversation bodies or full project paths for this feature.
 
 The quota color thresholds are green above 50% remaining, blue above 20% through 50%, and red at or below 20%. Context uses separate occupancy thresholds: 70% and 85%. Gray means unavailable, not zero. The compact header shows both quota windows and uses the more constrained window's color. These are display guidance thresholds, not official provider limits.
 

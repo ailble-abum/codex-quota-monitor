@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from context_health import scan
-from usage_history import History, recent_breakdown
+from usage_history import History, recent_breakdown, weekly_report
 
 
 class HealthTests(unittest.TestCase):
@@ -42,6 +42,21 @@ class HealthTests(unittest.TestCase):
         self.assertIn('上下文占用趋势',page)
         self.assertIn('缓存输入占比趋势',page)
         self.assertEqual(page.count('<polyline'),2)
+
+    def test_weekly_report_summarizes_only_retained_samples(self):
+        rows=[
+            {'at':0,'windows':[{'remaining':80}],
+             'context':{'latest_context_percent':20,'latest_turn_input_tokens':100,'latest_turn_cached_input_tokens':25}},
+            {'at':7200,'windows':[{'remaining':35}],
+             'context':{'latest_context_percent':75,'latest_turn_input_tokens':100,'latest_turn_cached_input_tokens':75},
+             'breakdown':{'models':[('gpt-test',10)],'projects':[('demo',10)]}},
+        ]
+        report=weekly_report(rows)
+        self.assertIn('本地 7 天周报',report)
+        self.assertIn('35%',report)
+        self.assertIn('75.0%',report)
+        self.assertIn('50.0%',report)
+        self.assertIn('主要模型：gpt-test',report)
 
     def test_recent_breakdown_groups_models_and_project_names(self):
         value=recent_breakdown([

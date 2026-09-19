@@ -9,18 +9,10 @@ Codex must be launched with a local --remote-debugging-port first.
 from __future__ import annotations
 
 import argparse
-import base64
 import json
-import os
 import re
-import secrets
-import socket
-import struct
 import sys
 import time
-import urllib.error
-import urllib.parse
-import urllib.request
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +21,10 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 import context_token_inspector as inspector
+from cdp_transport import CDPClient, CDPError, devtools_targets, select_target
+from injector_status import write_status
+from payload_builder import (DETAIL_SESSION_LIMIT, build_payload, normalize_thread_id,
+                             session_file_for_thread, thread_keys)
 from platform_paths import runtime_root
 from quota_reader import QuotaReader
 from quota_alerts import QuotaAlerts
@@ -44,210 +40,6 @@ HISTORY = History()
 
 
 DEFAULT_PORT = 9222
-ASSISTANT_DETAIL_ITEM_LIMIT = 40
-DETAIL_SESSION_LIMIT = 6
-DETAIL_CACHE_LIMIT = 24
-_DETAIL_CACHE: dict[str, tuple[int, int, dict[str, Any]]] = {}
-
-
-class CDPError(RuntimeError):
-    pass
-
-
-class CDPClient:
-    def __init__(self, websocket_url: str, timeout: float = 5.0) -> None:
-        self.websocket_url = websocket_url
-        self.timeout = timeout
-        self.sock = self._connect(websocket_url)
-        self.next_id = 1
-
-    def close(self) -> None:
-        try:
-            self.sock.close()
-        except OSError:
-            pass
-
-    def call(self, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
-        message_id = self.next_id
-        self.next_id += 1
-        self._send_json({"id": message_id, "method": method, "params": params or {}})
-        deadline = time.monotonic() + self.timeout
-        while time.monotonic() < deadline:
-            message = self._recv_json()
-            if message.get("id") != message_id:
-                continue
-            if "error" in message:
-                raise CDPError(str(message["error"]))
-            return message.get("result") or {}
-        raise TimeoutError(f"Timed out waiting for CDP response to {method}")
-
-    def evaluate(self, expression: str) -> Any:
-        result = self.call(
-            "Runtime.evaluate",
-            {
-                "expression": expression,
-                "awaitPromise": True,
-                "returnByValue": True,
-                "userGesture": False,
-            },
-        )
-        remote = result.get("result") or {}
-        if "exceptionDetails" in result:
-            raise CDPError(str(result["exceptionDetails"]))
-        return remote.get("value")
-
-    def _connect(self, websocket_url: str) -> socket.socket:
-        parsed = urllib.parse.urlparse(websocket_url)
-        if parsed.scheme != "ws" or not parsed.hostname:
-            raise ValueError(f"Unsupported websocket URL: {websocket_url}")
-        port = parsed.port or 80
-        sock = socket.create_connection((parsed.hostname, port), timeout=self.timeout)
-        sock.settimeout(self.timeout)
-        key = base64.b64encode(os.urandom(16)).decode("ascii")
-        path = parsed.path or "/"
-        if parsed.query:
-            path += f"?{parsed.query}"
-        request = (
-            f"GET {path} HTTP/1.1\r\n"
-            f"Host: {parsed.hostname}:{port}\r\n"
-            "Upgrade: websocket\r\n"
-            "Connection: Upgrade\r\n"
-            f"Sec-WebSocket-Key: {key}\r\n"
-            "Sec-WebSocket-Version: 13\r\n"
-            "\r\n"
-        )
-        sock.sendall(request.encode("ascii"))
-        response = b""
-        while b"\r\n\r\n" not in response:
-            chunk = sock.recv(4096)
-            if not chunk:
-                break
-            response += chunk
-        if b" 101 " not in response.split(b"\r\n", 1)[0]:
-            raise CDPError(f"WebSocket handshake failed: {response[:200]!r}")
-        return sock
-
-    def _send_json(self, payload: dict[str, Any]) -> None:
-        data = json.dumps(payload, separators=(",", ":")).encode("utf-8")
-        self.sock.sendall(masked_websocket_frame(data))
-
-    def _recv_json(self) -> dict[str, Any]:
-        while True:
-            opcode, payload = read_websocket_frame(self.sock)
-            if opcode == 1:
-                data = json.loads(payload.decode("utf-8"))
-                if isinstance(data, dict):
-                    return data
-            if opcode == 9:
-                # Chromium may ping long-lived CDP clients. A masked pong keeps
-                # the connection alive across normal ten-second refresh gaps.
-                self.sock.sendall(masked_websocket_frame(payload, opcode=10))
-            if opcode == 8:
-                raise CDPError("WebSocket closed by target")
-
-
-def masked_websocket_frame(payload: bytes, opcode: int = 1) -> bytes:
-    header = bytearray([0x80 | (opcode & 0x0F)])
-    length = len(payload)
-    if length < 126:
-        header.append(0x80 | length)
-    elif length < 65536:
-        header.append(0x80 | 126)
-        header.extend(struct.pack("!H", length))
-    else:
-        header.append(0x80 | 127)
-        header.extend(struct.pack("!Q", length))
-    mask = secrets.token_bytes(4)
-    masked = bytes(byte ^ mask[index % 4] for index, byte in enumerate(payload))
-    return bytes(header) + mask + masked
-
-
-def read_websocket_frame(sock: socket.socket) -> tuple[int, bytes]:
-    first = read_exact(sock, 2)
-    opcode = first[0] & 0x0F
-    masked = bool(first[1] & 0x80)
-    length = first[1] & 0x7F
-    if length == 126:
-        length = struct.unpack("!H", read_exact(sock, 2))[0]
-    elif length == 127:
-        length = struct.unpack("!Q", read_exact(sock, 8))[0]
-    mask = read_exact(sock, 4) if masked else b""
-    payload = read_exact(sock, length)
-    if masked:
-        payload = bytes(byte ^ mask[index % 4] for index, byte in enumerate(payload))
-    return opcode, payload
-
-
-def read_exact(sock: socket.socket, length: int) -> bytes:
-    chunks = bytearray()
-    while len(chunks) < length:
-        chunk = sock.recv(length - len(chunks))
-        if not chunk:
-            raise CDPError("Unexpected WebSocket EOF")
-        chunks.extend(chunk)
-    return bytes(chunks)
-
-
-def devtools_targets(port: int) -> list[dict[str, Any]]:
-    url = f"http://127.0.0.1:{port}/json"
-    try:
-        with urllib.request.urlopen(url, timeout=2) as response:
-            data = json.loads(response.read().decode("utf-8"))
-    except (urllib.error.URLError, OSError, json.JSONDecodeError) as exc:
-        raise CDPError(
-            f"Cannot connect to the Codex renderer on 127.0.0.1:{port}. "
-            "Launch ChatGPT or Codex with --remote-debugging-port first."
-        ) from exc
-    return data if isinstance(data, list) else []
-
-
-def select_target(targets: list[dict[str, Any]]) -> dict[str, Any]:
-    pages = [
-        target
-        for target in targets
-        if target.get("type") == "page"
-        and is_codex_renderer_target(target)
-        and target_score(target) > 0
-    ]
-    candidates = sorted(pages, key=target_score, reverse=True)
-    for target in candidates:
-        if target.get("webSocketDebuggerUrl"):
-            return target
-    raise CDPError("No debuggable Codex renderer target found")
-
-
-def is_codex_renderer_target(target: dict[str, Any]) -> bool:
-    title = str(target.get("title") or "").lower()
-    url = str(target.get("url") or "").lower()
-    return url.startswith("app://") and (
-        "codex" in title
-        or "chatgpt" in title
-        or url.startswith("app://codex/")
-        or url.startswith("app://-/index.html")
-    )
-
-
-def target_score(target: dict[str, Any]) -> int:
-    title = str(target.get("title") or "").lower()
-    url = str(target.get("url") or "").lower()
-    decoded_url = urllib.parse.unquote(url)
-    score = 0
-    if url.startswith("app://"):
-        score += 100
-    # ChatGPT.app exposes utility pages (for example the avatar overlay) on the
-    # same CDP endpoint as the main Codex window. Always prefer the un-routed
-    # index page so the monitor is not injected into an invisible utility view.
-    if url in {"app://-/index.html", "app://codex/index.html"}:
-        score += 200
-    if "initialroute=" in decoded_url:
-        score -= 100
-    if "avatar-overlay" in decoded_url:
-        score -= 300
-    if "codex" in title or "codex" in url:
-        score += 40
-    if "chatgpt" in title:
-        score += 30
-    return score
 
 
 def runtime_state(client: CDPClient) -> dict[str, Any]:
@@ -288,207 +80,13 @@ def runtime_state(client: CDPClient) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
-def build_payload(
-    paths: list[str],
-    limit: int,
-    selected_thread_id: str | None,
-    detail_limit: int = DETAIL_SESSION_LIMIT,
-) -> dict[str, Any]:
-    files = inspector.session_files(paths, limit=limit)
-    summaries = [inspector.summarize_session_fast(path) for path in files]
-    summaries = [summary for summary in summaries if summary.get("session_total_tokens")]
-    by_thread: dict[str, dict[str, Any]] = {}
-    for summary in summaries:
-        thread_id = summary.get("thread_id")
-        if not thread_id:
-            continue
-        normalized = normalize_thread_id(str(thread_id))
-        by_thread[normalized] = summary
-        by_thread[f"local:{normalized}"] = summary
-    selected = summaries[0] if summaries else None
-    active_selected = by_thread.get(normalize_thread_id(selected_thread_id or "")) if selected_thread_id else None
-    if selected_thread_id and active_selected is None:
-        active_path = session_file_for_thread(paths, selected_thread_id)
-        known_paths = {str(summary.get("path")) for summary in summaries}
-        if active_path and str(active_path) not in known_paths:
-            summary = inspector.summarize_session_fast(active_path)
-            normalized = normalize_thread_id(str(summary.get("thread_id") or ""))
-            if normalized == normalize_thread_id(selected_thread_id) and summary.get("session_total_tokens"):
-                summaries.append(summary)
-                by_thread[normalized] = summary
-                by_thread[f"local:{normalized}"] = summary
-                active_selected = summary
-
-    compact_summaries = []
-    for summary in summaries:
-        compact_summaries.append(
-            {
-                "thread_id": summary.get("thread_id"),
-                "thread_keys": thread_keys(summary.get("thread_id")),
-                "cwd": summary.get("cwd"),
-                "model": summary.get("model"),
-                "reasoning_effort": summary.get("reasoning_effort"),
-                "updated_at": summary.get("updated_at"),
-                "latest_context_tokens": summary.get("latest_context_tokens"),
-                "context_window": summary.get("context_window"),
-                "latest_context_percent": summary.get("latest_context_percent"),
-                "latest_turn_total_tokens": summary.get("latest_turn_total_tokens"),
-                "latest_turn_input_tokens": summary.get("latest_turn_input_tokens"),
-                "latest_turn_cached_input_tokens": summary.get("latest_turn_cached_input_tokens"),
-                "latest_turn_output_tokens": summary.get("latest_turn_output_tokens"),
-                "latest_turn_reasoning_tokens": summary.get("latest_turn_reasoning_tokens"),
-                "session_total_tokens": summary.get("session_total_tokens"),
-                "session_input_tokens": summary.get("session_input_tokens"),
-                "session_cached_input_tokens": summary.get("session_cached_input_tokens"),
-                "session_output_tokens": summary.get("session_output_tokens"),
-                "session_reasoning_tokens": summary.get("session_reasoning_tokens"),
-                "hover": inspector.format_hover(summary),
-                "footer": inspector.format_reply_footer(summary),
-                "badge": compact_badge(summary),
-            }
-        )
-
-    details_by_thread: dict[str, dict[str, Any]] = {}
-    detail: dict[str, Any] | None = None
-    detail_summaries = summaries[: max(0, detail_limit)]
-    if active_selected and active_selected not in detail_summaries:
-        detail_summaries.append(active_selected)
-    for summary in detail_summaries:
-        if not summary.get("path"):
-            continue
-        parsed = cached_session_detail(str(summary["path"]), summary)
-        assistant_token_messages = [
-            message
-            for message in parsed.get("messages", [])
-            if message.get("role") == "assistant" and message.get("token_usage")
-        ]
-        total_rounds = len(assistant_token_messages)
-        assistant_item_messages = assistant_token_messages[-ASSISTANT_DETAIL_ITEM_LIMIT:]
-        assistant_start_index = total_rounds - len(assistant_item_messages)
-        assistant_items = [
-            {
-                "footer": message.get("token_footer"),
-                "chip": inspector.format_reply_chip(
-                    message["token_usage"],
-                    user_turn_index=message.get("turn_index"),
-                    user_total_turns=message.get("total_turns"),
-                    assistant_turn_index=assistant_start_index + index,
-                    assistant_total_turns=total_rounds,
-                ),
-                "tokenUsage": message["token_usage"],
-                "textPrefix": text_prefix(message.get("text")),
-                "roundIndex": message.get("turn_index") or index,
-                "totalRounds": message.get("total_turns") or total_rounds,
-                "userTurnIndex": message.get("turn_index"),
-                "userTotalTurns": message.get("total_turns"),
-                "assistantTurnIndex": assistant_start_index + index,
-                "assistantTotalTurns": total_rounds,
-            }
-            for index, message in enumerate(assistant_item_messages, start=1)
-        ]
-        assistant_chips = [
-            item["chip"]
-            for item in assistant_items
-        ]
-        assistant_footers = [
-            item["footer"]
-            for item in assistant_items
-            if item.get("footer")
-        ]
-        item_detail = {
-            "thread_id": summary.get("thread_id"),
-            "updated_at": summary.get("updated_at"),
-            "footer": inspector.format_reply_footer(summary),
-            "assistantFooters": assistant_footers,
-            "assistantChips": assistant_chips,
-            "assistantItems": assistant_items,
-        }
-        for key in thread_keys(summary.get("thread_id")):
-            details_by_thread[key] = item_detail
-        if selected and selected.get("thread_id") == summary.get("thread_id"):
-            detail = item_detail
-
-    return {
-        "activeThreadId": selected_thread_id,
-        "selectedThreadId": (selected or {}).get("thread_id") or selected_thread_id,
-        "summaries": compact_summaries,
-        "detail": detail,
-        "detailsByThread": details_by_thread,
-        "updatedAt": time.strftime("%Y-%m-%d %H:%M:%S"),
-    }
-
-
-def cached_session_detail(path: str, summary: dict[str, Any]) -> dict[str, Any]:
-    try:
-        stat = Path(path).stat()
-        signature = (stat.st_mtime_ns, stat.st_size)
-    except OSError:
-        return inspector.parse_session_detail(path, summary=summary)
-
-    cached = _DETAIL_CACHE.get(path)
-    if cached:
-        cached_mtime, cached_offset, parsed = cached
-        if cached_mtime == signature[0] and cached_offset == signature[1]:
-            return parsed
-        if signature[1] > cached_offset:
-            rows, next_offset = inspector.read_jsonl_from_offset(path, cached_offset)
-            inspector.extend_session_detail(parsed, rows, summary=summary)
-            _DETAIL_CACHE[path] = (signature[0], next_offset, parsed)
-            return parsed
-
-    parsed = inspector.parse_session_detail(path, summary=summary)
-    if path not in _DETAIL_CACHE and len(_DETAIL_CACHE) >= DETAIL_CACHE_LIMIT:
-        _DETAIL_CACHE.pop(next(iter(_DETAIL_CACHE)))
-    _DETAIL_CACHE[path] = (signature[0], signature[1], parsed)
-    return parsed
-
-
-def compact_badge(summary: dict[str, Any]) -> str:
-    percent = summary.get("latest_context_percent")
-    if isinstance(percent, float):
-        return f"{percent:.1f}% ctx"
-    total = summary.get("session_total_tokens")
-    if isinstance(total, int):
-        return f"{total // 1000}k tok"
-    return "tokens"
-
-
-def text_prefix(value: Any, limit: int = 120) -> str:
-    if not isinstance(value, str):
-        return ""
-    return " ".join(value.split())[:limit]
-
-
-def normalize_thread_id(thread_id: str) -> str:
-    if thread_id.startswith("local:"):
-        return thread_id.removeprefix("local:")
-    return thread_id
-
-
-def thread_keys(thread_id: Any) -> list[str]:
-    if not thread_id:
-        return []
-    normalized = normalize_thread_id(str(thread_id))
-    return [normalized, f"local:{normalized}"]
-
-
-def session_file_for_thread(paths: list[str], thread_id: str | None) -> Path | None:
-    normalized = normalize_thread_id(thread_id or "")
-    if not normalized:
-        return None
-    for path in inspector.session_files(paths, limit=None):
-        if normalized in path.stem:
-            return path
-    return None
-
-
 INJECTION_SCRIPT = r"""
 (payload => {
   // Bump this when a long-lived renderer has to re-derive something from the
   // new script: stacked observers and timers are torn down, and the companion
   // bitmap is rebuilt from the new data URIs. A renderer may still contain an
   // observer from an older plugin release.
-  const RUNTIME_VERSION = 24;
+  const RUNTIME_VERSION = 26;
   const ROOT_ID = 'codex-context-token-inspector-root';
   const STYLE_ID = 'codex-context-token-inspector-style';
   const FOOTER_ATTR = 'data-context-token-footer';
@@ -853,6 +451,7 @@ INJECTION_SCRIPT = r"""
         box-shadow:0 8px 24px #0004,inset 0 0 16px color-mix(in srgb,var(--cti-mascot-accent) 10%,transparent);
       }
       .cti-edge-mascot[data-art="true"] img { display:block; height:48px; width:auto; }
+      .cti-edge-mascot[data-art="true"] img { position:relative; z-index:1; }
       .cti-edge-mascot[data-art="true"][data-edge="left"] img { transform:scaleX(-1); }
       .cti-edge-mascot:hover,.cti-edge-mascot:focus-visible { transform:translateX(-3px) scale(1.04); outline:none; }
       .cti-edge-mascot:not([data-art="true"]):hover,.cti-edge-mascot:not([data-art="true"]):focus-visible { box-shadow:0 8px 26px #0005,0 0 0 2px color-mix(in srgb,var(--cti-mascot-accent) 45%,transparent); }
@@ -909,6 +508,22 @@ INJECTION_SCRIPT = r"""
          than the plate's padding, or it lands on top of the character. */
       .cti-edge-mascot[data-art="true"][data-edge="right"] [data-gauge] { left:-10px; }
       .cti-edge-mascot[data-art="true"][data-edge="left"] [data-gauge] { right:-10px; }
+      /* Context belongs to the current conversation, not to the account
+         limits, so it wraps the companion instead of becoming a third cell.
+         The 90-degree opening faces the gauge and leaves the artwork free to
+         keep "holding" it. The same geometry is mirrored at the left wall. */
+      .cti-edge-mascot [data-context-ring] {
+        position:absolute; z-index:0; top:3px; left:50%; width:42px; height:42px;
+        border-radius:50%; pointer-events:none; opacity:.16; filter:blur(.45px);
+        background:conic-gradient(from 315deg,var(--cti-context-color) 0 var(--cti-context-sweep),transparent var(--cti-context-sweep) 360deg);
+        -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 2px),#000 calc(100% - 1.5px));
+        mask:radial-gradient(farthest-side,transparent calc(100% - 2px),#000 calc(100% - 1.5px));
+        transform:translateX(-50%); transition:opacity .2s ease,filter .2s ease;
+      }
+      .cti-edge-mascot[data-edge="left"] [data-context-ring] { transform:translateX(-50%) scaleX(-1); }
+      .cti-edge-mascot [data-context-ring][data-tone="watch"] { opacity:.62; filter:none; }
+      .cti-edge-mascot [data-context-ring][data-tone="high"] { opacity:1; filter:drop-shadow(0 0 3px color-mix(in srgb,var(--cti-context-color) 58%,transparent)); }
+      .cti-edge-mascot [data-context-ring][data-tone="unknown"] { display:none; }
       .cti-hud, .cti-hud * { -webkit-app-region:no-drag !important; }
       .cti-hud-head, .cti-hud-body { zoom:var(--cti-scale,1); }
       .cti-hud [data-resize] { position:absolute;right:2px;bottom:2px;width:16px;height:16px;cursor:nwse-resize;touch-action:none;z-index:5;opacity:.4;background:linear-gradient(135deg,transparent 60%,CanvasText 60%,CanvasText 65%,transparent 65%,transparent 78%,CanvasText 78%,CanvasText 83%,transparent 83%);border-radius:4px; }
@@ -1047,6 +662,11 @@ INJECTION_SCRIPT = r"""
       .cti-metric { padding:10px; border-radius:10px; background:color-mix(in srgb,CanvasText 4%,transparent); }
       .cti-metric .cti-value { display:block; font-size:16px; overflow-wrap:anywhere; letter-spacing:-.5px; margin-top:4px; }
       .cti-account-quota { font-size:11px; opacity:.65; border-top:1px solid color-mix(in srgb,CanvasText 8%,transparent); padding-top:10px; }
+      .cti-source-row { display:flex; gap:5px; align-items:center; min-height:18px; }
+      .cti-trust { display:inline-flex; align-items:center; padding:2px 6px; border-radius:999px; font:600 9px/1.25 system-ui; letter-spacing:.15px; }
+      .cti-trust[data-kind="official"] { color:#2457a7; background:color-mix(in srgb,#3b82f6 14%,transparent); }
+      .cti-trust[data-kind="local"] { color:var(--cti-safe); background:color-mix(in srgb,var(--cti-safe) 14%,transparent); }
+      .cti-trust[data-kind="estimate"] { color:#8a5700; background:color-mix(in srgb,#f59e0b 18%,transparent); }
       .cti-hud[data-collapsed="true"] { width:max-content; overflow:hidden; }
       .cti-hud[data-collapsed="true"] .cti-hud-head { padding:9px 12px; border:0; gap:10px; }
       .cti-hud[data-collapsed="true"] [data-cti-title]::before { display:none; }
@@ -1228,6 +848,7 @@ INJECTION_SCRIPT = r"""
     // label the previous pass had already written.
     mascot.dataset.skinLabel=`${uiLanguage()==='zh'?skin.zh:skin.en} · ${uiLanguage()==='zh'?'悬停查看，点击保持展开':'Hover to view; click to pin'}`;
     applyMascotGauge(root);
+    applyMascotContext(root, root.__ctiContext);
   }
   function gaugeColor(tone) {
     return tone==='low'?'var(--cti-low)':tone==='watch'?'var(--cti-watch)':tone==='safe'?'var(--cti-safe)':'color-mix(in srgb,CanvasText 45%,transparent)';
@@ -1274,6 +895,7 @@ INJECTION_SCRIPT = r"""
     // The pill has no room for text, so the numbers live in the accessible
     // name and the hover title, which is the same place the skin is named.
     const parts=windows.map(item=>`${windowLabel(item,true)} ${Math.round(item.remaining)}%`);
+    if(Number.isFinite(Number(root.__ctiContext)))parts.push(`CTX ${Math.round(Number(root.__ctiContext))}%`);
     if(!live)parts.push(quota.status==='loading'?(zh?'正在读取配额…':'Reading quota…'):(zh?'配额暂不可用':'Quota unavailable'));
     if(blocked){
       // The reset countdown is the only actionable part of a block, and the
@@ -1283,6 +905,18 @@ INJECTION_SCRIPT = r"""
     }
     const label=[mascot.dataset.skinLabel,parts.join(' · ')].filter(Boolean).join(' · ');
     mascot.setAttribute('aria-label',label);mascot.title=label;
+  }
+  function applyMascotContext(root, used) {
+    const mascot=document.getElementById(MASCOT_ID);
+    if(!mascot)return;
+    let ring=mascot.querySelector('[data-context-ring]');
+    if(!ring){ring=document.createElement('span');ring.setAttribute('data-context-ring','');ring.setAttribute('aria-hidden','true');mascot.prepend(ring);}
+    const value=Number(used),known=Number.isFinite(value);
+    const percent=known?Math.max(0,Math.min(100,value)):0;
+    ring.dataset.tone=!known?'unknown':percent>=85?'high':percent>=70?'watch':'quiet';
+    ring.style.setProperty('--cti-context-sweep',`${percent*2.7}deg`);
+    ring.style.setProperty('--cti-context-color','light-dark(#b85b18,#f0a15a)');
+    applyMascotGauge(root);
   }
   function undockHud(root) {
     if(!root.__ctiLayout)return;
@@ -1975,7 +1609,8 @@ INJECTION_SCRIPT = r"""
         : accountBudgetText(quota);
       if (note) {
         const constrained = Math.min(...quota.windows.map(item => item.remaining));
-        quotaHtml = `<div class="cti-quota-budget" data-tone="${stoppedAccount?'low':quotaTone(constrained)}">${note}</div>` + quotaHtml;
+        const trust = stoppedAccount ? '' : `<span class="cti-trust" data-kind="estimate">${zh?'估算':'Estimate'}</span> `;
+        quotaHtml = `<div class="cti-quota-budget" data-tone="${stoppedAccount?'low':quotaTone(constrained)}">${trust}${note}</div>` + quotaHtml;
       }
     }
     if (!quotaHtml) quotaHtml = `<div class="cti-muted">${quota.status==='loading' ?
@@ -2007,22 +1642,24 @@ INJECTION_SCRIPT = r"""
       usageParts.push(text);
     }
     if(usageParts.length)quotaHtml+=`<div class="cti-account-quota">${usageParts.join(' · ')}</div>`;
+    quotaHtml=`<div class="cti-source-row"><span class="cti-trust" data-kind="official">${zh?'官方账户':'Official account'}</span></div>`+quotaHtml;
     put('[data-quota]', quotaHtml);
     const id = currentDetail?.thread_id || activeThreadId() || payload.activeThreadId;
     const selected = (payload.summaries || []).find(item =>
       threadKeys(id).some(key => String(item.thread_id) === key || (item.thread_keys || []).includes(key)));
     root.__ctiSessionTotalTokens = selected?.session_total_tokens;
     root.__ctiContext = selected?.latest_context_percent;
+    applyMascotContext(root, root.__ctiContext);
     const health = payload.health;
     root.__ctiHealth = health;
     maybeContextHint(root, selected, health, id);
     body.querySelector('[data-health]').setAttribute('data-warning', String(health?.recommendHandoff === true));
     body.querySelector('[data-health]').title = health?.recommendHandoff ? (health.reason==='baseline' ? '建议依据：压缩后首请求仍占上下文窗口至少 40%。这是经验阈值，不是官方上限。' : '建议依据：最近两次压缩间隔均不超过 5 个不同请求。这是经验阈值。') : '压缩次数和压后首请求来自本地日志；上下文变化不等于会话累计 Token。';
     const baseline = health?.after == null ? (zh?'等待后续请求':'Awaiting next request') : `${token(health.after)} (${pct(health.afterPercent)})`;
-    put('[data-health]', health?.count ? `${zh?'已观察压缩':'Compactions observed'} ${health.count} ${zh?'次':''}<br>${zh?'压后首请求':'First request after compression'} ${baseline}<br><span class="cti-muted">${zh?'含系统与工具，不等于摘要本身大小。':'Includes system/tools; not summary-only size.'}</span>${health.recommendHandoff?`<br><strong>${zh?'建议整理交接，换新任务继续':'Consider a handoff to a new task'}</strong>`:''}` : `<span class="cti-muted">${zh?'尚未观察到压缩事件':'No observed compaction events'}</span>`);
+    put('[data-health]', `<div class="cti-source-row"><span class="cti-trust" data-kind="local">${zh?'本地日志':'Local logs'}</span></div>`+(health?.count ? `${zh?'已观察压缩':'Compactions observed'} ${health.count} ${zh?'次':''}<br>${zh?'压后首请求':'First request after compression'} ${baseline}<br><span class="cti-muted">${zh?'含系统与工具，不等于摘要本身大小。':'Includes system/tools; not summary-only size.'}</span>${health.recommendHandoff?`<br><strong>${zh?'建议整理交接，换新任务继续':'Consider a handoff to a new task'}</strong>`:''}` : `<span class="cti-muted">${zh?'尚未观察到压缩事件':'No observed compaction events'}</span>`));
     if (selected) {
       body.querySelector('[data-context]').setAttribute('data-tone', contextTone(selected.latest_context_percent));
-      put('[data-context]', `<div class="cti-line"><span>${zh?'上下文已用':'Context used'}</span><span class="cti-value">${pct(selected.latest_context_percent)}</span></div>
+      put('[data-context]', `<div class="cti-line"><span><span class="cti-trust" data-kind="local">${zh?'本地会话':'Local session'}</span> ${zh?'上下文已用':'Context used'}</span><span class="cti-value">${pct(selected.latest_context_percent)}</span></div>
         <div class="cti-meter" role="meter" aria-label="${zh?'上下文占用':'Context used'}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.max(0,Math.min(100,selected.latest_context_percent||0))}"><span style="width:${Math.max(0,Math.min(100,selected.latest_context_percent||0))}%"></span></div>
         <div class="cti-muted">${token(selected.latest_context_tokens)} / ${token(selected.context_window)} · Token</div>`);
       put('[data-metrics]', `<div class="cti-metric"><span class="cti-muted">${tr('turn')}</span><span class="cti-value">${token(selected.latest_turn_total_tokens)}</span></div>
@@ -2385,7 +2022,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--detail-limit",
         type=int,
         default=DETAIL_SESSION_LIMIT,
-        help="Maximum recent sessions to parse for per-message chips.",
+        help="Compatibility switch; zero disables details, otherwise only the active task is parsed.",
     )
     parser.add_argument("--interval", type=float, default=10.0, help="Refresh interval in seconds.")
     parser.add_argument("--once", action="store_true", help="Inject once and exit.")
@@ -2410,10 +2047,18 @@ def main(argv: list[str] | None = None) -> int:
                     target = select_target(devtools_targets(args.port))
                     client = CDPClient(str(target["webSocketDebuggerUrl"]))
                 result = inject_once(client, roots, args.limit, args.detail_limit)
+                try:
+                    write_status("ok")
+                except OSError:
+                    pass
                 if not args.quiet:
                     print(json.dumps(result, ensure_ascii=False), flush=True)
                 last_error = None
             except (CDPError, TimeoutError, OSError, ValueError, json.JSONDecodeError) as exc:
+                try:
+                    write_status("error", type(exc).__name__)
+                except OSError:
+                    pass
                 if client is not None:
                     client.close()
                     client = None

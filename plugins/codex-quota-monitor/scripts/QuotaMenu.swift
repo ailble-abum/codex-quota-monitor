@@ -20,10 +20,14 @@ final class QuotaMenu: NSObject, NSApplicationDelegate {
         if let data=try? Data(contentsOf:root.appendingPathComponent("snapshot.json")),
            let value=(try? JSONSerialization.jsonObject(with:data)) as? [String:Any] { snapshot=value }
         let quota=snapshot["quota"] as? [String:Any] ?? [:]
+        let injectorStatus=((try? Data(contentsOf:root.appendingPathComponent("injector_status.json")))
+            .flatMap { try? JSONSerialization.jsonObject(with:$0) as? [String:Any] }) ?? [:]
+        let injectionFailed=injectorStatus["status"] as? String == "error"
         let age=Date().timeIntervalSince1970-(quota["updatedAt"] as? Double ?? 0)
         let live=quota["status"] as? String == "live" && age<120
         let windows=live ? quota["windows"] as? [[String:Any]] ?? [] : []
-        item.button?.title=windows.isEmpty ? " 用量 —" : " "+windows.map{self.label($0)+" \(Int($0["remaining"] as? Double ?? 0))%"}.joined(separator:" · ")
+        let prefix=injectionFailed ? " ⚠︎ " : " "
+        item.button?.title=windows.isEmpty ? prefix+"用量 —" : prefix+windows.map{self.label($0)+" \(Int($0["remaining"] as? Double ?? 0))%"}.joined(separator:" · ")
         item.button?.setAccessibilityLabel("Codex quota monitor")
         item.button?.toolTip="Codex：账户实际报告的配额窗口；点击查看上下文和趋势"
         let values:[Double?]=windows.isEmpty ? [nil] : windows.map{$0["remaining"] as? Double}
@@ -41,6 +45,9 @@ final class QuotaMenu: NSObject, NSApplicationDelegate {
         let menu=NSMenu()
         func label(_ text:String) { let entry=NSMenuItem(title:text,action:nil,keyEquivalent:"");entry.isEnabled=false;menu.addItem(entry) }
         label("Codex · 用量")
+        if injectionFailed {
+            label("⚠︎ 悬浮层上次注入失败 · \(injectorStatus["errorCode"] as? String ?? "Unknown")")
+        }
         if live {
             if windows.isEmpty {label("账户未报告周期配额窗口")}
             for window in windows {
@@ -86,7 +93,7 @@ final class QuotaMenu: NSObject, NSApplicationDelegate {
         }
         menu.addItem(.separator())
         label(live ? "账户数据 \(max(0,Int(age))) 秒前更新" : "当前显示为上次采集信息")
-        for (text,action) in [("查看 7 天趋势",#selector(openHistory)),("显示监控卡片",#selector(showOverlay)),("退出菜单栏",#selector(quitMenu))] {
+        for (text,action) in [("查看本地 7 天周报",#selector(openHistory)),("显示监控卡片",#selector(showOverlay)),("退出菜单栏",#selector(quitMenu))] {
             let entry=NSMenuItem(title:text,action:action,keyEquivalent:"");entry.target=self;menu.addItem(entry)
         }
         item.menu=menu

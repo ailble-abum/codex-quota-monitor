@@ -121,6 +121,15 @@ class InspectorTests(unittest.TestCase):
         self.assertIn("gauge.dataset.cells=String(readings.length);", gauge)
         self.assertIn("gauge.dataset.state=windows.length?'live':'empty';", gauge)
 
+    def test_context_wraps_the_companion_instead_of_adding_a_quota_cell(self):
+        ring = block("function applyMascotContext", "function undockHud")
+        self.assertIn("mascot.prepend(ring)", ring)
+        self.assertIn("percent*2.7", ring)
+        self.assertIn("percent>=85?'high':percent>=70?'watch':'quiet'", ring)
+        self.assertIn('conic-gradient(from 315deg', INJECTION_SCRIPT)
+        self.assertIn('[data-context-ring][data-tone="unknown"] { display:none; }', INJECTION_SCRIPT)
+        self.assertNotIn("data-context-ring", block("function applyMascotGauge", "function applyMascotContext"))
+
     def test_the_gauge_never_shows_a_full_bar_it_cannot_vouch_for(self):
         # A full default would report a healthy account while the plugin knows
         # nothing, which is how the old decorative pill behaved.
@@ -243,6 +252,11 @@ class InspectorTests(unittest.TestCase):
         self.assertIn("只读 · 本机 · 不上传", settings)
         self.assertIn("Read-only · local · never uploaded", settings)
 
+    def test_the_panel_labels_official_local_and_estimated_data(self):
+        self.assertIn('data-kind="official"', INJECTION_SCRIPT)
+        self.assertIn('data-kind="local"', INJECTION_SCRIPT)
+        self.assertIn('data-kind="estimate"', INJECTION_SCRIPT)
+
     def test_the_script_leaves_a_data_only_update_handle(self):
         # A resident renderer already carrying this runtime must not have the
         # whole script, companion bitmaps and all, re-parsed every ten seconds.
@@ -317,6 +331,25 @@ class InspectorTests(unittest.TestCase):
             payload=build_payload([folder],10,'thread')
             self.assertEqual(payload['summaries'][0]['model'],'gpt-test')
             self.assertEqual(payload['summaries'][0]['reasoning_effort'],'high')
+
+    def test_message_details_are_sent_only_for_the_active_task(self):
+        def rows(thread):
+            return [
+                {'type':'session_meta','payload':{'id':thread,'cwd':'/tmp'}},
+                {'type':'event_msg','timestamp':'2026-01-01T00:00:00Z','payload':{'type':'token_count','info':{
+                    'last_token_usage':{'input_tokens':10,'total_tokens':12},
+                    'total_token_usage':{'total_tokens':12},'model_context_window':100}}},
+            ]
+        with tempfile.TemporaryDirectory() as folder:
+            for thread in ('one','two'):
+                (Path(folder)/f'{thread}.jsonl').write_text('\n'.join(json.dumps(row) for row in rows(thread)))
+            payload=build_payload([folder],10,'two',detail_limit=6)
+            self.assertEqual(set(payload['detailsByThread']),{'two','local:two'})
+            self.assertEqual(payload['detail']['thread_id'],'two')
+
+    def test_cdp_transport_is_a_separate_module(self):
+        from context_token_injector import CDPClient
+        self.assertEqual(CDPClient.__module__,'cdp_transport')
 
 
 if __name__ == '__main__':

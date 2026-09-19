@@ -58,8 +58,11 @@ ensure_devtools() {
 
 while true; do
   if ensure_devtools; then
-    python3 "${SCRIPT_DIR}/context_token_injector.py" --port "${PORT}" --quiet || true
+    if ! python3 "${SCRIPT_DIR}/context_token_injector.py" --port "${PORT}" --quiet; then
+      python3 "${SCRIPT_DIR}/injector_status.py" error InjectorExited || true
+    fi
   else
+    python3 "${SCRIPT_DIR}/injector_status.py" error DevToolsUnavailable || true
     sleep 15
   fi
   sleep 3

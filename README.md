@@ -24,6 +24,8 @@ Codex Quota Monitor 把这些信息放回工作现场。它在 Codex 桌面窗�
 
 设置面板底部会显示当前安装的版本：插件版本、Codex 用来命名缓存目录的 cachebuster、注入脚本的运行时版本，以及最近一次安装时间。`monitorctl.py status` 输出同一串信息。插件缓存不会自行刷新，这一行就是"更新没生效"和"根本没有更新"的分界。监视器每天最多一次读取 GitHub 上的公开 `plugin.json`，有新版本时在这里提示；请求不携带本地版本、账户信息或会话内容，失败时静默保持离线功能。
 
+面板会用「官方账户」「本地会话」和「估算」微标区分数据性质。消息级详情只解析并下发当前活动任务；任务切换后下一次刷新跟进。注入失败会在菜单栏显示警告，`doctor` 同时报告注入器状态。菜单栏的「本地 7 天周报」汇总采样跨度、期间最低配额、上下文峰值、平均缓存占比及主要模型/项目。
+
 面板有迷你、标准和大字三种尺寸。位置、展开状态、显示单位和提醒设置都会保留。
 
 面板整体都可以拖动：标题栏、配额数字、行与行之间的空白都能起拖。只有真正需要自己接管点击的控件会挡住拖拽——按钮、单位选择、折叠标题，以及右下角的缩放柄；滚轮滚动条那片区域仍然属于滚动，不会变成拖动。顶部的用量标题栏固定不动，往下翻列表时它不会跟着滚走。
@@ -166,6 +168,8 @@ Display settings offer six companions. Docking covers the two side walls only, b
 Beside the companion sits the account gauge: one cell per quota window the account reports, each filled by its own remaining share. When any window reaches its limit the gauge stops filling per window and becomes a single stopped bar with a bar drawn across it -- under the AND gate a half-empty pair of cells reads as "partly usable" while the account is in fact stopped. Hovering names each window's exact percentage and the nearest reset.
 
 The collapsed bar and the quota headline answer with a time budget rather than a share: how long the account can keep working at the pace it has been spending. A window that would refill before it runs out is shown as "at least", so a comfortable account is not handed a number that reads like a deadline. The settings panel and `monitorctl.py status` both name the installed build, because a plugin cache does not refresh on its own. At most once a day, the monitor reads the public `plugin.json` on GitHub and shows a notice here when a newer build exists. That request carries no local version, account data, or conversation content; failure is silent and the offline monitor keeps working.
+
+Trust badges distinguish official account data, local-session observations, and estimates. Message-level detail is parsed and delivered only for the active task. Injection failures surface in the menu bar and in `doctor`. The menu bar also opens a local seven-day report summarizing sample coverage, minimum quota, peak context, average cache share, and the leading model/project.
 
 macOS is the tested platform. The Windows adapter is included but still needs full validation on real hardware.
 

@@ -241,6 +241,7 @@ def main():
     print('Build: '+describe_build())
     if args.action == 'doctor':
         import context_token_injector as injector
+        from injector_status import read_status
         from quota_reader import read_quota
         try:
             target = injector.select_target(injector.devtools_targets(9222))
@@ -249,6 +250,9 @@ def main():
             client.close()
         except Exception as exc:
             print('Display: unavailable ('+type(exc).__name__+')')
+        status = read_status()
+        print('Injector: '+str(status.get('status','unknown'))+
+              ((' ('+str(status.get('errorCode'))+')') if status.get('errorCode') else ''))
         try:
             print('Quota: '+json.dumps(read_quota(), ensure_ascii=False))
         except Exception as exc:
