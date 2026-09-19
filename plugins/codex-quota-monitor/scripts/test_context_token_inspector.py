@@ -1,4 +1,5 @@
 import json
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -14,7 +15,64 @@ def block(start: str, end: str) -> str:
     return INJECTION_SCRIPT[begin:INJECTION_SCRIPT.index(end, begin)]
 
 
+def run_js(source: str, expression: str):
+    """Execute a pure slice of the shipped overlay JavaScript."""
+    script = source + "\nprocess.stdout.write(JSON.stringify(" + expression + "));"
+    result = subprocess.run(
+        ["node", "-e", script], check=True, capture_output=True, text=True
+    )
+    return json.loads(result.stdout)
+
+
 class InspectorTests(unittest.TestCase):
+    def test_four_invisible_corners_resize_from_their_own_edge(self):
+        """Removing the visible grip must not leave left corners resizing rightward."""
+        self.assertIn("function resizeGeometry", INJECTION_SCRIPT)
+        self.assertIn("['nw','ne','sw','se'].map", INJECTION_SCRIPT)
+        self.assertIn("opacity:0;background:none;border:0", INJECTION_SCRIPT)
+        self.assertNotIn("linear-gradient(135deg,transparent 60%", INJECTION_SCRIPT)
+        geometry = block("function resizeGeometry", "function installHudDrag")
+        start = "{x:100,y:100,left:80,top:60,right:380,width:300}"
+        cases = run_js(
+            geometry,
+            "["
+            f"resizeGeometry({start},140,100,'se',800),"
+            f"resizeGeometry({start},60,100,'sw',800),"
+            f"resizeGeometry({start},100,60,'ne',800),"
+            f"resizeGeometry({start},100,60,'nw',800)"
+            "]",
+        )
+        self.assertEqual(cases[0], {"left": 80, "width": 340})
+        self.assertEqual(cases[1], {"left": 40, "width": 340})
+        self.assertEqual(cases[2], {"left": 80, "width": 340})
+        self.assertEqual(cases[3], {"left": 40, "width": 340})
+
+    def test_each_companion_has_its_own_head_ring_geometry(self):
+        """A shared image-box ring is oversized and low on five of six heads."""
+        skins = block("const MASCOT_SKINS = {", "function mascotSvg")
+        values = run_js(
+            skins,
+            "Object.fromEntries(Object.entries(MASCOT_SKINS).map(([id,skin])=>[id,skin.ring]))",
+        )
+        self.assertEqual(sorted(values), ["candy", "cat", "corgi", "frost", "mint", "tea"])
+        self.assertTrue(all(len(ring) == 3 for ring in values.values()))
+        self.assertGreaterEqual(len({ring[2] for ring in values.values()}), 4)
+        self.assertTrue(all(values[skin][2] < values["cat"][2] for skin in values if skin != "cat"))
+
+    def test_context_hint_uses_the_docked_companion_as_its_anchor(self):
+        """A docked panel is off-screen, so its hint must use the visible companion."""
+        self.assertIn("function contextHintGeometry", INJECTION_SCRIPT)
+        geometry = block("function contextHintGeometry", "function positionContextHint")
+        values = run_js(
+            geometry,
+            "["
+            "contextHintGeometry({left:0,right:40,top:100,bottom:148,width:40,height:48},{width:280,height:80},{width:1200,height:800},'left'),"
+            "contextHintGeometry({left:1160,right:1200,top:100,bottom:148,width:40,height:48},{width:280,height:80},{width:1200,height:800},'right'),"
+            "contextHintGeometry({left:100,right:400,top:100,bottom:200,width:300,height:100},{width:280,height:80},{width:1200,height:800},null)"
+            "]",
+        )
+        self.assertEqual(values, [{"left": 48, "top": 84}, {"left": 872, "top": 84}, {"left": 100, "top": 208}])
+
     def test_edge_docking_and_all_companion_skins_are_bundled(self):
         self.assertIn("function dockCandidate", INJECTION_SCRIPT)
         self.assertIn("distance<=14", INJECTION_SCRIPT)

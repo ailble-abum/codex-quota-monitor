@@ -86,7 +86,7 @@ INJECTION_SCRIPT = r"""
   // new script: stacked observers and timers are torn down, and the companion
   // bitmap is rebuilt from the new data URIs. A renderer may still contain an
   // observer from an older plugin release.
-  const RUNTIME_VERSION = 27;
+  const RUNTIME_VERSION = 28;
   const ROOT_ID = 'codex-context-token-inspector-root';
   const STYLE_ID = 'codex-context-token-inspector-style';
   const FOOTER_ATTR = 'data-context-token-footer';
@@ -161,12 +161,12 @@ INJECTION_SCRIPT = r"""
   // falls back to its vector mascot below.
   const MASCOT_ART = __COMPANION_ART__;
   const MASCOT_SKINS = {
-    cat: {zh:'薄荷黑猫', en:'Mint Cat', accent:'#62efc2'},
-    candy: {zh:'软糖女孩', en:'Candy Girl', accent:'#ff9fc5'},
-    corgi: {zh:'柯基助手', en:'Corgi Helper', accent:'#f2ae62'},
-    mint: {zh:'薄荷萌男', en:'Mint Boy', accent:'#70d4a6'},
-    frost: {zh:'霜夜先生', en:'Mr. Frost', accent:'#8ab5ff'},
-    tea: {zh:'红茶御姐', en:'Tea Lady', accent:'#c97b88'},
+    cat: {zh:'薄荷黑猫', en:'Mint Cat', accent:'#62efc2', ring:[11.5,23,42]},
+    candy: {zh:'软糖女孩', en:'Candy Girl', accent:'#ff9fc5', ring:[15,18,28]},
+    corgi: {zh:'柯基助手', en:'Corgi Helper', accent:'#f2ae62', ring:[18,20,34]},
+    mint: {zh:'薄荷萌男', en:'Mint Boy', accent:'#70d4a6', ring:[14.5,16,27]},
+    frost: {zh:'霜夜先生', en:'Mr. Frost', accent:'#8ab5ff', ring:[15,17,27]},
+    tea: {zh:'红茶御姐', en:'Tea Lady', accent:'#c97b88', ring:[17,18,30]},
   };
   function mascotSvg(id) {
     const art={
@@ -523,13 +523,24 @@ INJECTION_SCRIPT = r"""
         transform:translateX(-50%); transition:opacity .2s ease,filter .2s ease;
       }
       .cti-edge-mascot[data-edge="left"] [data-context-ring] { transform:translateX(-50%) scaleX(-1); }
+      .cti-edge-mascot[data-art="true"] [data-context-ring] {
+        top:var(--cti-ring-top); left:var(--cti-ring-left);
+        width:var(--cti-ring-size); height:var(--cti-ring-size); transform:none;
+      }
+      .cti-edge-mascot[data-art="true"][data-edge="left"] [data-context-ring] {
+        left:auto; right:var(--cti-ring-left); transform:scaleX(-1);
+      }
       .cti-edge-mascot [data-context-ring][data-tone="watch"] { opacity:.62; filter:none; }
       .cti-edge-mascot [data-context-ring][data-tone="high"] { opacity:1; filter:drop-shadow(0 0 3px color-mix(in srgb,var(--cti-context-color) 58%,transparent)); }
       .cti-edge-mascot [data-context-ring][data-tone="unknown"] { display:none; }
       .cti-hud, .cti-hud * { -webkit-app-region:no-drag !important; }
       .cti-hud-head, .cti-hud-body { zoom:var(--cti-scale,1); }
-      .cti-hud [data-resize] { position:absolute;right:2px;bottom:2px;width:16px;height:16px;cursor:nwse-resize;touch-action:none;z-index:5;opacity:.4;background:linear-gradient(135deg,transparent 60%,CanvasText 60%,CanvasText 65%,transparent 65%,transparent 78%,CanvasText 78%,CanvasText 83%,transparent 83%);border-radius:4px; }
-      .cti-hud [data-resize]:hover,.cti-hud [data-resize]:focus-visible {opacity:.8;outline:1px solid currentColor;}
+      .cti-hud [data-resize] { position:absolute;width:14px;height:14px;touch-action:none;z-index:5;opacity:0;background:none;border:0; }
+      .cti-hud [data-resize="nw"] { left:0;top:0;cursor:nwse-resize; }
+      .cti-hud [data-resize="ne"] { right:0;top:0;cursor:nesw-resize; }
+      .cti-hud [data-resize="sw"] { left:0;bottom:0;cursor:nesw-resize; }
+      .cti-hud [data-resize="se"] { right:0;bottom:0;cursor:nwse-resize; }
+      .cti-hud [data-resize]:focus-visible { opacity:1;outline:1px solid currentColor; }
       .cti-hud button {
         display: inline-grid;
         place-items: center;
@@ -846,6 +857,10 @@ INJECTION_SCRIPT = r"""
     mascot.innerHTML=mascotMarkup(id,'cti-mascot-art');mascot.dataset.skin=id;
     mascot.dataset.art=String(!!art);
     mascot.style.setProperty('--cti-mascot-accent',skin.accent);
+    const [ringX,ringY,ringSize]=skin.ring;
+    mascot.style.setProperty('--cti-ring-left',`${ringX-ringSize/2}px`);
+    mascot.style.setProperty('--cti-ring-top',`${ringY-ringSize/2}px`);
+    mascot.style.setProperty('--cti-ring-size',`${ringSize}px`);
     // Replacing the markup above also removes the gauge, so it is re-attached
     // here, and the base label is kept on the element rather than composed
     // into the accessible name -- otherwise every redraw would append to the
@@ -853,6 +868,7 @@ INJECTION_SCRIPT = r"""
     mascot.dataset.skinLabel=`${uiLanguage()==='zh'?skin.zh:skin.en} · ${uiLanguage()==='zh'?'悬停查看，点击保持展开':'Hover to view; click to pin'}`;
     applyMascotGauge(root);
     applyMascotContext(root, root.__ctiContext);
+    positionContextHint(root);
   }
   function gaugeColor(tone) {
     return tone==='low'?'var(--cti-low)':tone==='watch'?'var(--cti-watch)':tone==='safe'?'var(--cti-safe)':'color-mix(in srgb,CanvasText 45%,transparent)';
@@ -956,6 +972,7 @@ INJECTION_SCRIPT = r"""
     mascot.style.top=`${y}px`;
     root.style.left=edge==='left'?(revealed?`${gap}px`:`${-rect.width-2}px`):(revealed?`${innerWidth-rect.width-gap}px`:`${innerWidth+2}px`);
     root.style.top=`${y}px`;
+    positionContextHint(root);
   }
   function applyStoredHudPosition(root) {
     if(root.__ctiGesture) return;
@@ -988,8 +1005,8 @@ INJECTION_SCRIPT = r"""
     const y=Number.isFinite(wanted.y)?wanted.y:window.innerHeight-rect.height-16;
     root.style.left=Math.max(8,Math.min(window.innerWidth-rect.width-8,x))+'px';
     root.style.top=Math.max(topMin,Math.min(window.innerHeight-rect.height-8,y))+'px';
-    const handle=root.querySelector('[data-resize]');
-    if(handle)handle.setAttribute('aria-valuenow',String(Math.round(width)));
+    root.querySelectorAll('[data-resize][role="slider"]').forEach(handle=>handle.setAttribute('aria-valuenow',String(Math.round(width))));
+    positionContextHint(root);
   }
   function layoutPreset() {
     const value=localStorage.getItem(LAYOUT_PRESET_KEY);
@@ -1018,16 +1035,28 @@ INJECTION_SCRIPT = r"""
     root.__ctiLayout[mode]={...previous,x:Number.isFinite(previous.x)?previous.x:rect.left,y:Number.isFinite(previous.y)?previous.y:rect.top,width:presetWidth(root,preset)};
     saveLayout(root);updatePresetButtons(root);applyStoredHudPosition(root);
   }
+  function resizeGeometry(start,clientX,clientY,corner,viewportWidth) {
+    const horizontal=(clientX-start.x)*(corner.includes('e')?1:-1);
+    const vertical=(clientY-start.y)*(corner.includes('s')?1:-1);
+    const delta=Math.abs(horizontal)>=Math.abs(vertical)?horizontal:vertical;
+    const maxWidth=corner.includes('w')?start.right-8:viewportWidth-start.left-8;
+    const width=Math.max(180,Math.min(600,maxWidth,start.width+delta));
+    return {left:corner.includes('w')?start.right-width:start.left,width};
+  }
   function installHudDrag(root) {
     if(root.__ctiDragInstalled)return;
     root.__ctiDragInstalled=true;
     root.__ctiApplyPosition=()=>applyStoredHudPosition(root);
     root.__ctiRevealDock=()=>{root.dataset.dockPinned='true';revealDock(root,true);};
-    const handle=document.createElement('div');
-    handle.dataset.resize='true';handle.tabIndex=0;handle.setAttribute('role','slider');
-    handle.setAttribute('aria-label',uiLanguage()==='zh'?'调整面板大小':'Resize panel');
-    handle.setAttribute('aria-valuemin','180');handle.setAttribute('aria-valuemax','600');
-    root.appendChild(handle);
+    const handles=['nw','ne','sw','se'].map(corner=>{
+      const handle=document.createElement('div');handle.dataset.resize=corner;
+      if(corner==='se'){
+        handle.tabIndex=0;handle.setAttribute('role','slider');
+        handle.setAttribute('aria-label',uiLanguage()==='zh'?'调整面板大小':'Resize panel');
+        handle.setAttribute('aria-valuemin','180');handle.setAttribute('aria-valuemax','600');
+      }
+      root.appendChild(handle);return handle;
+    });
     root.addEventListener('pointerenter',()=>clearDockHide(root));
     root.addEventListener('pointerleave',()=>scheduleDockHide(root));
     root.addEventListener('keydown',event=>{
@@ -1049,7 +1078,7 @@ INJECTION_SCRIPT = r"""
     }
     root.addEventListener('pointerdown',event=>{
       if(event.button!==0)return;
-      const resize=!!event.target.closest('[data-resize]');
+      const resize=event.target.closest('[data-resize]')?.dataset.resize||null;
       // The panel body drags the panel too, not just the title row, so the
       // gesture has to skip every control that owns the pointer itself.
       const control=event.target.closest('button,input,select,textarea,summary,a,label');
@@ -1057,7 +1086,7 @@ INJECTION_SCRIPT = r"""
       if(!resize && isOverScrollbar(root,event))return;
       if(!resize && root.dataset.docked==='true')undockHud(root);
       const rect=root.getBoundingClientRect();
-      root.__ctiGesture={resize,x:event.clientX,y:event.clientY,left:rect.left,top:rect.top,width:rect.width,moved:false};
+      root.__ctiGesture={resize,x:event.clientX,y:event.clientY,left:rect.left,top:rect.top,right:rect.right,width:rect.width,moved:false};
       root.setPointerCapture(event.pointerId);
     },true);
     const move=event=>{
@@ -1067,8 +1096,8 @@ INJECTION_SCRIPT = r"""
       g.moved=true;event.preventDefault();
       root.dataset.dragging='true';
       if(g.resize) {
-        const width=Math.max(180,Math.min(600,window.innerWidth-g.left-8,g.width+dx));
-        persist(g.left,g.top,width);
+        const resized=resizeGeometry(g,event.clientX,event.clientY,g.resize,window.innerWidth);
+        persist(resized.left,g.top,resized.width);
       } else {
         const x=g.left+dx,y=g.top+dy;persist(x,y);
         g.candidate=dockCandidate(x,y,g.width,root.getBoundingClientRect().height);
@@ -1102,7 +1131,7 @@ INJECTION_SCRIPT = r"""
     }
     window.addEventListener('pointerup',end,true);
     window.addEventListener('pointercancel',end,true);
-    handle.addEventListener('keydown',event=>{
+    handles[3].addEventListener('keydown',event=>{
       if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key))return;
       event.preventDefault();
       const r=root.getBoundingClientRect();
@@ -1740,6 +1769,23 @@ INJECTION_SCRIPT = r"""
     clampHud(root);
   }
   function clampHud(root) { applyStoredHudPosition(root); }
+  function contextHintGeometry(anchor,toast,viewport,edge) {
+    const beside=edge==='left'||edge==='right';
+    const rawLeft=edge==='left'?anchor.right+8:edge==='right'?anchor.left-toast.width-8:anchor.left;
+    const rawTop=beside?anchor.top+(anchor.height-toast.height)/2:anchor.bottom+8;
+    return {
+      left:Math.round(Math.max(8,Math.min(viewport.width-toast.width-8,rawLeft))),
+      top:Math.round(Math.max(68,Math.min(viewport.height-toast.height-8,rawTop)))
+    };
+  }
+  function positionContextHint(root,toast=document.getElementById('cti-context-hint')) {
+    if(!toast?.isConnected)return;
+    const mascot=root.dataset.docked==='true'?document.getElementById(MASCOT_ID):null;
+    const edge=mascot?.dataset.visible==='true'?root.dataset.dockEdge:null;
+    const anchor=(edge?mascot:root).getBoundingClientRect();
+    const placed=contextHintGeometry(anchor,{width:toast.offsetWidth,height:toast.offsetHeight},{width:innerWidth,height:innerHeight},edge);
+    toast.style.left=`${placed.left}px`;toast.style.top=`${placed.top}px`;
+  }
   function maybeContextHint(root, selected, health, id) {
     if(!id || !selected || localStorage.getItem('cti-context-reminders')==='false')return;
     const used=selected.latest_context_percent;
@@ -1757,7 +1803,7 @@ INJECTION_SCRIPT = r"""
     const zh=uiLanguage()==='zh';
     toast.textContent=level==='compression'?(zh?'压缩负担较高，可在当前步骤完成后整理交接，换新对话继续。':'Compression overhead is high. Consider a handoff after this step.'):(zh?`上下文已用 ${Math.round(used)}%。可在阶段完成后整理交接；这不是费用上限。`:`Context ${Math.round(used)}% used. Consider a handoff at a task boundary; this is not a pricing limit.`);
     document.body.appendChild(toast);
-    const r=root.getBoundingClientRect();toast.style.left=Math.max(8,Math.min(innerWidth-toast.offsetWidth-8,r.left))+'px';toast.style.top=Math.max(68,Math.min(innerHeight-toast.offsetHeight-8,r.bottom+8))+'px';
+    positionContextHint(root,toast);
     const timer=setTimeout(()=>toast.remove(),7000);root.__ctiClearHint=()=>{clearTimeout(timer);toast.remove();};
   }
   function updateHudTitle(root) {
