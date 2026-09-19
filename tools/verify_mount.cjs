@@ -40,6 +40,32 @@ const {chromium, webkit} = require('playwright');
         summaries: [{thread_id: 'one', latest_context_tokens: 500, context_window: 1000, latest_context_percent: 50}], detailsByThread: {}};
       const publish = () => call({...base, action: 'publish', payload, panel: true});
       for (let i = 0; i < 4; i++) assert.equal(await publish(), true);
+      Object.assign(payload.summaries[0], {model: '<b data-untrusted-model>model & name</b>',
+        reasoning_effort: '<i>high</i>', latest_turn_total_tokens: 550, session_total_tokens: 900,
+        latest_turn_input_tokens: 400, latest_turn_cached_input_tokens: 100, latest_turn_output_tokens: 150});
+      await publish();
+      assert.equal(await page.locator('[data-explanation] b, [data-explanation] i').count(), 0);
+      assert.ok((await page.locator('[data-explanation]').textContent()).includes(payload.summaries[0].model));
+      assert.ok((await page.locator('[data-explanation]').textContent()).includes('25.0%'));
+      assert.equal(await page.locator('[data-metrics] .cti-metric').count(), 2);
+      payload.summaries[0].latest_turn_cached_input_tokens = -1;
+      await publish();
+      assert.ok((await page.locator('[data-explanation]').textContent()).includes('缓存占比: —'));
+      for (const [input, cached, expected] of [[0, 0, '—'], [100, 200, '100.0%'], [100, 0, '0.0%'], ['100', 25, '—']]) {
+        Object.assign(payload.summaries[0], {latest_turn_input_tokens: input, latest_turn_cached_input_tokens: cached});
+        await publish();
+        assert.ok((await page.locator('[data-explanation]').textContent()).includes('缓存占比: ' + expected));
+      }
+      await page.evaluate(() => { window.detailNode = document.querySelector('[data-metrics]').firstChild; });
+      await publish();
+      assert.equal(await page.evaluate(() => window.detailNode === document.querySelector('[data-metrics]').firstChild), true);
+      const summary = payload.summaries.pop();
+      await publish();
+      assert.equal(await page.locator('[data-metrics]').textContent(), '');
+      assert.equal(await page.locator('[data-explanation]').textContent(), '');
+      payload.summaries.push(summary);
+      await publish();
+
       assert.equal(await page.locator('[data-refresh]').isDisabled(), true);
       assert.equal(await page.locator('.cti-hud').count(), 1);
       for (const [language, htmlLang, autoLabel, rawLabel, groupLabel] of [
