@@ -12,6 +12,7 @@ import argparse
 import base64
 import json
 import os
+import re
 import secrets
 import socket
 import struct
@@ -28,6 +29,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 import context_token_inspector as inspector
+from platform_paths import runtime_root
 from quota_reader import QuotaReader
 from quota_alerts import QuotaAlerts
 import context_health
@@ -475,7 +477,7 @@ INJECTION_SCRIPT = r"""
   // new script: stacked observers and timers are torn down, and the companion
   // bitmap is rebuilt from the new data URIs. A renderer may still contain an
   // observer from an older plugin release.
-  const RUNTIME_VERSION = 19;
+  const RUNTIME_VERSION = 21;
   const ROOT_ID = 'codex-context-token-inspector-root';
   const STYLE_ID = 'codex-context-token-inspector-style';
   const FOOTER_ATTR = 'data-context-token-footer';
@@ -635,6 +637,50 @@ INJECTION_SCRIPT = r"""
   function toneLabel(tone) {
     const zh = uiLanguage() === 'zh';
     return ({safe:zh?'余量充足':'Comfortable',watch:zh?'留意用量':'Watch usage',low:zh?'额度偏低':'Running low',unknown:zh?'尚未更新':'Unavailable'})[tone];
+  }
+  // The collapsed bar is the glanceable view, so it answers the question the
+  // panel exists for - whether the account can carry the work ahead - rather
+  // than repeating the percentage the meter beside it already draws.
+  function shortDuration(seconds) {
+    if (!(seconds > 0)) return '0m';
+    if (seconds < 60) return '<1m';
+    const minutes = Math.round(seconds / 60);
+    if (minutes < 60) return `${minutes}m`;
+    const hours = seconds / 3600;
+    return hours < 24 ? `${hours < 10 ? hours.toFixed(1) : Math.round(hours)}h` : `${Math.round(hours / 24)}d`;
+  }
+  function durationPhrase(seconds) {
+    const zh = uiLanguage() === 'zh';
+    if (!(seconds > 0)) return zh ? '不足 1 分钟' : 'under a minute';
+    const minutes = seconds / 60;
+    if (minutes < 60) return zh ? `${Math.round(minutes)} 分钟` : `${Math.round(minutes)} min`;
+    const hours = minutes / 60;
+    return hours < 48 ? (zh ? `${hours.toFixed(1)} 小时` : `${hours.toFixed(1)} hours`)
+                      : (zh ? `${(hours / 24).toFixed(1)} 天` : `${(hours / 24).toFixed(1)} days`);
+  }
+  // A window that refills before it would run out cannot bind, so its honest
+  // figure is a floor rather than a measurement. The "≥" is what keeps a
+  // comfortable account from being shown a number that reads as a deadline.
+  function windowBudgetText(item) {
+    const resetIn = typeof item?.resetsAt === 'number' ? item.resetsAt - Date.now() / 1000 : null;
+    const exhaust = typeof item?.exhaustInSec === 'number' ? item.exhaustInSec : null;
+    if (exhaust != null && resetIn != null && resetIn > 0) {
+      return exhaust < resetIn ? shortDuration(exhaust) : `≥${shortDuration(resetIn)}`;
+    }
+    if (resetIn != null && resetIn > 0) return `≥${shortDuration(resetIn)}`;
+    return exhaust != null ? shortDuration(exhaust) : null;
+  }
+  function accountBudgetText(quota) {
+    const budget = quota?.budget;
+    if (!budget || typeof budget.seconds !== 'number') return '';
+    const zh = uiLanguage() === 'zh', floor = budget.kind === 'floor';
+    return `${floor ? (zh ? '至少还能用 ' : 'at least ') : (zh ? '按当前速度还能用 ' : 'at this pace about ')}${durationPhrase(budget.seconds)}`;
+  }
+  function nearestResetText(windows) {
+    const stamps = (windows || []).map(item => item?.resetsAt).filter(value => typeof value === 'number');
+    if (!stamps.length) return '';
+    return new Date(Math.min(...stamps) * 1000)
+      .toLocaleString(uiLanguage() === 'zh' ? 'zh-CN' : 'en', {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
   }
   function windowLabel(item, compact=false) {
     const minutes=item.duration,zh=uiLanguage()==='zh';
@@ -838,6 +884,14 @@ INJECTION_SCRIPT = r"""
         background:color-mix(in srgb,var(--cti-low) 16%,transparent);
         box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--cti-low) 72%,transparent);
       }
+      /* The tint alone reads as "low but still going", which is exactly the
+         misreading the AND gate invites: one spent window stops the account
+         while the other still shows headroom. A bar across the cells says
+         stopped, and says it without waiting for a hover. */
+      .cti-edge-mascot [data-gauge][data-blocked="true"]::after {
+        content:''; position:absolute; left:-2px; right:-2px; top:50%;
+        height:2px; margin-top:-1px; border-radius:2px; background:var(--cti-low);
+      }
       .cti-edge-mascot[data-edge="left"] [data-gauge] { right:-3px; }
       .cti-edge-mascot[data-edge="right"] [data-gauge] { left:-3px; }
       /* With the plate gone the gauge has to clear the artwork itself rather
@@ -946,6 +1000,10 @@ INJECTION_SCRIPT = r"""
         font-family: inherit;
         white-space: normal;
       }
+      /* The first line of the quota block answers the question the panel exists
+         for - whether the account can carry what is ahead. The per-window
+         shares below it are the detail, not the headline. */
+      .cti-quota-budget { font-size:13px; font-weight:550; color:var(--cti-tone); padding-top:10px; }
       .cti-quota-window { padding:13px 0 0; }
       .cti-quota-window + .cti-quota-window { margin-top:5px; }
       [data-context] { border-top:1px solid color-mix(in srgb,CanvasText 8%,transparent); padding-top:12px; }
@@ -1181,16 +1239,27 @@ INJECTION_SCRIPT = r"""
     gauge.dataset.cells=String(readings.length);
     gauge.dataset.state=windows.length?'live':'empty';
     gauge.dataset.blocked=String(blocked);
-    const html=readings.map(item=>item
-      ?`<span class="cti-gauge-cell" style="--cti-gauge-color:${gaugeColor(quotaTone(item.remaining))}"><i style="height:${Math.max(0,Math.min(100,Number(item.remaining)||0))}%"></i></span>`
-      :'<span class="cti-gauge-cell"></span>').join('');
+    const html=readings.map(item=>{
+      if(!item)return '<span class="cti-gauge-cell"></span>';
+      // A reached limit is a state, not a magnitude. Filling each cell with its
+      // own remaining share renders the exact case the AND gate creates - one
+      // window spent, the other still holding - as "partly usable", so under a
+      // block the cells go flat and the bar across them carries the state.
+      if(blocked)return `<span class="cti-gauge-cell" style="--cti-gauge-color:${gaugeColor('low')}"></span>`;
+      return `<span class="cti-gauge-cell" style="--cti-gauge-color:${gaugeColor(quotaTone(item.remaining))}"><i style="height:${Math.max(0,Math.min(100,Number(item.remaining)||0))}%"></i></span>`;
+    }).join('');
     if(gauge.innerHTML!==html)gauge.innerHTML=html;
     const zh=uiLanguage()==='zh';
     // The pill has no room for text, so the numbers live in the accessible
     // name and the hover title, which is the same place the skin is named.
     const parts=windows.map(item=>`${windowLabel(item,true)} ${Math.round(item.remaining)}%`);
     if(!live)parts.push(quota.status==='loading'?(zh?'正在读取配额…':'Reading quota…'):(zh?'配额暂不可用':'Quota unavailable'));
-    if(blocked)parts.push(zh?'已达上限，等待重置':'Limit reached, awaiting reset');
+    if(blocked){
+      // The reset countdown is the only actionable part of a block, and the
+      // accessible name is the one channel with room for it.
+      const reset=nearestResetText(windows);
+      parts.push(`${zh?'已达上限':'Limit reached'}${reset?(zh?`，${reset} 重置`:` · resets ${reset}`):(zh?'，等待重置':'')}`);
+    }
     const label=[mascot.dataset.skinLabel,parts.join(' · ')].filter(Boolean).join(' · ');
     mascot.setAttribute('aria-label',label);mascot.title=label;
   }
@@ -1802,6 +1871,7 @@ INJECTION_SCRIPT = r"""
           <div class="cti-setting" aria-label="${zh?'配额颜色说明':'Quota color legend'}">
             <span class="cti-status" data-tone="safe">&gt;50%</span><span class="cti-status" data-tone="watch">20–50%</span><span class="cti-status" data-tone="low">≤20%</span>
           </div>
+          <div class="cti-muted" data-build></div>
         </div>
         <div class="cti-muted" data-freshness></div>`;
       body.querySelector('[data-units]').appendChild(units);
@@ -1870,6 +1940,20 @@ INJECTION_SCRIPT = r"""
         <div class="cti-line" style="margin-bottom:6px"><span class="cti-status">${toneLabel(tone)}</span><span class="cti-muted">${pace}</span></div>
         <div class="cti-muted">${time} ${zh ? '重置' : 'reset'} · ${countdown}${forecast?`<br>${forecast}`:''}</div></div>`;
     }
+    // The panel's own headline, spelled out: the answer the collapsed bar gives
+    // in shorthand, with the shares left to the per-window lines below. A block
+    // reports the reset instead, because that is the part anyone can act on.
+    if (live && quota.windows.length) {
+      const stoppedAccount = quota.ordinaryUsageAllowed === false || !!quota.rateLimitReachedType;
+      const nearest = nearestResetText(quota.windows);
+      const note = stoppedAccount
+        ? `${zh?'账户已达上限':'Account at its limit'}${nearest?(zh?`，最近重置 ${nearest}`:` · nearest reset ${nearest}`):(zh?'，等待重置':'')}`
+        : accountBudgetText(quota);
+      if (note) {
+        const constrained = Math.min(...quota.windows.map(item => item.remaining));
+        quotaHtml = `<div class="cti-quota-budget" data-tone="${stoppedAccount?'low':quotaTone(constrained)}">${note}</div>` + quotaHtml;
+      }
+    }
     if (!quotaHtml) quotaHtml = `<div class="cti-muted">${quota.status==='loading' ?
       (zh?'正在读取账户配额…':'Reading quota…') : live && quota.windowStatus==='not_reported'?(zh?'账户未报告周期配额窗口':'No periodic quota windows reported'):(zh?'暂时无法读取配额':'Quota: unavailable')}</div>`;
     // A healthy short window is not permission to keep working, so the AND
@@ -1877,8 +1961,13 @@ INJECTION_SCRIPT = r"""
     if (live && (quota.windows.length > 1 || quota.ordinaryUsageAllowed === false || quota.rateLimitReachedType)) {
       const notes = [];
       if (quota.windows.length > 1) notes.push(zh?'两个窗口均需有余量才能继续。':'Every window must have headroom to continue.');
-      if (quota.ordinaryUsageAllowed === false || quota.rateLimitReachedType) notes.push(zh?'账户当前已达上限。':'The account is at its limit right now.');
-      quotaHtml += `<div class="cti-muted">${notes.join(' ')}</div>`;
+      // The headline above reports a block whenever there is a window to report
+      // it against, so this only has to say it for an account that reached a
+      // limit without reporting any window at all.
+      if (!quota.windows.length && (quota.ordinaryUsageAllowed === false || quota.rateLimitReachedType)) {
+        notes.push(zh?'账户当前已达上限。':'The account is at its limit right now.');
+      }
+      if (notes.length) quotaHtml += `<div class="cti-muted">${notes.join(' ')}</div>`;
     }
     const usage=quota.usage||{};
     const usageSummary=usage.summary||{};
@@ -1931,6 +2020,16 @@ INJECTION_SCRIPT = r"""
     put('[data-freshness]', live ?
       `${zh?'账户接口':'Account'}${plan} · ${age<10?(zh?'刚刚更新':'just updated'):`${age}s ${zh?'前更新':'ago'}`}` :
       `${zh?'账户配额未更新':'Account unavailable'}${quota.errorCode?` · ${errorLabels[quota.errorCode]||quota.errorCode}`:''} · ${zh?'本地 Token 独立读取':'local tokens independent'}`);
+    // The plugin version, the cachebuster Codex keys its cache directory on,
+    // and the injected runtime version move independently, and a plugin cache
+    // does not refresh on its own. Naming all of them here is what turns "I
+    // installed it and nothing changed" into a readable fact.
+    const stamp = payload.build || {};
+    const stampParts = [];
+    if (stamp.pluginVersion) stampParts.push(`${zh?'插件':'plugin'} ${stamp.pluginVersion}`);
+    if (typeof stamp.runtimeVersion === 'number') stampParts.push(`${zh?'运行时':'runtime'} ${stamp.runtimeVersion}`);
+    if (typeof stamp.installedAt === 'number') stampParts.push(`${zh?'安装于':'installed'} ${new Date(stamp.installedAt*1000).toLocaleString(zh?'zh-CN':'en',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}`);
+    put('[data-build]', stampParts.length ? stampParts.join(' · ') : (zh?'版本信息未记录':'Build information not recorded'));
     updateHudTitle(root);
     updateUnitButtons(root);
     const toggle = root.querySelector('[data-cti-toggle]');
@@ -1973,13 +2072,27 @@ INJECTION_SCRIPT = r"""
     const text = collapsed ? (compact || `${tr('monitor')} · —`) : tr('monitor');
     title.title = toneLabel(quotaTone(remaining));
     if (collapsed) {
-      const cell=(label,value,tone,fill,sub='')=>`<span class="cti-mini" data-tone="${tone}"><span class="cti-battery" aria-hidden="true"><i style="height:${fill||0}%"></i></span><span class="cti-mini-copy"><small>${label}</small><strong>${value==null?'—':Math.round(value)+'%'}</strong>${sub?`<em>${sub}</em>`:''}</span></span>`;
+      const cell=(label,value,tone,fill,sub='',figure=null)=>`<span class="cti-mini" data-tone="${tone}"><span class="cti-battery" aria-hidden="true"><i style="height:${fill||0}%"></i></span><span class="cti-mini-copy"><small>${label}</small><strong>${figure!=null?figure:(value==null?'—':Math.round(value)+'%')}</strong>${sub?`<em>${sub}</em>`:''}</span></span>`;
       const ctx=root.__ctiContext;
       const h=root.__ctiHealth;
       const sub=h?.count ? `↻${h.count} · ${h.after==null?'…':token(h.after)}` : '';
-      const html=windows.map(w=>cell(windowLabel(w,true),w.remaining,quotaTone(w.remaining),w.remaining)).join('')+cell(uiLanguage()==='zh'?'CTX 已用':'CTX used',ctx,contextTone(ctx),ctx,sub);
+      const zhComp=uiLanguage()==='zh';
+      const stopped=live&&(q.ordinaryUsageAllowed===false||!!q.rateLimitReachedType);
+      // The figure beside the meter is how long that window can still carry the
+      // work, not its share: the meter already draws the share, and only a
+      // duration answers whether what is ahead of you fits. A block overrides
+      // both, because a stopped account has an availability question, not a
+      // magnitude one - and the collapsed bar is where that has to be readable
+      // without a hover.
+      const html=windows.map(w=>cell(windowLabel(w,true),w.remaining,stopped?'low':quotaTone(w.remaining),w.remaining,
+        '',stopped?(zhComp?'已停':'stopped'):windowBudgetText(w))).join('')
+        +cell(zhComp?'CTX 已用':'CTX used',ctx,contextTone(ctx),ctx,sub);
       if(title.innerHTML!==html)title.innerHTML=html;
-      title.setAttribute('aria-label',`${text} · 上下文已用 ${pct(ctx)}`);
+      // The visible text trades percentages for durations, so the accessible
+      // name keeps both. It starts from the compact reading rather than from
+      // the title's own text, which in this branch already is that reading.
+      const budget=stopped?(zhComp?'账户已达上限':'Account at its limit'):accountBudgetText(q);
+      title.setAttribute('aria-label',[compact,budget,`${zhComp?'上下文已用':'Context used'} ${pct(ctx)}`].filter(Boolean).join(' · '));
     } else if (title.textContent !== text) title.textContent = text;
     updateHudLanguage(root);
   }
@@ -2119,11 +2232,41 @@ INJECTION_SCRIPT = INJECTION_SCRIPT.replace(
     json.dumps(COMPANION_ART, ensure_ascii=False, separators=(",", ":")),
 )
 
+# Read back from the script rather than restated here, so the number the panel
+# reports is by construction the one this process actually pushes.
+_RUNTIME_VERSION = re.search(r"const RUNTIME_VERSION = (\d+);", INJECTION_SCRIPT)
+if _RUNTIME_VERSION is None:
+    raise RuntimeError("RUNTIME_VERSION is missing from the injected script")
+RUNTIME_VERSION = int(_RUNTIME_VERSION.group(1))
+
+
+def build_stamp() -> dict:
+    """What this process runs, next to what was last installed on disk.
+
+    The runtime version travels with this process; the plugin version and the
+    cachebuster are read from the record the installer writes. When a reinstall
+    has landed but this process has not restarted they disagree, and that
+    disagreement is the answer to "why has nothing changed".
+    """
+    try:
+        recorded = json.loads((runtime_root() / "build_info.json").read_text(encoding="utf-8"))
+        recorded = recorded if isinstance(recorded, dict) else {}
+    except (OSError, ValueError):
+        recorded = {}
+    return {"runtimeVersion": RUNTIME_VERSION,
+            "pluginVersion": recorded.get("pluginVersion"),
+            "cachebuster": recorded.get("cachebuster"),
+            "installedAt": recorded.get("installedAt")}
+
+
+BUILD_STAMP = build_stamp()
+
 
 def inject_once(client: CDPClient, roots: list[str], limit: int, detail_limit: int) -> Any:
     state = runtime_state(client)
     payload = build_payload(roots, limit, state.get("activeThreadId"), detail_limit=detail_limit)
     payload['quota'] = QUOTA_READER.snapshot(force=state.get('refresh', False))
+    payload['build'] = BUILD_STAMP
     active = normalize_thread_id(state.get('activeThreadId') or payload.get('selectedThreadId') or '')
     selected = next((s for s in payload['summaries'] if normalize_thread_id(s.get('thread_id') or '') == active), None)
     if selected is None and payload['summaries']:

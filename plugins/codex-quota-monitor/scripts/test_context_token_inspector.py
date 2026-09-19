@@ -5,7 +5,7 @@ from pathlib import Path
 
 from companion_art import COMPANION_ART
 from context_token_inspector import summarize_session, summarize_session_fast
-from context_token_injector import INJECTION_SCRIPT, build_payload
+from context_token_injector import BUILD_STAMP, INJECTION_SCRIPT, RUNTIME_VERSION, build_payload
 
 
 def block(start: str, end: str) -> str:
@@ -137,6 +137,68 @@ class InspectorTests(unittest.TestCase):
         self.assertIn("blocked:live&&", gauge)
         self.assertIn('data-blocked="true"', INJECTION_SCRIPT)
         self.assertIn("gauge.dataset.blocked=String(blocked);", INJECTION_SCRIPT)
+
+    def test_a_blocked_account_cannot_render_as_partly_usable(self):
+        # Reaching one window stops the account while the other still shows
+        # headroom, and filling each cell with its own share drew exactly that
+        # case as "partly usable". Under a block the cells carry no fills at
+        # all, and the bar across them states the block instead of the shares.
+        start = INJECTION_SCRIPT.index("if(blocked)return")
+        blocked_branch = INJECTION_SCRIPT[start:INJECTION_SCRIPT.index("\n", start)]
+        self.assertNotIn("<i ", blocked_branch)
+        self.assertIn("gaugeColor('low')", blocked_branch)
+        self.assertIn('[data-gauge][data-blocked="true"]::after', INJECTION_SCRIPT)
+
+    def test_the_gauge_names_the_reset_it_is_waiting_for(self):
+        # The countdown is the actionable half of a block, and the accessible
+        # name is the only channel with room for it.
+        gauge = block("function applyMascotGauge", "function undockHud")
+        self.assertIn("nearestResetText(windows)", gauge)
+
+    def test_a_block_is_stated_once(self):
+        # The headline reports a block whenever there is a window to report it
+        # against, so the footnote only has to cover an account that reached a
+        # limit without reporting any window.
+        self.assertIn("!quota.windows.length && (quota.ordinaryUsageAllowed === false", INJECTION_SCRIPT)
+        self.assertIn("if (notes.length) quotaHtml", INJECTION_SCRIPT)
+
+    def test_the_collapsed_bar_answers_with_a_duration(self):
+        # The meter already draws each window's share, so the figure beside it
+        # is spent on the question the panel exists for: whether what is ahead
+        # fits. A block overrides it, because that is an availability question
+        # rather than a magnitude one.
+        title = block("function updateHudTitle", "function clearFooters")
+        self.assertIn("windowBudgetText(w)", title)
+        self.assertIn("accountBudgetText(q)", title)
+        self.assertIn("'已停'", title)
+        # Trading the percentages for durations must not lose them, and the
+        # collapsed title's own text already is the compact reading, so naming
+        # both would say every window twice.
+        self.assertIn("title.setAttribute('aria-label',[compact,budget,", title)
+
+    def test_a_window_that_refills_first_reports_a_floor(self):
+        # A window that will not run out before it refills cannot bind, so its
+        # honest figure is a floor. Without the sign a comfortable account gets
+        # a number that reads like a deadline.
+        text = block("function windowBudgetText", "function accountBudgetText")
+        self.assertIn("`≥${shortDuration(resetIn)}`", text)
+        self.assertIn("shortDuration(exhaust)", text)
+
+    def test_the_panel_reports_the_build_it_is_running(self):
+        # The declared version, the cachebuster Codex keys its cache directory
+        # on, and the runtime version all move independently, and a plugin cache
+        # does not refresh on its own.
+        settings = block("<div data-settings hidden>", "data-freshness")
+        self.assertIn("data-build", settings)
+        self.assertIn("payload.build", INJECTION_SCRIPT)
+        self.assertIn("put('[data-build]'", INJECTION_SCRIPT)
+
+    def test_the_reported_runtime_version_is_the_one_being_pushed(self):
+        # Read back out of the script rather than restated beside it, so the
+        # number the panel shows cannot drift from what the overlay runs.
+        self.assertIsInstance(RUNTIME_VERSION, int)
+        self.assertIn(f"const RUNTIME_VERSION = {RUNTIME_VERSION};", INJECTION_SCRIPT)
+        self.assertEqual(BUILD_STAMP['runtimeVersion'], RUNTIME_VERSION)
 
     def test_the_gauge_follows_quota_and_not_only_the_skin(self):
         # The companion is rebuilt only when the skin or the dock changes, so a
