@@ -471,9 +471,11 @@ def session_file_for_thread(paths: list[str], thread_id: str | None) -> Path | N
 
 INJECTION_SCRIPT = r"""
 (payload => {
-  // Bump this only when closures or event handlers change. A long-lived
-  // renderer may still contain an observer from an older plugin release.
-  const RUNTIME_VERSION = 16;
+  // Bump this when a long-lived renderer has to re-derive something from the
+  // new script: stacked observers and timers are torn down, and the companion
+  // bitmap is rebuilt from the new data URIs. A renderer may still contain an
+  // observer from an older plugin release.
+  const RUNTIME_VERSION = 17;
   const ROOT_ID = 'codex-context-token-inspector-root';
   const STYLE_ID = 'codex-context-token-inspector-style';
   const FOOTER_ATTR = 'data-context-token-footer';
@@ -775,7 +777,11 @@ INJECTION_SCRIPT = r"""
       }
       .cti-edge-mascot[data-visible="true"] { display:grid; }
       .cti-edge-mascot svg { width:42px; height:46px; overflow:visible; filter:drop-shadow(0 2px 2px #0005); }
-      .cti-edge-mascot[data-art="true"] { width:auto; min-width:36px; height:auto; padding:0; }
+      /* The card hugs the artwork instead of holding a floor width: every
+         sprite is cropped flush to its own cut edge, so the only thing a
+         floor would add is padding beside the companions narrower than it
+         -- 6px either side of the cat, which reads as an unfilled frame. */
+      .cti-edge-mascot[data-art="true"] { width:auto; min-width:0; height:auto; padding:0; }
       .cti-edge-mascot[data-art="true"] img { display:block; height:48px; width:auto; }
       .cti-edge-mascot[data-art="true"][data-edge="left"] img { transform:scaleX(-1); }
       .cti-edge-mascot:hover,.cti-edge-mascot:focus-visible { transform:translateX(-3px) scale(1.04); box-shadow:0 8px 26px #0005,0 0 0 2px color-mix(in srgb,var(--cti-mascot-accent) 45%,transparent); outline:none; }
@@ -1634,6 +1640,11 @@ INJECTION_SCRIPT = r"""
     const root = ensureHud();
     const body = root.querySelector('[data-cti-body]');
     const zh = uiLanguage() === 'zh';
+    // A renderer outlives plugin updates and only rebuilds the companion when
+    // the skin or the dock changes, so a redrawn bitmap would never reach a
+    // window that keeps the same skin selected. Rebuild it once per new
+    // runtime, the same signal that tears down stale observers.
+    if (runtimeChanged) applyMascotSkin(root);
     if (!body.querySelector('[data-quota]') || root.__ctiBodyLanguage!==uiLanguage()) {
       const units=root.querySelector('.cti-unit-group');
       root.__ctiBodyLanguage=uiLanguage();
