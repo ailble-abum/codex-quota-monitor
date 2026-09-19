@@ -21,8 +21,43 @@ def _window_metrics(used, duration, resets_at, now):
     metrics = {'paceDelta': used - expected_used}
     if used > 0 and elapsed > 0:
         exhaust_at = start + elapsed * 100 / used
+        # Carried unconditionally, unlike projectedExhaustAt below: "how long
+        # this window can still carry the work" is answerable even when the
+        # window would refill first, which is exactly the case the forecast
+        # used to drop.
+        metrics['exhaustInSec'] = exhaust_at - now
         metrics['projectedExhaustAt'] = exhaust_at if exhaust_at < resets_at else None
     return metrics
+
+
+def _budget(windows, now):
+    """How long the account can keep being used at the pace it has been spent.
+
+    Every reported window is an AND gate, so the account is limited by
+    whichever window binds first. A window that refills before it would run out
+    cannot bind within that horizon; a period whose windows are all like that
+    is therefore reported as a floor, meaning safe at least until the nearest
+    reset. Returning kind with the number is what keeps a floor from being read
+    as a measurement.
+    """
+    binding, floors = [], []
+    for window in windows:
+        resets_at = window.get('resetsAt')
+        if not isinstance(resets_at, (int, float)) or isinstance(resets_at, bool):
+            continue
+        reset_in = resets_at - now
+        if reset_in <= 0:
+            continue
+        exhaust = window.get('exhaustInSec')
+        if isinstance(exhaust, (int, float)) and not isinstance(exhaust, bool) and exhaust < reset_in:
+            binding.append((exhaust, window['key'], resets_at))
+        else:
+            floors.append((reset_in, window['key'], resets_at))
+    candidates, kind = (binding, 'exhaust') if binding else ((floors, 'floor') if floors else ([], None))
+    if not candidates:
+        return None
+    seconds, key, resets_at = min(candidates)
+    return {'kind': kind, 'seconds': seconds, 'key': key, 'resetsAt': resets_at}
 
 
 def _text(value):
@@ -75,6 +110,7 @@ def normalize(result, now=None):
         if isinstance(available, (int, float)) and not isinstance(available, bool) and math.isfinite(available) else None
     return {'status': 'live', 'source': 'Codex app-server', 'updatedAt': time.time(), 'windows': windows,
             'windowStatus':'reported' if windows else 'not_reported', 'resetCredits': reset_credits,
+            'budget': _budget(windows, now),
             'planType': plan_type, 'ordinaryUsageAllowed': allowed, 'rateLimitReachedType': reached,
             'accountKey': hashlib.sha256(str(identity).encode()).hexdigest() if identity else None}
 

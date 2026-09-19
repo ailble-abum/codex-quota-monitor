@@ -42,6 +42,58 @@ class QuotaTests(unittest.TestCase):
         self.assertAlmostEqual(window['paceDelta'],20)
         self.assertLess(window['projectedExhaustAt'],window['resetsAt'])
 
+    def test_a_window_that_runs_out_first_sets_the_budget(self):
+        # 70% spent halfway through a five-hour window leaves 30% that lasts
+        # 3857s at that pace, well before the window resets.
+        now=10_000
+        result=normalize({'rateLimits':{'primary':{'usedPercent':70,'windowDurationMins':300,
+            'resetsAt':now+150*60}}},now=now)
+        budget=result['budget']
+        self.assertEqual(budget['kind'],'exhaust')
+        self.assertEqual(budget['key'],'primary')
+        self.assertAlmostEqual(budget['seconds'],result['windows'][0]['exhaustInSec'])
+        self.assertLess(budget['seconds'],150*60)
+
+    def test_a_window_that_refills_first_reports_a_floor(self):
+        # Spending on schedule a tenth of the way in means the window resets
+        # long before it runs out, so the answer is "at least until the reset".
+        # A bare number here would be read as a measurement it is not.
+        now=10_000
+        result=normalize({'rateLimits':{'primary':{'usedPercent':10,'windowDurationMins':300,
+            'resetsAt':now+270*60}}},now=now)
+        budget=result['budget']
+        self.assertEqual(budget['kind'],'floor')
+        self.assertEqual(budget['key'],'primary')
+        self.assertAlmostEqual(budget['seconds'],270*60)
+
+    def test_the_budget_comes_from_the_window_that_runs_out_first(self):
+        # Both windows have to have headroom, so a healthy five-hour window
+        # cannot cover for a weekly one that is nearly spent. Reporting the
+        # smaller remaining share is not enough: the budget has to come from
+        # the window that actually stops the account, which is the weekly one.
+        now=10_000
+        result=normalize({'rateLimitsByLimitId':{'codex':{
+            'primary':{'usedPercent':20,'windowDurationMins':300,'resetsAt':now+240*60},
+            'secondary':{'usedPercent':95,'windowDurationMins':10080,'resetsAt':now+5000*60}}}},now=now)
+        budget=result['budget']
+        self.assertEqual(budget['kind'],'exhaust')
+        self.assertEqual(budget['key'],'secondary')
+        self.assertLess(budget['seconds'],5000*60)
+
+    def test_an_expired_window_is_not_a_budget(self):
+        # A reset stamp already in the past cannot bound anything, and dividing
+        # by it would produce a countdown running backwards.
+        now=10_000
+        result=normalize({'rateLimits':{'primary':{'usedPercent':70,'windowDurationMins':300,
+            'resetsAt':now-60}}},now=now)
+        self.assertIsNone(result['budget'])
+
+    def test_a_window_without_timing_data_yields_no_budget(self):
+        # Percentages alone cannot be turned into a duration, and inventing one
+        # would put a made-up countdown in the panel.
+        result=normalize({'rateLimits':{'primary':{'usedPercent':70}}})
+        self.assertIsNone(result['budget'])
+
     def test_usage_summary_is_sanitized_and_bounded(self):
         value=normalize_usage({'summary':{'lifetimeTokens':123,'peakDailyTokens':None},
             'dailyUsageBuckets':[{'startDate':'2026-09-18','tokens':50},{'startDate':3,'tokens':9}]})
