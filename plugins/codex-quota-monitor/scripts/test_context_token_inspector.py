@@ -92,6 +92,16 @@ class InspectorTests(unittest.TestCase):
         self.assertIn("isOverScrollbar(root,event)", handler)
         self.assertIn("function isOverScrollbar(node,event)", INJECTION_SCRIPT)
 
+    def test_the_skin_picker_collapses(self):
+        picker = block("<details data-skins>", "</details>")
+        self.assertIn("cti-skin-group", picker)
+        self.assertIn("data-skin-current", picker)
+        self.assertIn("SKINS_OPEN_KEY = 'cti-skins-open';", INJECTION_SCRIPT)
+        self.assertIn("localStorage.getItem(SKINS_OPEN_KEY) === 'true'", INJECTION_SCRIPT)
+        self.assertIn("localStorage.setItem(SKINS_OPEN_KEY, String(skins.open));", INJECTION_SCRIPT)
+        # The collapsed summary is the only place the live companion is named.
+        self.assertIn("querySelector('[data-skin-current]')", INJECTION_SCRIPT)
+
     def test_latest_model_and_effort_are_reported(self):
         rows = [
             {'type':'session_meta','payload':{'id':'thread','cwd':'/tmp'}},

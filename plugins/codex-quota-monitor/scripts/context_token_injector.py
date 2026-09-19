@@ -489,6 +489,7 @@ INJECTION_SCRIPT = r"""
   const UNIT_DEFAULTED_KEY = 'codex-context-token-inspector-unit-defaulted';
   const EDGE_DOCK_KEY = 'cti-edge-dock';
   const SKIN_KEY = 'cti-mascot-skin';
+  const SKINS_OPEN_KEY = 'cti-skins-open';
   const MASCOT_ID = 'codex-context-token-inspector-mascot';
   const previousRuntimeVersion = window.__codexContextTokenInspectorRuntimeVersion;
   const runtimeChanged = previousRuntimeVersion !== RUNTIME_VERSION;
@@ -582,10 +583,15 @@ INJECTION_SCRIPT = r"""
     return Object.entries(MASCOT_SKINS).map(([id,skin])=>`<button type="button" class="cti-skin-button" data-skin-choice="${id}" aria-label="${zh?skin.zh:skin.en}" title="${zh?skin.zh:skin.en}">${mascotMarkup(id,'cti-skin-art')}<small>${zh?skin.zh:skin.en}</small></button>`).join('');
   }
   function updateSkinButtons(root) {
+    const zh=uiLanguage()==='zh';
     root.querySelectorAll('[data-skin-choice]').forEach(button=>{
       const active=button.dataset.skinChoice===mascotSkin();
       button.dataset.active=String(active);button.setAttribute('aria-pressed',String(active));
     });
+    // The picker ships collapsed, so its summary carries the only hint of
+    // which companion is currently docked.
+    const label=root.querySelector('[data-skin-current]');
+    if(label){const skin=MASCOT_SKINS[mascotSkin()];label.textContent=skin?(zh?skin.zh:skin.en):'';}
   }
 
   function n(value) {
@@ -896,8 +902,13 @@ INJECTION_SCRIPT = r"""
       .cti-quota-window { padding:13px 0 0; }
       .cti-quota-window + .cti-quota-window { margin-top:5px; }
       [data-context] { border-top:1px solid color-mix(in srgb,CanvasText 8%,transparent); padding-top:12px; }
-      [data-details] summary { cursor:pointer; font-size:11px; opacity:.7; padding:4px 0; }
-      [data-details][open] > div { margin-top:10px; }
+      [data-details] summary, [data-skins] summary { cursor:pointer; font-size:11px; opacity:.7; padding:4px 0; }
+      [data-details][open] > div, [data-skins][open] > div { margin-top:10px; }
+      /* Collapsed, the skin picker still has to say which companion is live,
+         otherwise the section hides the only thing it was asked about. The
+         summary keeps its default list-item display so its disclosure triangle
+         matches the usage-details disclosure above it. */
+      [data-skins] summary em { font-style:normal; font-weight:650; color:var(--cti-safe); opacity:1; }
       [data-explanation] { line-height:1.7; }
       .cti-hud { max-height:calc(100vh - 24px); overflow:auto; }
       .cti-line { display:flex; justify-content:space-between; align-items:center; gap:8px; }
@@ -1679,7 +1690,10 @@ INJECTION_SCRIPT = r"""
           <div class="cti-line"><span class="cti-muted">${zh?'显示设置':'Display settings'}</span><button class="cti-text-button" type="button" data-position-reset>${zh?'恢复位置':'Reset position'}</button></div>
           <div class="cti-setting"><span>${zh?'面板尺寸':'Panel size'}</span><div class="cti-preset-group" role="group" aria-label="${zh?'面板尺寸':'Panel size'}"><button class="cti-preset-button" type="button" data-layout-preset="mini">${zh?'迷你':'Mini'}</button><button class="cti-preset-button" type="button" data-layout-preset="standard">${zh?'标准':'Standard'}</button><button class="cti-preset-button" type="button" data-layout-preset="large">${zh?'大字':'Large'}</button></div></div>
           <label class="cti-setting"><span>${zh?'边缘软吸附':'Soft edge docking'}</span><input type="checkbox" data-edge-dock></label>
-          <div class="cti-muted">${zh?'角色皮肤':'Character skin'}</div><div class="cti-skin-group" role="group" aria-label="${zh?'角色皮肤':'Character skin'}">${skinButtons()}</div>
+          <details data-skins>
+            <summary>${zh?'角色皮肤':'Character skin'} · <em data-skin-current></em></summary>
+            <div class="cti-skin-group" role="group" aria-label="${zh?'角色皮肤':'Character skin'}">${skinButtons()}</div>
+          </details>
           <div class="cti-setting"><span>${zh?'数字单位':'Number format'}</span><div data-units></div></div>
           <label class="cti-setting"><span>${zh?'配额 ≤20% 时通知':'Notify at ≤20% remaining'}</span><input type="checkbox" data-alerts></label>
           <label class="cti-setting"><span>${zh?'上下文轻提醒':'Context hints'}</span><input type="checkbox" data-context-alerts></label>
@@ -1708,6 +1722,9 @@ INJECTION_SCRIPT = r"""
       const details = body.querySelector('[data-details]');
       details.open = localStorage.getItem('cti-details-open') === 'true';
       details.addEventListener('toggle', () => {localStorage.setItem('cti-details-open', String(details.open)); clampHud(root);});
+      const skins = body.querySelector('[data-skins]');
+      skins.open = localStorage.getItem(SKINS_OPEN_KEY) === 'true';
+      skins.addEventListener('toggle', () => {localStorage.setItem(SKINS_OPEN_KEY, String(skins.open)); clampHud(root);});
       const alerts = body.querySelector('[data-alerts]');
       body.querySelector('[data-handoff]').addEventListener('click', async event => {
         const text = uiLanguage()==='zh' ? '请为当前任务生成可直接交给新对话的交接说明：原始目标、用户约束、已完成修改与文件路径、关键决策、验证结果、未完成事项、风险及下一步命令。区分事实与假设，不包含密钥，不重复整段聊天记录。先完成交接说明，暂不继续执行新工作。' : 'Create a handoff for this task: goal, constraints, completed changes and file paths, decisions, verification, remaining work, risks and next commands. Distinguish facts from assumptions, omit secrets, and do not copy the entire chat. Produce the handoff before doing more work.';
