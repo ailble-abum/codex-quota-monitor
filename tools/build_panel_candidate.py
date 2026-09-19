@@ -101,6 +101,11 @@ def build(directory):
                  '    renderSessionDetails(body, selected);')
     script = script.replace('    renderSessionDetails(body, selected);',
                             '    renderHealth(body, health);\n    renderSessionDetails(body, selected);', 1)
+    script = cut(script, '    const errorLabels=', '    const stamp = payload.build')
+    script = script.replace('    const stamp = payload.build',
+                            '    renderAccountStatus(body, quota, live, age);\n    const stamp = payload.build', 1)
+    script = script.replace("payload.quota || {status:'loading', windows:[]}",
+                            "payload.quota || {status:'unavailable', windows:[]}", 1)
     tail = '  function clearFooters('
     if script.count(tail) != 1:
         raise ValueError('unexpected lifecycle boundary')
@@ -109,7 +114,8 @@ def build(directory):
               + (assets / 'panel_controls.js').read_text()
               + (assets / 'panel_details.js').read_text()
               + (assets / 'panel_context.js').read_text()
-              + (assets / 'panel_health.js').read_text() + visual
+              + (assets / 'panel_health.js').read_text()
+              + (assets / 'panel_account_status.js').read_text() + visual
               + (assets / 'panel_mount.js').read_text()
               + (assets / 'panel_adapter.js').read_text())
     guard = """(payload => {
@@ -143,7 +149,7 @@ def main():
     manifest = {'sourceCommit': BASE, 'sourceSHA256': HASHES,
                 'consumer': {'path': 'consumer.js', 'sha256': hashlib.sha256(script.encode()).hexdigest()},
                 'status': 'derived-isolated-candidate',
-                'changes': 'Removed host/sidebar/message scans and observer lifecycle; V2 snapshot-only adapter, owned DOM lifecycle, pruned and attribute-scoped retained CSS, V2 finite-number formatting and control state/language projection with lazy unit preferences; text-only session detail, context meter and validated health projection.'}
+                'changes': 'Removed host/sidebar/message scans and observer lifecycle; V2 snapshot-only adapter, owned DOM lifecycle, pruned and attribute-scoped retained CSS, V2 finite-number formatting and control state/language projection with lazy unit preferences; text-only session detail, context meter and validated health projection; text-only account status with unavailable default.'}
     (args.output_dir / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     print(json.dumps(manifest['consumer']))
 

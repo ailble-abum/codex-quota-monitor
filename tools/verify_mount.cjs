@@ -81,6 +81,7 @@ const {chromium, webkit} = require('playwright');
       assert.ok((await page.locator('[data-health]').textContent()).includes('尚未观察'));
       delete payload.health; delete payload.healthThreadId;
       await publish();
+      assert.ok((await page.locator('[data-quota]').textContent()).includes('暂时无法读取配额'));
       assert.equal(await page.locator('[data-refresh]').isDisabled(), true);
       assert.equal(await page.locator('.cti-hud').count(), 1);
       for (const [language, htmlLang, autoLabel, rawLabel, groupLabel] of [

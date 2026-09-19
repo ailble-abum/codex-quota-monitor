@@ -42,3 +42,5 @@ python3 -m unittest discover -s tests -v
 [V2 上下文正文投影](docs/panel-context-contract.md) 替换上下文数值和进度条构建，保留双语、边界值、无障碍及重复刷新行为。
 
 [V2 本地健康提示正文](docs/panel-health-contract.md) 使用文本 DOM 和明确输入校验，统一建议与警告状态；真实健康数据生产链路仍待实现。
+
+[V2 账户默认状态与底部文字](docs/panel-account-status-contract.md) 缺失账户数据不再显示读取中，底部状态改为纯文本；真实账户通路尚未接通。
