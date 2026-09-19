@@ -43,6 +43,21 @@ class HealthTests(unittest.TestCase):
         self.assertIn('缓存输入占比趋势',page)
         self.assertEqual(page.count('<polyline'),2)
 
+    def test_history_adapts_to_dark_mode_and_narrow_windows(self):
+        page=History.page([])
+        self.assertIn('name="viewport"',page)
+        self.assertIn('content="width=device-width',page)
+        self.assertIn('color-scheme:light dark',page)
+        self.assertIn('CanvasText',page)
+        self.assertIn('minmax(0,1fr)',page)
+        self.assertIn('overflow-wrap:anywhere',page)
+
+    def test_daily_activity_values_are_keyboard_and_screen_reader_accessible(self):
+        rows=[{'at':1,'windows':[],'usage':{'dailyUsageBuckets':[{'startDate':'2026-09-20','tokens':1234}]}}]
+        page=History.page(rows)
+        self.assertIn('tabindex="0"',page)
+        self.assertIn('aria-label="2026-09-20 · 1,234 Token"',page)
+
     def test_weekly_report_summarizes_only_retained_samples(self):
         rows=[
             {'at':0,'windows':[{'remaining':80}],
@@ -69,6 +84,16 @@ class HealthTests(unittest.TestCase):
         page=History.page([{'at':1,'windows':[],'breakdown':value}])
         self.assertIn('最近会话按模型',page)
         self.assertIn('最近会话按项目',page)
+
+    def test_menu_bar_accessibility_label_includes_the_live_readout(self):
+        source=Path(__file__).with_name('QuotaMenu.swift').read_text(encoding='utf-8')
+        self.assertIn('setAccessibilityLabel(item.button?.title',source)
+        self.assertLess(source.index('item.button?.title='),source.index('setAccessibilityLabel('))
+        self.assertIn('windows.map',source)
+        self.assertIn('trimmingCharacters(in:.whitespaces)',source)
+        self.assertIn('let isBlocked=live && blocked(quota)',source)
+        self.assertIn('isBlocked ? .systemRed',source)
+        self.assertIn('已达上限',source)
 
 
 if __name__=='__main__':unittest.main()

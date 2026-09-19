@@ -12,6 +12,11 @@ final class QuotaMenu: NSObject, NSApplicationDelegate {
     func color(_ remaining: Double) -> NSColor {
         remaining <= 20 ? .systemRed : remaining <= 50 ? .systemBlue : .systemGreen
     }
+    func blocked(_ quota:[String:Any]) -> Bool {
+        if quota["ordinaryUsageAllowed"] as? Bool == false {return true}
+        guard let reached=quota["rateLimitReachedType"] else {return false}
+        return !(reached is NSNull) && !String(describing:reached).isEmpty
+    }
     func label(_ window:[String:Any]) -> String {
         guard let duration=window["duration"] as? Int, duration>0 else {return window["key"] as? String == "primary" ? "主窗口" : "次窗口"}
         return duration % 1440 == 0 ? "\(duration/1440)d" : duration % 60 == 0 ? "\(duration/60)h" : "\(duration)m"
@@ -26,9 +31,11 @@ final class QuotaMenu: NSObject, NSApplicationDelegate {
         let age=Date().timeIntervalSince1970-(quota["updatedAt"] as? Double ?? 0)
         let live=quota["status"] as? String == "live" && age<120
         let windows=live ? quota["windows"] as? [[String:Any]] ?? [] : []
+        let isBlocked=live && blocked(quota)
         let prefix=injectionFailed ? " ⚠︎ " : " "
-        item.button?.title=windows.isEmpty ? prefix+"用量 —" : prefix+windows.map{self.label($0)+" \(Int($0["remaining"] as? Double ?? 0))%"}.joined(separator:" · ")
-        item.button?.setAccessibilityLabel("Codex quota monitor")
+        let readout=windows.map{self.label($0)+" \(Int($0["remaining"] as? Double ?? 0))%"}.joined(separator:" · ")
+        item.button?.title=isBlocked ? prefix+"已达上限 · "+readout : windows.isEmpty ? prefix+"用量 —" : prefix+readout
+        item.button?.setAccessibilityLabel(item.button?.title.trimmingCharacters(in:.whitespaces) ?? "Codex quota monitor")
         item.button?.toolTip="Codex：账户实际报告的配额窗口；点击查看上下文和趋势"
         let values:[Double?]=windows.isEmpty ? [nil] : windows.map{$0["remaining"] as? Double}
         let image=NSImage(size:NSSize(width:values.count*11,height:18),flipped:false) { _ in
@@ -36,7 +43,7 @@ final class QuotaMenu: NSObject, NSApplicationDelegate {
                 let x=CGFloat(index*11)
                 NSColor.secondaryLabelColor.withAlphaComponent(0.2).setFill()
                 NSBezierPath(roundedRect:NSRect(x:x,y:1,width:8,height:15),xRadius:2,yRadius:2).fill()
-                (value.map{self.color($0)} ?? NSColor.secondaryLabelColor).setFill()
+                (isBlocked ? .systemRed : value.map{self.color($0)} ?? NSColor.secondaryLabelColor).setFill()
                 NSBezierPath(roundedRect:NSRect(x:x+1,y:2,width:6,height:max(1,13*CGFloat(value ?? 0)/100)),xRadius:1,yRadius:1).fill()
             }
             return true
@@ -50,6 +57,7 @@ final class QuotaMenu: NSObject, NSApplicationDelegate {
         }
         if live {
             if windows.isEmpty {label("账户未报告周期配额窗口")}
+            if isBlocked {label("账户已达上限 · 等待最近窗口重置")}
             for window in windows {
                 let remaining=window["remaining"] as? Double ?? 0
                 label("\(self.label(window)) 剩余  \(Int(remaining))%")

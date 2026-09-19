@@ -102,10 +102,53 @@ class InspectorTests(unittest.TestCase):
             "["
             "contextHintGeometry({left:0,right:40,top:100,bottom:148,width:40,height:48},{width:280,height:80},{width:1200,height:800},'left'),"
             "contextHintGeometry({left:1160,right:1200,top:100,bottom:148,width:40,height:48},{width:280,height:80},{width:1200,height:800},'right'),"
-            "contextHintGeometry({left:100,right:400,top:100,bottom:200,width:300,height:100},{width:280,height:80},{width:1200,height:800},null)"
+            "contextHintGeometry({left:100,right:400,top:100,bottom:200,width:300,height:100},{width:280,height:80},{width:1200,height:800},null),"
+            "contextHintGeometry({left:100,right:400,top:650,bottom:780,width:300,height:130},{width:280,height:80},{width:1200,height:800},null)"
             "]",
         )
-        self.assertEqual(values, [{"left": 48, "top": 84}, {"left": 872, "top": 84}, {"left": 100, "top": 208}])
+        self.assertEqual(values, [{"left": 48, "top": 84}, {"left": 872, "top": 84}, {"left": 100, "top": 208}, {"left": 100, "top": 562}])
+
+    def test_account_block_overrides_the_percentage_tone(self):
+        tones = block("function quotaTone", "function toneLabel")
+        self.assertIn("function accountTone", tones)
+        values = run_js(
+            tones,
+            "[accountTone({ordinaryUsageAllowed:false},70,true),accountTone({rateLimitReachedType:'rate_limit_reached'},70,true),accountTone({},70,true),accountTone({},70,false)]",
+        )
+        self.assertEqual(values, ["low", "low", "safe", "unknown"])
+        title = block("function updateHudTitle", "function clearFooters")
+        self.assertIn("accountTone(q,remaining,live)", title)
+        self.assertIn("fill==null?'':", title)
+        self.assertIn("const ctx=contextMeterValue(root.__ctiContext)", title)
+        quota = block("const quota = payload.quota", "if (live && quota.windows.length)")
+        self.assertIn("stoppedAccount ? 'low' : quotaTone(item.remaining)", quota)
+
+    def test_unknown_context_has_no_zero_meter(self):
+        helpers = block("function pct", "function toneLabel")
+        self.assertIn("function contextMeterValue", helpers)
+        self.assertEqual(run_js(helpers, "[contextMeterValue(undefined),contextMeterValue(null),contextMeterValue(0),contextMeterValue(120),contextMeterValue(-1)]"), [None, None, 0, 100, 0])
+        context = block("if (selected) {", "put('[data-metrics]'",)
+        self.assertIn("contextValue == null", context)
+        self.assertNotIn("latest_context_percent||0", context)
+        mascot = block("function applyMascotGauge", "function undockHud")
+        self.assertIn("contextMeterValue(root.__ctiContext)", mascot)
+        self.assertIn("const value=contextMeterValue(used)", mascot)
+
+    def test_language_refreshes_every_icon_button_label(self):
+        language = block("function updateHudLanguage", "function ensureHud")
+        self.assertIn("[data-refresh]", language)
+        self.assertIn("tr('refreshQuota')", language)
+        self.assertIn("[data-settings-toggle]", language)
+        self.assertIn("tr('displaySettings')", language)
+
+    def test_sidebar_details_are_available_on_keyboard_focus(self):
+        tooltip = block("function hideSidebarTooltip", "function hudMode")
+        self.assertIn("role','tooltip", tooltip)
+        self.assertIn("focusin", tooltip)
+        self.assertIn("focusout", tooltip)
+        self.assertIn("aria-describedby", tooltip)
+        sidebar = block("function applySidebar", "function assistantNodes")
+        self.assertIn("row.tabIndex<0", sidebar)
 
     def test_edge_docking_and_all_companion_skins_are_bundled(self):
         self.assertIn("function dockCandidate", INJECTION_SCRIPT)

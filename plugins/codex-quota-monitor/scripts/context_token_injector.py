@@ -86,7 +86,7 @@ INJECTION_SCRIPT = r"""
   // new script: stacked observers and timers are torn down, and the companion
   // bitmap is rebuilt from the new data URIs. A renderer may still contain an
   // observer from an older plugin release.
-  const RUNTIME_VERSION = 31;
+  const RUNTIME_VERSION = 32;
   const ROOT_ID = 'codex-context-token-inspector-root';
   const STYLE_ID = 'codex-context-token-inspector-style';
   const FOOTER_ATTR = 'data-context-token-footer';
@@ -111,6 +111,7 @@ INJECTION_SCRIPT = r"""
     en: {
       monitor: 'Usage', tokenUnit: 'Token unit', rawUnit: 'raw',
       expandMonitor: 'Expand Monitor', collapseMonitor: 'Collapse Monitor',
+      refreshQuota: 'Refresh quota', displaySettings: 'Display settings',
       status: 'status', left: 'left', context: 'context', turn: 'Latest request', session: 'session',
       inputShort: 'in', cachedShort: 'cached', outputShort: 'out', reasoningShort: 'reason',
       sessionTotal: 'Session total', input: 'Input', cachedInput: 'Cached input',
@@ -124,6 +125,7 @@ INJECTION_SCRIPT = r"""
     zh: {
       monitor: '用量', tokenUnit: 'Token 单位', rawUnit: '原值',
       expandMonitor: '展开监控', collapseMonitor: '收起监控',
+      refreshQuota: '刷新配额', displaySettings: '显示设置',
       status: '状态', left: '剩余', context: '上下文', turn: '最近请求', session: '会话',
       inputShort: '输入', cachedShort: '缓存', outputShort: '输出', reasoningShort: '推理',
       sessionTotal: '会话总计', input: '输入', cachedInput: '缓存输入',
@@ -260,6 +262,14 @@ INJECTION_SCRIPT = r"""
   }
   function contextTone(used) {
     return typeof used !== 'number' || !Number.isFinite(used) ? 'unknown' : used >= 85 ? 'low' : used >= 70 ? 'watch' : 'safe';
+  }
+  function accountTone(quota, remaining, live) {
+    if (!live) return 'unknown';
+    if (quota?.ordinaryUsageAllowed === false || quota?.rateLimitReachedType) return 'low';
+    return quotaTone(remaining);
+  }
+  function contextMeterValue(used) {
+    return typeof used === 'number' && Number.isFinite(used) ? Math.max(0,Math.min(100,used)) : null;
   }
   function toneLabel(tone) {
     const zh = uiLanguage() === 'zh';
@@ -789,13 +799,25 @@ INJECTION_SCRIPT = r"""
       .trim();
   }
   function hideSidebarTooltip() {
-    document.querySelector('.cti-sidebar-tooltip')?.remove();
+    const tooltip=document.querySelector('.cti-sidebar-tooltip');
+    if(!tooltip)return;
+    const row=tooltip.__ctiRow;
+    if(row){
+      const previous=tooltip.__ctiPreviousDescription;
+      if(previous)row.setAttribute('aria-describedby',previous);else row.removeAttribute('aria-describedby');
+    }
+    tooltip.remove();
   }
   function showSidebarTooltip(row, text) {
     hideSidebarTooltip();
     const tooltip = document.createElement('div');
     tooltip.className = 'cti-sidebar-tooltip';
+    tooltip.id = 'cti-sidebar-tooltip';
+    tooltip.setAttribute('role','tooltip');
     tooltip.lang = uiLanguage() === 'zh' ? 'zh-CN' : 'en';
+    tooltip.__ctiRow=row;
+    tooltip.__ctiPreviousDescription=row.getAttribute('aria-describedby')||'';
+    row.setAttribute('aria-describedby',[tooltip.__ctiPreviousDescription,tooltip.id].filter(Boolean).join(' '));
     const content = document.createElement('div');
     content.textContent = text;
     const credit = document.createElement('span');
@@ -815,6 +837,8 @@ INJECTION_SCRIPT = r"""
     if (previous?.version === RUNTIME_VERSION) return;
     if (previous?.mouseover) document.removeEventListener('mouseover', previous.mouseover);
     if (previous?.mouseout) document.removeEventListener('mouseout', previous.mouseout);
+    if (previous?.focusin) document.removeEventListener('focusin', previous.focusin);
+    if (previous?.focusout) document.removeEventListener('focusout', previous.focusout);
     const mouseover = event => {
       const row = event.target?.closest?.(`[${SIDEBAR_HOVER_ATTR}]`);
       if (!row) return;
@@ -826,12 +850,25 @@ INJECTION_SCRIPT = r"""
       if (event.relatedTarget && row.contains(event.relatedTarget)) return;
       setTimeout(hideSidebarTooltip, 0);
     };
+    const focusin = event => {
+      const row=event.target?.closest?.(`[${SIDEBAR_HOVER_ATTR}]`);
+      if(row)showSidebarTooltip(row,row.getAttribute(SIDEBAR_HOVER_ATTR)||'');
+    };
+    const focusout = event => {
+      const row=event.target?.closest?.(`[${SIDEBAR_HOVER_ATTR}]`);
+      if(!row || (event.relatedTarget&&row.contains(event.relatedTarget)))return;
+      hideSidebarTooltip();
+    };
     document.addEventListener('mouseover', mouseover);
     document.addEventListener('mouseout', mouseout);
+    document.addEventListener('focusin', focusin);
+    document.addEventListener('focusout', focusout);
     window.__codexContextTokenInspectorSidebarDelegation = {
       version: RUNTIME_VERSION,
       mouseover,
       mouseout,
+      focusin,
+      focusout,
     };
   }
   function hudMode(root) { return root.dataset.collapsed === 'true' ? 'compact' : 'expanded'; }
@@ -975,7 +1012,8 @@ INJECTION_SCRIPT = r"""
     // The pill has no room for text, so the numbers live in the accessible
     // name and the hover title, which is the same place the skin is named.
     const parts=windows.map(item=>`${windowLabel(item,true)} ${Math.round(item.remaining)}%`);
-    if(Number.isFinite(Number(root.__ctiContext)))parts.push(`CTX ${Math.round(Number(root.__ctiContext))}%`);
+    const contextValue=contextMeterValue(root.__ctiContext);
+    if(contextValue!==null)parts.push(`CTX ${Math.round(contextValue)}%`);
     if(!live)parts.push(quota.status==='loading'?(zh?'正在读取配额…':'Reading quota…'):(zh?'配额暂不可用':'Quota unavailable'));
     if(blocked){
       // The reset countdown is the only actionable part of a block, and the
@@ -991,8 +1029,8 @@ INJECTION_SCRIPT = r"""
     if(!mascot)return;
     let ring=mascot.querySelector('[data-context-ring]');
     if(!ring){ring=document.createElement('span');ring.setAttribute('data-context-ring','');ring.setAttribute('aria-hidden','true');mascot.prepend(ring);}
-    const value=Number(used),known=Number.isFinite(value);
-    const percent=known?Math.max(0,Math.min(100,value)):0;
+    const value=contextMeterValue(used),known=value!==null;
+    const percent=known?value:0;
     ring.dataset.tone=!known?'unknown':percent>=85?'high':percent>=70?'watch':'quiet';
     ring.style.setProperty('--cti-context-sweep',`${percent*2.7}deg`);
     ring.style.setProperty('--cti-context-color','light-dark(#b85b18,#f0a15a)');
@@ -1238,6 +1276,10 @@ INJECTION_SCRIPT = r"""
     const toggle = root.querySelector('[data-cti-toggle]');
     const toggleLabel = root.getAttribute('data-collapsed') === 'true' ? tr('expandMonitor') : tr('collapseMonitor');
     if (toggle?.getAttribute('aria-label') !== toggleLabel) toggle?.setAttribute('aria-label', toggleLabel);
+    for(const [selector,label] of [['[data-refresh]',tr('refreshQuota')],['[data-settings-toggle]',tr('displaySettings')]]){
+      const button=root.querySelector(selector);
+      if(button){button.setAttribute('aria-label',label);button.setAttribute('title',label);}
+    }
   }
   function ensureHud() {
     let root = document.getElementById(ROOT_ID);
@@ -1350,6 +1392,7 @@ INJECTION_SCRIPT = r"""
       if (!row.hasAttribute('data-cti-original-title')) row.setAttribute('data-cti-original-title', existing);
       row.removeAttribute('title');
       row.setAttribute(SIDEBAR_HOVER_ATTR, summaryHover(item));
+      if(!row.matches('a,button')&&row.tabIndex<0)row.tabIndex=0;
     });
   }
   function assistantNodes() {
@@ -1684,6 +1727,7 @@ INJECTION_SCRIPT = r"""
     const quota = payload.quota || {status:'loading', windows:[]};
     const age = quota.updatedAt ? Math.max(0, Math.floor(Date.now()/1000-quota.updatedAt)) : null;
     const live = quota.status === 'live' && age < 120;
+    const stoppedAccount = live && (quota.ordinaryUsageAllowed === false || !!quota.rateLimitReachedType);
     let quotaHtml = '';
     for (const item of live ? quota.windows : []) {
       const duration=windowLabel(item);
@@ -1694,7 +1738,7 @@ INJECTION_SCRIPT = r"""
         minutes >= 1440 ? `${Math.floor(minutes/1440)}${zh ? ' 天 ' : 'd '}${Math.floor(minutes%1440/60)}h` :
         minutes < 60 ? `${minutes}${zh ? ' 分钟后' : ' min'}` :
         `${Math.floor(minutes/60)}h ${minutes%60}m`;
-      const tone = quotaTone(item.remaining);
+      const tone = stoppedAccount ? 'low' : quotaTone(item.remaining);
       const pace = typeof item.paceDelta === 'number' ?
         (Math.abs(item.paceDelta)<2 ? (zh?'符合均匀进度':'On steady pace') : item.paceDelta>0 ?
           `${zh?'快于均匀进度':'Ahead of pace'} ${Math.round(item.paceDelta)}pt` :
@@ -1711,7 +1755,6 @@ INJECTION_SCRIPT = r"""
     // in shorthand, with the shares left to the per-window lines below. A block
     // reports the reset instead, because that is the part anyone can act on.
     if (live && quota.windows.length) {
-      const stoppedAccount = quota.ordinaryUsageAllowed === false || !!quota.rateLimitReachedType;
       const nearest = nearestResetText(quota.windows);
       const note = stoppedAccount
         ? `${zh?'账户已达上限':'Account at its limit'}${nearest?(zh?`，最近重置 ${nearest}`:` · nearest reset ${nearest}`):(zh?'，等待重置':'')}`
@@ -1767,10 +1810,11 @@ INJECTION_SCRIPT = r"""
     const baseline = health?.after == null ? (zh?'等待后续请求':'Awaiting next request') : `${token(health.after)} (${pct(health.afterPercent)})`;
     put('[data-health]', `<div class="cti-source-row"><span class="cti-trust" data-kind="local">${zh?'本地日志':'Local logs'}</span></div>`+(health?.count ? `${zh?'已观察压缩':'Compactions observed'} ${health.count} ${zh?'次':''}<br>${zh?'压后首请求':'First request after compression'} ${baseline}<br><span class="cti-muted">${zh?'含系统与工具，不等于摘要本身大小。':'Includes system/tools; not summary-only size.'}</span>${health.recommendHandoff?`<br><strong>${zh?'建议整理交接，换新任务继续':'Consider a handoff to a new task'}</strong>`:''}` : `<span class="cti-muted">${zh?'尚未观察到压缩事件':'No observed compaction events'}</span>`));
     if (selected) {
-      body.querySelector('[data-context]').setAttribute('data-tone', contextTone(selected.latest_context_percent));
-      put('[data-context]', `<div class="cti-line"><span><span class="cti-trust" data-kind="local">${zh?'本地会话':'Local session'}</span> ${zh?'上下文已用':'Context used'}</span><span class="cti-value">${pct(selected.latest_context_percent)}</span></div>
-        <div class="cti-meter" role="meter" aria-label="${zh?'上下文占用':'Context used'}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.max(0,Math.min(100,selected.latest_context_percent||0))}"><span style="width:${Math.max(0,Math.min(100,selected.latest_context_percent||0))}%"></span></div>
-        <div class="cti-muted">${token(selected.latest_context_tokens)} / ${token(selected.context_window)} · Token</div>`);
+      const contextValue=contextMeterValue(selected.latest_context_percent);
+      body.querySelector('[data-context]').setAttribute('data-tone', contextTone(contextValue));
+      put('[data-context]', `<div class="cti-line"><span><span class="cti-trust" data-kind="local">${zh?'本地会话':'Local session'}</span> ${zh?'上下文已用':'Context used'}</span><span class="cti-value">${pct(contextValue)}</span></div>
+        ${contextValue == null?`<div class="cti-muted">${zh?'上下文占用暂不可用':'Context usage unavailable'}</div>`:`<div class="cti-meter" role="meter" aria-label="${zh?'上下文占用':'Context used'}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${contextValue}"><span style="width:${contextValue}%"></span></div>
+        <div class="cti-muted">${token(selected.latest_context_tokens)} / ${token(selected.context_window)} · Token</div>`}`);
       put('[data-metrics]', `<div class="cti-metric"><span class="cti-muted">${tr('turn')}</span><span class="cti-value">${token(selected.latest_turn_total_tokens)}</span></div>
         <div class="cti-metric"><span class="cti-muted">${tr('session')}</span><span class="cti-value">${token(selected.session_total_tokens)}</span></div>`);
       put('[data-explanation]', `${tr('input')}: ${token(selected.latest_turn_input_tokens)} · ${tr('cachedInput')}: ${token(selected.latest_turn_cached_input_tokens)} · ${tr('output')}: ${token(selected.latest_turn_output_tokens)}<br>
@@ -1848,7 +1892,8 @@ INJECTION_SCRIPT = r"""
   function contextHintGeometry(anchor,toast,viewport,edge) {
     const beside=edge==='left'||edge==='right';
     const rawLeft=edge==='left'?anchor.right+8:edge==='right'?anchor.left-toast.width-8:anchor.left;
-    const rawTop=beside?anchor.top+(anchor.height-toast.height)/2:anchor.bottom+8;
+    const below=anchor.bottom+8;
+    const rawTop=beside?anchor.top+(anchor.height-toast.height)/2:below+toast.height<=viewport.height-8?below:anchor.top-toast.height-8;
     return {
       left:Math.round(Math.max(8,Math.min(viewport.width-toast.width-8,rawLeft))),
       top:Math.round(Math.max(68,Math.min(viewport.height-toast.height-8,rawTop)))
@@ -1891,14 +1936,15 @@ INJECTION_SCRIPT = r"""
     const live = q?.status === 'live' && Date.now()/1000-q.updatedAt < 120;
     const windows = live ? q.windows || [] : [];
     const remaining = windows.length ? Math.min(...windows.map(w => w.remaining)) : null;
-    root.setAttribute('data-tone', quotaTone(remaining));
+    const tone=accountTone(q,remaining,live);
+    root.setAttribute('data-tone', tone);
     title.setAttribute('aria-expanded', String(!collapsed));
     const compact = windows.map(w => `${windowLabel(w,true)} ${Math.round(w.remaining)}%`).join(' · ');
     const text = collapsed ? (compact || `${tr('monitor')} · —`) : tr('monitor');
-    title.title = toneLabel(quotaTone(remaining));
+    title.title = toneLabel(tone);
     if (collapsed) {
-      const cell=(label,value,tone,fill,sub='',figure=null)=>`<span class="cti-mini" data-tone="${tone}"><span class="cti-battery" aria-hidden="true"><i style="height:${fill||0}%"></i></span><span class="cti-mini-copy"><small>${label}</small><strong>${figure!=null?figure:(value==null?'—':Math.round(value)+'%')}</strong>${sub?`<em>${sub}</em>`:''}</span></span>`;
-      const ctx=root.__ctiContext;
+      const cell=(label,value,tone,fill,sub='',figure=null)=>`<span class="cti-mini" data-tone="${tone}">${fill==null?'':`<span class="cti-battery" aria-hidden="true"><i style="height:${fill}%"></i></span>`}<span class="cti-mini-copy"><small>${label}</small><strong>${figure!=null?figure:(value==null?'—':Math.round(value)+'%')}</strong>${sub?`<em>${sub}</em>`:''}</span></span>`;
+      const ctx=contextMeterValue(root.__ctiContext);
       const h=root.__ctiHealth;
       const sub=h?.count ? `↻${h.count} · ${h.after==null?'…':token(h.after)}` : '';
       const zhComp=uiLanguage()==='zh';
