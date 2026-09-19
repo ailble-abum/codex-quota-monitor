@@ -15,6 +15,12 @@ All six companion skins ship WebP artwork inlined into the injected script as da
 
 Quota labels derive from actual window durations, not primary/secondary array positions. A missing 5h window must not be synthesized. Unknown/absent limits are neither zero remaining nor unlimited.
 
+Every reported window is an AND gate, so the collapsed bar and the quota headline answer with a time budget rather than a share: how long the account can keep working at the pace it has been spending, taken from whichever window binds first. A window that would refill before it runs out cannot bind within that horizon, so it is reported as "at least" plus a floor -- never present a floor as a measurement. A budget needs a window duration and a reset stamp; without both there is no duration to report and the bar falls back to the percentage rather than inventing a countdown.
+
+A reached limit is a state, not a magnitude. The gauge then stops filling per window and becomes one stopped bar with a mark drawn across it, and the nearest reset is named with it. Do not restore per-window fills under a block: one spent window beside a healthy one reads as partly usable while the account is already stopped, which is the misreading the AND gate invites.
+
+The settings panel footer and `monitorctl.py status` both name the installed build: the declared plugin version, the cachebuster Codex keys its cache directory on, the injected runtime version, and the install time. A plugin cache does not refresh on its own, and the injected runtime version is read back out of the script the injector actually holds. When the overlay looks unchanged, read that line before reading the diff -- a runtime version below the one in the source means the long-lived injector has not restarted, not that the code is wrong.
+
 Context hints last seven seconds, default at 75%/85% of the reported window, and can be disabled in settings. These are heuristic workflow reminders, not researched universal cost-optimal values. Different models, cached input, repeated prefix reuse, and compaction policy matter; never promise a fixed-token handoff saves money. Preserve settings and avoid repeated prompts for the same task/stage.
 
 Use `python3 scripts/monitorctl.py status` before starting to avoid duplicate monitors. Paths below are relative to the plugin root (two levels above this skill directory). The overlay defaults to the bottom-left and can be dragged or collapsed.
