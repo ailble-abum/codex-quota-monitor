@@ -150,6 +150,28 @@ const {chromium, webkit} = require('playwright');
       assert.equal(await toggle.getAttribute('aria-label'), '收起监控');
       await page.locator('[data-settings-toggle]').click();
       assert.equal(await page.locator('[data-settings-toggle]').getAttribute('aria-expanded'), 'true');
+      await page.evaluate(() => {
+        Object.defineProperty(navigator, 'clipboard', {configurable:true, value:{writeText: text => {
+          window.handoffText = text;
+          window.handoffCalls = (window.handoffCalls || 0) + 1;
+          return new Promise(resolve => {window.finishHandoff = resolve;});
+        }}});
+      });
+      await page.locator('[data-handoff]').click();
+      await page.locator('[data-handoff]').evaluate(button => button.click());
+      assert.equal(await page.evaluate(() => window.handoffCalls), 1);
+      assert.equal(await page.locator('[data-handoff]').isDisabled(), true);
+      assert.ok((await page.evaluate(() => window.handoffText)).includes('验证'));
+      await page.evaluate(() => window.finishHandoff());
+      await page.waitForFunction(() => !document.querySelector('[data-handoff]').disabled);
+      assert.ok((await page.locator('[data-handoff]').textContent()).includes('已复制'));
+      if (process.argv[3]) {
+        await page.addStyleTag({content: ':root{color-scheme:light dark}body{background:Canvas}'});
+        for (const colorScheme of ['light','dark']) {
+          await page.emulateMedia({colorScheme});
+          await page.locator('[data-handoff]').screenshot({path:path.join(process.argv[3],`${engine.name()}-handoff-${colorScheme}.png`)});
+        }
+      }
       await page.evaluate(() => { window.originalUnits = document.querySelector('.cti-unit-group'); });
       for (const language of ['en', 'zh']) {
         await page.locator('[data-language]').selectOption(language);

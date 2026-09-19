@@ -83,7 +83,9 @@
     panel.addEventListener('click', event => {
       const button = event.target.closest('button');
       if (!button || !panel.contains(button)) return;
-      if (button.hasAttribute('data-cti-unit')) {
+      if (button.hasAttribute('data-handoff')) {
+        void copyHandoff(button);
+      } else if (button.hasAttribute('data-cti-unit')) {
         event.preventDefault();
         event.stopPropagation();
         setUnitMode(button.dataset.ctiUnit);

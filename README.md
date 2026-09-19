@@ -60,3 +60,5 @@ python3 -m unittest discover -s tests -v
 [V2 正文挂载与语言重建](docs/panel-body-contract.md) 保留单位节点与设置区展开状态，修复切换语言后设置关闭但按钮仍标为展开的问题；正文模板继续归因。
 
 [V2 语言偏好与事件](docs/panel-language-contract.md) 校验自动/中/英选择，读取失败回退自动，写入失败保留当前挂载的临时语言，正文重建不重复绑定。
+
+[V2 复制交接动作](docs/panel-handoff-contract.md) 使用独立双语指令与根节点委托，阻止同按钮重复复制，并忽略已断开按钮的异步完成。
