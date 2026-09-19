@@ -95,6 +95,15 @@ def build(directory):
     script = cut(script, "      const language=body.querySelector('[data-language]');", "      body.querySelectorAll('[data-layout-preset]')")
     script = cut(script, "      body.querySelector('[data-handoff]').addEventListener(", "      alerts.checked = localStorage.getItem('cti-alerts')")
     script = cut(script, "      const details = body.querySelector('[data-details]');", "      const alerts = body.querySelector('[data-alerts]');")
+    script = cut(script, "      for(const setting of ['motion','reminders'])", "      const alerts = body.querySelector('[data-alerts]');")
+    for old, new, expected in (
+            ("localStorage.getItem('cti-companion-motion')!=='false'", "companionPreference('motion')", 2),
+            ("localStorage.getItem('cti-companion-motion')==='false'", "!companionPreference('motion')", 1),
+            ("localStorage.getItem('cti-context-reminders')==='false'", "!companionPreference('context')", 1),
+            ("localStorage.getItem('cti-companion-reminders')==='false'", "!companionPreference('reminders')", 1)):
+        if script.count(old) != expected:
+            raise ValueError('unexpected companion preference readers')
+        script = script.replace(old, new)
     # Remove these after the intervening old mount/sidebar spans are gone.
     script = cut(script, '  function updateUnitButtons(', '  function applyHud(')
     start, end = '    if (selected) {', '    const errorLabels='
@@ -137,6 +146,7 @@ def build(directory):
     assets = Path(__file__).parents[1] / 'quota_monitor'
     script = (script[:script.index(tail)] + (assets / 'panel_format.js').read_text()
               + (assets / 'panel_language.js').read_text()
+              + (assets / 'panel_companion_preferences.js').read_text()
               + (assets / 'panel_controls.js').read_text()
               + (assets / 'panel_details.js').read_text()
               + (assets / 'panel_context.js').read_text()

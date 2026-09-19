@@ -79,6 +79,8 @@
       if (event.target.matches('[data-language]')) {
         setLanguagePreference(event.target.value);
         applyAll(window.__codexContextTokenInspectorPayload);
+      } else {
+        changeCompanionControl(panel, event.target);
       }
     });
     panel.addEventListener('click', event => {

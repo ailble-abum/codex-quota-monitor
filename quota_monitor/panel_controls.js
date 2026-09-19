@@ -31,6 +31,7 @@
   }
 
   function updateHudLanguage(root) {
+    updateCompanionControls(root);
     const chinese = uiLanguage() === 'zh';
     root.lang = chinese ? 'zh-CN' : 'en';
     const language = root.querySelector('[data-language]');

@@ -237,6 +237,37 @@ const {chromium, webkit} = require('playwright');
       await page.locator('[data-details] > summary').click();
       await page.locator('[data-skins] > summary').click();
       await page.waitForFunction(() => localStorage.getItem('cti-details-open') === 'false' && localStorage.getItem('cti-skins-open') === 'false');
+      await page.evaluate(() => {
+        window.companionSetItem = Storage.prototype.setItem;
+        Storage.prototype.setItem = function(key, value) {
+          if (['cti-companion-motion','cti-companion-reminders','cti-context-reminders'].includes(key)) throw new DOMException('Full', 'QuotaExceededError');
+          return window.companionSetItem.call(this, key, value);
+        };
+      });
+      for (const selector of ['[data-companion-motion]','[data-companion-reminders]','[data-context-alerts]']) {
+        await page.locator(selector).uncheck();
+      }
+      await publish();
+      assert.equal(await page.locator('#codex-context-token-inspector-mascot').getAttribute('data-motion'), 'false');
+      await page.locator('[data-language]').selectOption('en');
+      for (const selector of ['[data-companion-motion]','[data-companion-reminders]','[data-context-alerts]']) {
+        assert.equal(await page.locator(selector).isChecked(), false);
+      }
+      if (process.argv[3]) {
+        await page.locator('[data-companion-motion]').scrollIntoViewIfNeeded();
+        for (const colorScheme of ['light','dark']) {
+          await page.emulateMedia({colorScheme});
+          await page.locator('.cti-hud').screenshot({path:path.join(process.argv[3],`${engine.name()}-options-${colorScheme}.png`)});
+        }
+      }
+      await page.evaluate(() => { Storage.prototype.setItem = window.companionSetItem; });
+      for (const selector of ['[data-companion-motion]','[data-companion-reminders]','[data-context-alerts]']) {
+        await page.locator(selector).check();
+      }
+      assert.equal(await page.locator('#codex-context-token-inspector-mascot').getAttribute('data-motion'), 'true');
+      assert.deepEqual(await page.evaluate(() => ['cti-companion-motion','cti-companion-reminders','cti-context-reminders'].map(key => localStorage.getItem(key))), ['true','true','true']);
+      await page.locator('[data-language]').selectOption('zh');
+      assert.deepEqual(await page.evaluate(() => window.languageErrors), []);
       payload.build = {pluginVersion: '<b>test</b>'};
       payload.update = {status:'update_available',latestSemver:'2.0.0',url:'https://example.test/release'};
       await publish();
