@@ -34,11 +34,40 @@ def finite_float(value):
     return number
 
 
+def open_in_root(root, relative, *, directory=False):
+    """Open beneath an explicit root without following child symlinks (Unix)."""
+    path = Path(relative)
+    if path.is_absolute() or '..' in path.parts:
+        raise ValueError('expected relative path within root')
+    if (not hasattr(os, 'O_NOFOLLOW') or not hasattr(os, 'O_DIRECTORY')
+            or os.open not in os.supports_dir_fd):
+        raise OSError('safe relative access unavailable')
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    parent = os.open(root, flags)
+    try:
+        parts = path.parts if directory else path.parts[:-1]
+        for part in parts:
+            child = os.open(part, flags, dir_fd=parent)
+            os.close(parent)
+            parent = child
+        if directory:
+            result, parent = parent, None
+            return result
+        return os.open(path.parts[-1], os.O_RDONLY | os.O_NOFOLLOW | getattr(os, 'O_NONBLOCK', 0),
+                       dir_fd=parent)
+    finally:
+        if parent is not None:
+            os.close(parent)
+
+
 class JournalReader:
-    def __init__(self, path, *, read_budget=262144, line_limit=1048576):
+    def __init__(self, path, *, read_budget=262144, line_limit=1048576, root=None):
         if read_budget <= 0 or line_limit <= 0:
             raise ValueError('limits must be positive')
         self.path = Path(path)
+        self.root = root
+        if root is not None and (self.path.is_absolute() or '..' in self.path.parts or not self.path.parts):
+            raise ValueError('expected relative journal path')
         self.read_budget = read_budget
         self.line_limit = line_limit
         self._identity = None
@@ -49,7 +78,8 @@ class JournalReader:
     def poll(self):
         result = ReadBatch(pending=bool(self._pending) or self._discarding)
         try:
-            descriptor = os.open(self.path, os.O_RDONLY | getattr(os, 'O_NONBLOCK', 0))
+            descriptor = (open_in_root(self.root, self.path) if self.root is not None else
+                          os.open(self.path, os.O_RDONLY | getattr(os, 'O_NONBLOCK', 0)))
             with os.fdopen(descriptor, 'rb') as stream:
                 info = os.fstat(stream.fileno())
                 if not stat.S_ISREG(info.st_mode):

@@ -76,6 +76,33 @@ async function main() {
     assert.equal(once.rows.at(-1).cleanup, 'released');
     assert.equal(await page.locator('output').textContent(), '');
 
+    await fs.mkdir(path.join(directory, 'sessions'));
+    await fs.copyFile(path.join(directory, 'one.jsonl'), path.join(directory, 'sessions/random.jsonl'));
+    await fs.writeFile(config, JSON.stringify({origin: `http://127.0.0.1:${port}`, page_url: 'about:blank',
+      session_root: 'sessions', panel: true}));
+    await mount();
+    const indexed = start();
+    await until(() => indexed.rows.some(row => row.status === 'updated'));
+    await page.waitForFunction(() => document.querySelector('output').textContent === '250');
+    await fs.copyFile(path.join(directory, 'one.jsonl'), path.join(directory, 'sessions/duplicate.jsonl'));
+    await until(() => indexed.rows.some(row => row.status === 'data_index_wait'));
+    await page.waitForFunction(() => document.querySelector('output').textContent === '');
+    await new Promise(resolve => setTimeout(resolve, 600));
+    assert.equal(indexed.proc.exitCode, null, indexed.stderr());
+    indexed.proc.kill('SIGTERM');
+    await until(() => indexed.proc.exitCode !== null);
+    assert.equal(indexed.proc.exitCode, 143, indexed.stderr());
+    // SIGTERM can interrupt a CDP exchange; that intentionally closes the socket.
+    assert.ok(['released', 'lease_pending'].includes(indexed.rows.at(-1).cleanup));
+    assert.equal(await page.locator('output').textContent(), '');
+    assert.equal(indexed.stderr(), '');
+    const ambiguousOnce = start(['--once']);
+    await until(() => ambiguousOnce.proc.exitCode !== null);
+    assert.equal(ambiguousOnce.proc.exitCode, 2, ambiguousOnce.stderr());
+    assert.equal(ambiguousOnce.rows[0].status, 'data_ambiguous');
+    assert.equal(ambiguousOnce.rows.at(-1).cleanup, 'released');
+    await fs.unlink(path.join(directory, 'sessions/duplicate.jsonl'));
+
     await mount();
     const closed = start();
     await until(() => closed.rows.some(row => row.status === 'updated'));
@@ -86,7 +113,7 @@ async function main() {
     assert.equal(closed.rows.at(-1).reason, 'failure_limit');
     assert.equal(closed.rows.at(-1).cleanup, 'lease_pending');
     assert.equal(closed.rows.filter(row => row.status === 'discovery_unavailable').length, 1);
-    console.log('live CLI Chromium: relative config, values, reload recovery, SIGINT/SIGTERM release, once, host exit and quiet failure limit passed');
+    console.log('live CLI Chromium: relative config, values, reload recovery, SIGINT/SIGTERM release, once, host exit, directory association/invalidation and quiet failure limit passed');
   } finally {
     for (const proc of children) {
       if (proc.exitCode === null && proc.signalCode === null) {

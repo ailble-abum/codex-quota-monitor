@@ -13,6 +13,7 @@ from pathlib import Path
 from .cdp import CDPClient, CDPError
 from .compat import panel_payload, thread_key
 from .journal import SessionJournal
+from .indexed import DirectorySource
 from .reader import finite_float, reject_constant
 
 
@@ -107,7 +108,7 @@ class UpdateLoop:
 
     panel=True forwards to an already installed consumer; it never installs UI.
     """
-    def __init__(self, origin, page_url, paths, *, panel=False, host='explicit'):
+    def __init__(self, origin, page_url, paths=None, *, panel=False, host='explicit', session_root=None):
         local_origin(origin)
         if host not in ('explicit', 'codex-sidebar'):
             raise ValueError('invalid host adapter')
@@ -118,7 +119,9 @@ class UpdateLoop:
         if not isinstance(page_url, str) or not page_url:
             raise ValueError('explicit page URL required')
         self.origin, self.page_url = origin, page_url
-        self.source = JournalSource(paths)
+        if (paths is None) == (session_root is None):
+            raise ValueError('exactly one session source required')
+        self.source = DirectorySource(session_root) if session_root is not None else JournalSource(paths)
         self.client = None
         self.status = 'idle'
         self.owner = uuid.uuid4().hex
@@ -169,6 +172,9 @@ class UpdateLoop:
             self.status = 'updated' if applied is True else 'changed'
             if applied is True:
                 self._published = True
+                source_status = getattr(self.source, 'status', 'ok')
+                if source_status != 'ok':
+                    self.status = 'data_' + source_status
         except (CDPError, asyncio.TimeoutError) as error:
             await self.close()
             self.status = str(error) if isinstance(error, CDPError) else 'discovery_timeout'

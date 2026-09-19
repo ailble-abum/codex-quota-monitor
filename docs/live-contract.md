@@ -22,7 +22,7 @@
 }
 ```
 
-示例仅描述协议，运行时必须换成调用方自己授权的隔离目标。origin/page_url/journals 必填；host 默认 explicit，另支持 codex-sidebar；panel 默认 false。页面/面板协议见 [宿主与面板契约](host-panel-contract.md)。panel=true 要求目标已挂载消费者 hook；命令不自动注入旧 renderer。
+示例仅描述协议，运行时必须换成调用方自己授权的隔离目标。origin/page_url 必填，journals 与 session_root 必选其一（见[受限目录关联](directory-index-contract.md)）；host 默认 explicit，另支持 codex-sidebar；panel 默认 false。页面/面板协议见 [宿主与面板契约](host-panel-contract.md)。panel=true 要求目标已挂载消费者 hook；命令不自动注入旧 renderer。
 
 配置文件最大 64 KiB；1–256 个任务映射；重复键、未知字段、非法任务 ID、错误类型、非回环 origin 均拒绝。任务 key 必须是无 local: 前缀的规范 ID，日志中的 session_meta 继续核对该身份。日志相对路径相对于配置文件所在目录；绝对路径也可显式提供。不会据此扫描父目录、读取认证或推断其他会话。
 
@@ -37,7 +37,7 @@ python -m quota_monitor.live --config /absolute/synthetic/config.json --interval
 
 - stdout 是逐行 JSON：状态改变才输出 `{ "event": "state", "status": "updated" }`。相同状态的持续轮询不反复打印，不调用模型。诊断不输出日志正文、任务 ID、路径、URL 或私密异常内容。
 - updated 表示该次快照被页面接受，可能是用于清空的空摘要；不是日志完整/账户可用/安装成功的证明。unselected 表示没有合法活动任务；changed 表示读写期间任务改变。
-- updated/unselected/changed 视为连接链正常，重置连续失败计数。其他状态计入连续失败；默认 5 次后停止。失败间隔为 interval、2×interval、4×interval…，最多 60 秒；恢复后回到原间隔。interval 允许 0.1–60 秒，失败上限允许 1–100。
+- updated/unselected/changed 视为连接链正常，重置连续失败计数。目录来源的 data_* 状态也重置失败计数，含义见目录契约。其他状态计入连续失败；默认 5 次后停止。失败间隔为 interval、2×interval、4×interval…，最多 60 秒；恢复后回到原间隔。interval 允许 0.1–60 秒，失败上限允许 1–100。
 - --once 执行一轮并立刻走释放流程：updated 返回 0，其他结果返回 2。它是一次连接/投影检查，不用于把快照永久留在页面。
 - 常规退出码：0 单次成功；2 配置/参数/依赖错误、单次未发布或连续失败上限；3 未预期运行/清理错误；130 SIGINT；143 SIGTERM。
 - SIGINT/SIGTERM 只取消本进程拥有的协程，信号处理器在清理后恢复；不会杀死或重启宿主。进入清理阶段后，信号只更新退出原因，不再取消清理；包括 --once 边界刚排队的取消。重复信号不反复打断第一次清理。若强制 SIGKILL，则不会执行 Python finally，仍依赖页内租期。
@@ -78,4 +78,4 @@ Node 使用已有 Playwright，通过 NODE_PATH 指向既有 node_modules；没�
 
 ## 接续边界
 
-已具备独立、显式配置的前台运行入口；真实宿主窗口仍未接入，现用安装保持不变。仍需完成受限生产会话关联、消费者初始化/来源替换、原生隔离验收，以及后续安装/Windows/发行工作。下一步优先实现明确授权目录中的受限会话关联，让配置不再依赖人工逐文件映射；不得把现有全目录 discover 放进高频轮询。
+已具备独立、显式配置的前台运行入口；真实宿主窗口仍未接入，现用安装保持不变。仍需完成受限生产会话关联、消费者初始化/来源替换、原生隔离验收，以及后续安装/Windows/发行工作。受限目录关联已在后续[目录索引阶段](directory-index-contract.md)实现并以合成数据验证；后续优先补齐独立消费者初始化。

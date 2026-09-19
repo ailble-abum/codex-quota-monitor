@@ -37,19 +37,26 @@ def load_config(path):
     if len(raw) > 65536:
         raise ValueError('config limit')
     config = json.loads(raw, object_pairs_hook=unique_object, parse_constant=reject_constant)
-    if (not isinstance(config, dict) or set(config) - {'origin', 'page_url', 'journals', 'host', 'panel'}
-            or not {'origin', 'page_url', 'journals'} <= set(config)):
+    if (not isinstance(config, dict) or set(config) - {'origin', 'page_url', 'journals', 'session_root', 'host', 'panel'}
+            or not {'origin', 'page_url'} <= set(config)
+            or ('journals' in config) == ('session_root' in config)):
         raise ValueError('invalid config fields')
-    paths = config.pop('journals')
-    if not isinstance(paths, dict) or not 1 <= len(paths) <= 256:
-        raise ValueError('invalid journals')
-    for key, value in paths.items():
-        if (thread_key(key) != key or not isinstance(value, str) or not value or '\0' in value):
-            raise ValueError('invalid journal mapping')
+    if 'journals' in config:
+        paths = config.pop('journals')
+        if not isinstance(paths, dict) or not 1 <= len(paths) <= 256:
+            raise ValueError('invalid journals')
+        for key, value in paths.items():
+            if (thread_key(key) != key or not isinstance(value, str) or not value or '\0' in value):
+                raise ValueError('invalid journal mapping')
+        config['paths'] = {key: path.parent / value for key, value in paths.items()}
+    else:
+        root = config['session_root']
+        if not isinstance(root, str) or not root or '\0' in root:
+            raise ValueError('invalid session root')
+        config['session_root'] = path.parent / root
     url = config['page_url']
     if not isinstance(url, str) or not 1 <= len(url) <= 8192 or any(ord(c) < 32 for c in url):
         raise ValueError('invalid page URL')
-    config['paths'] = {key: path.parent / value for key, value in paths.items()}
     return config
 
 
@@ -78,7 +85,9 @@ async def supervise(loop, *, interval, max_failures, once):
             if once:
                 reason, code = 'once', 0 if status == 'updated' else 2
                 break
-            failures = 0 if status in ('updated', 'unselected', 'changed') else failures + 1
+            failures = 0 if status in ('updated', 'unselected', 'changed',
+                'data_index_wait', 'data_loading', 'data_incomplete', 'data_unavailable',
+                'data_not_found', 'data_ambiguous') else failures + 1
             if failures >= max_failures:
                 reason, code = 'failure_limit', 2
                 break

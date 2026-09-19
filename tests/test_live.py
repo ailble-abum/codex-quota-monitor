@@ -64,6 +64,22 @@ class LiveCLITests(unittest.TestCase):
                 self.value = {'origin': self.origin, 'page_url': 'about:blank',
                               'journals': {'one': 'one.jsonl'}}
 
+    def test_directory_source_config_is_explicit_and_exclusive(self):
+        from quota_monitor.live import load_config
+        self.value.pop('journals')
+        self.value['session_root'] = 'sessions'
+        self.config.write_text(json.dumps(self.value))
+        self.assertEqual(load_config(self.config)['session_root'], self.config.parent / 'sessions')
+        for root in ('', None, 123, 'bad\0root'):
+            self.value['session_root'] = root
+            self.config.write_text(json.dumps(self.value))
+            with self.assertRaises(ValueError):
+                load_config(self.config)
+        self.value.update(session_root='sessions', journals={'one': 'one.jsonl'})
+        self.config.write_text(json.dumps(self.value))
+        with self.assertRaises(ValueError):
+            load_config(self.config)
+
     def test_duplicate_config_keys_are_rejected(self):
         self.config.write_text('{"origin":"PRIVATE", "origin":"other"}')
         result = subprocess.run([sys.executable, '-m', 'quota_monitor.live', '--config', str(self.config)],
