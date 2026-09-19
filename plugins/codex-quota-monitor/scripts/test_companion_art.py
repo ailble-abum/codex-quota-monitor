@@ -59,6 +59,16 @@ class CompanionArtTests(unittest.TestCase):
     def test_frames_cover_exactly_the_bundled_skins(self):
         self.assertEqual(sorted(SOURCE_FRAMES), sorted(COMPANION_ART))
 
+    def test_the_whole_roster_is_bundled(self):
+        """All six companions ship artwork, none of them a vector fallback.
+
+        The overlay still falls back to its inline vector when an entry is
+        missing, so a render that stopped resolving would not fail anything
+        else -- the picker would just quietly show the drawn mascot for that
+        skin. The mint cat was the last one waiting on art.
+        """
+        self.assertEqual(sorted(COMPANION_ART), ["candy", "cat", "corgi", "frost", "mint", "tea"])
+
     def test_every_companion_reaches_its_cut_edge(self):
         """A gutter between the body and its cut edge floats the mascot.
 

@@ -39,6 +39,20 @@ class InspectorTests(unittest.TestCase):
         self.assertNotIn("repeat(5,", INJECTION_SCRIPT)
         self.assertIn("grid-template-columns:repeat(auto-fit,minmax(72px,1fr))", INJECTION_SCRIPT)
 
+    def test_docked_card_hugs_its_artwork(self):
+        # Every sprite is cropped flush to its own cut edge, so a floor width
+        # on the card would only ever show as padding beside the narrower
+        # companions -- the cat, a head study at 48px tall, is under half the
+        # width of the widest of them.
+        self.assertIn('.cti-edge-mascot[data-art="true"] { width:auto; min-width:0;', INJECTION_SCRIPT)
+
+    def test_a_new_runtime_rebuilds_the_companion(self):
+        # The companion is otherwise only rebuilt when the skin or the dock
+        # changes, so a redrawn bitmap would never reach a window that keeps
+        # the same skin selected across a plugin update.
+        refresh = block("function applyHud", "if (!body.querySelector")
+        self.assertIn("if (runtimeChanged) applyMascotSkin(root);", refresh)
+
     def test_bitmap_art_precedes_the_vector_mascot(self):
         markup = block("function mascotMarkup", "function skinButtons")
         self.assertIn("mascotArt(id)", markup)
