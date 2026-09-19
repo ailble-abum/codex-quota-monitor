@@ -30,3 +30,5 @@ python3 -m unittest discover -s tests -v
 [受管消费者卸载](docs/consumer-dispose-contract.md) 支持带 owner 保护的同步 dispose，候选可清理自有节点、全局拖动监听器及伴宠定时器；断连时仍报告未确认清理。
 
 [保留样式范围清理](docs/panel-css-contract.md) 移除无调用样式，限制裸属性规则在面板内，避免修改宿主同名属性元素；其余保留样式继续归因。
+
+[V2 数值显示替换](docs/panel-format-contract.md) 替换 token/pct 并移除旧 n，保留四种单位显示，拒绝非有限数值；完整 renderer 替换仍在推进。

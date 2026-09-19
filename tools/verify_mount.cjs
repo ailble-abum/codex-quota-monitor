@@ -51,6 +51,11 @@ const {chromium, webkit} = require('playwright');
       await page.locator('[data-cti-unit="raw"]').click();
       assert.equal(await page.evaluate(() => localStorage.getItem('codex-context-token-inspector-unit')), 'raw');
       assert.equal(await page.locator('[data-context] [role="meter"]').getAttribute('aria-valuenow'), '50');
+      for (const [unit, expected] of [['k', '0.50K / 1.00K'], ['m', '0.00M / 0.00M'], ['auto', '500 / 1K'], ['raw', '500 / 1,000']]) {
+        await page.locator(`[data-cti-unit="${unit}"]`).click();
+        assert.ok((await page.locator('[data-context]').textContent()).includes(expected), unit);
+      }
+
       await page.locator('[data-settings-toggle]').click();
       assert.equal(await page.locator('[data-settings-toggle]').getAttribute('aria-expanded'), 'false');
       // Drag suppression is an existing layout contract, not a second click.
