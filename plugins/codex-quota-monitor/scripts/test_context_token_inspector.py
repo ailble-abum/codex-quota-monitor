@@ -12,6 +12,7 @@ class InspectorTests(unittest.TestCase):
         self.assertIn("function dockCandidate", INJECTION_SCRIPT)
         self.assertIn("distance<=14", INJECTION_SCRIPT)
         self.assertIn("setTimeout(()=>", INJECTION_SCRIPT)
+        self.assertGreaterEqual(INJECTION_SCRIPT.count('<svg viewBox="0 0 44 48"'), 5)
         for skin in ("candy", "corgi", "mint", "frost", "tea"):
             self.assertIn(f"{skin}:", INJECTION_SCRIPT)
 

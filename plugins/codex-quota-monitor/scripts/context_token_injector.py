@@ -472,7 +472,7 @@ INJECTION_SCRIPT = r"""
 (payload => {
   // Bump this only when closures or event handlers change. A long-lived
   // renderer may still contain an observer from an older plugin release.
-  const RUNTIME_VERSION = 14;
+  const RUNTIME_VERSION = 15;
   const ROOT_ID = 'codex-context-token-inspector-root';
   const STYLE_ID = 'codex-context-token-inspector-style';
   const FOOTER_ATTR = 'data-context-token-footer';
@@ -541,20 +541,36 @@ INJECTION_SCRIPT = r"""
   }
 
   const MASCOT_SKINS = {
-    candy: {emoji:'👧🏻', zh:'软糖女孩', en:'Candy Girl', accent:'#ff9fc5'},
-    corgi: {emoji:'🐶', zh:'柯基助手', en:'Corgi Helper', accent:'#f2ae62'},
-    mint: {emoji:'🧑🏻', zh:'薄荷萌男', en:'Mint Boy', accent:'#70d4a6'},
-    frost: {emoji:'🧑🏼‍🦳', zh:'霜夜先生', en:'Mr. Frost', accent:'#8ab5ff'},
-    tea: {emoji:'👩🏻', zh:'红茶御姐', en:'Tea Lady', accent:'#c97b88'},
+    candy: {zh:'软糖女孩', en:'Candy Girl', accent:'#ff9fc5'},
+    corgi: {zh:'柯基助手', en:'Corgi Helper', accent:'#f2ae62'},
+    mint: {zh:'薄荷萌男', en:'Mint Boy', accent:'#70d4a6'},
+    frost: {zh:'霜夜先生', en:'Mr. Frost', accent:'#8ab5ff'},
+    tea: {zh:'红茶御姐', en:'Tea Lady', accent:'#c97b88'},
   };
+  function mascotSvg(id) {
+    const art={
+      candy:`<svg viewBox="0 0 44 48" aria-hidden="true"><circle cx="11" cy="10" r="7" fill="#6b3d35"/><circle cx="33" cy="10" r="7" fill="#6b3d35"/><path d="M5 27c0-13 7-20 17-20s17 7 17 20v15H5z" fill="#714239"/><circle cx="22" cy="25" r="13" fill="#ffd8c2"/><path d="M10 20c2-9 8-13 14-12 6 1 10 5 11 12-5-1-8-4-10-8-2 5-7 8-15 8z" fill="#714239"/><circle cx="17" cy="25" r="1.5" fill="#3e2b2a"/><circle cx="27" cy="25" r="1.5" fill="#3e2b2a"/><path d="M19 31q3 3 6 0" fill="none" stroke="#c76870" stroke-width="1.4" stroke-linecap="round"/><path d="M8 48v-8c2-6 7-9 14-9s12 3 14 9v8" fill="#ff9fc5"/><path d="m34 8 1.3 2.7 3 .4-2.2 2.1.5 3-2.6-1.4-2.7 1.4.6-3-2.2-2.1 3-.4z" fill="#ffe07d"/><circle cx="9" cy="43" r="4" fill="#ffd8c2"/><circle cx="35" cy="43" r="4" fill="#ffd8c2"/></svg>`,
+      corgi:`<svg viewBox="0 0 44 48" aria-hidden="true"><path d="m5 19 2-15 11 9M39 19 37 4 26 13" fill="#d9863b" stroke="#a95e27" stroke-width="1.5"/><path d="m8 8 3 8 5-3M36 8l-3 8-5-3" fill="#ffb98a"/><path d="M5 27c0-12 7-19 17-19s17 7 17 19v15H5z" fill="#dc8a42"/><path d="M18 9h8l3 17-7 8-7-8z" fill="#fff0dc"/><ellipse cx="22" cy="29" rx="10" ry="8" fill="#fff0dc"/><circle cx="15" cy="24" r="2" fill="#33241e"/><circle cx="29" cy="24" r="2" fill="#33241e"/><path d="m19 28 3-2 3 2-3 3z" fill="#33241e"/><path d="M18 33q4 4 8 0" fill="#ef7b82"/><path d="M7 48v-8c2-5 7-8 15-8s13 3 15 8v8" fill="#c97835"/><circle cx="9" cy="43" r="4" fill="#fff0dc"/><circle cx="35" cy="43" r="4" fill="#fff0dc"/></svg>`,
+      mint:`<svg viewBox="0 0 44 48" aria-hidden="true"><path d="M6 26C6 12 12 5 23 5c10 0 16 8 15 21v16H6z" fill="#2c292d"/><circle cx="22" cy="25" r="13" fill="#f3c8ad"/><path d="M8 19C10 7 18 4 25 6c7 1 11 7 11 14-5-1-9-5-10-9-3 5-8 8-18 8z" fill="#302d31"/><path d="M11 14c4-6 12-8 18-6M18 7c-3 3-5 7-5 11" fill="none" stroke="#49444b" stroke-width="3" stroke-linecap="round"/><circle cx="17" cy="25" r="1.5" fill="#352c2c"/><circle cx="27" cy="25" r="1.5" fill="#352c2c"/><path d="M19 31q3 2 6 0" fill="none" stroke="#9b5f62" stroke-width="1.4" stroke-linecap="round"/><path d="M7 48v-8c2-6 7-9 15-9s13 3 15 9v8" fill="#70d4a6"/><path d="m18 35 4 4 4-4" fill="none" stroke="#d9fff0" stroke-width="1.5"/><circle cx="9" cy="43" r="4" fill="#f3c8ad"/><circle cx="35" cy="43" r="4" fill="#f3c8ad"/></svg>`,
+      frost:`<svg viewBox="0 0 44 48" aria-hidden="true"><path d="M5 27C5 12 12 5 23 5s16 8 16 22v15H5z" fill="#171a20"/><circle cx="22" cy="25" r="13" fill="#efd1c1"/><path d="M7 19C9 9 16 4 24 5c8 0 13 6 13 15-6-2-9-6-10-10-4 5-9 8-20 9z" fill="#d9e1ea"/><path d="M13 8c8-4 15-1 18 2-6 1-10 4-15 9" fill="none" stroke="#788493" stroke-width="3" stroke-linecap="round"/><path d="M15 25h4M25 25h4" stroke="#578ec7" stroke-width="1.7" stroke-linecap="round"/><path d="M20 31q2 1 4 0" fill="none" stroke="#915d62" stroke-width="1.2" stroke-linecap="round"/><path d="M6 48v-9c3-6 8-8 16-8s13 2 16 8v9" fill="#20252d"/><path d="m15 34 7 8 7-8" fill="#0e1116"/><path d="m20 38 2 3 2-3" fill="#8ab5ff"/><circle cx="9" cy="43" r="4" fill="#252b34"/><circle cx="35" cy="43" r="4" fill="#252b34"/></svg>`,
+      tea:`<svg viewBox="0 0 44 48" aria-hidden="true"><path d="M4 28C4 12 12 4 22 4s18 8 18 24v17H4z" fill="#5d2630"/><circle cx="22" cy="24" r="13" fill="#f2c5ad"/><path d="M7 20C9 8 16 4 24 5c8 1 13 7 13 15-5-2-9-6-10-10-4 5-10 8-20 10z" fill="#6b2d37"/><path d="M8 16c-2 9-1 19 4 28M36 16c2 9 1 19-4 28" fill="none" stroke="#7e3541" stroke-width="4" stroke-linecap="round"/><path d="M15 24q2-2 4 0M25 24q2-2 4 0" fill="none" stroke="#4a2929" stroke-width="1.5" stroke-linecap="round"/><path d="M19 30q3 3 6 0" fill="none" stroke="#b74f61" stroke-width="1.4" stroke-linecap="round"/><path d="M7 48v-9c3-6 8-8 15-8s12 2 15 8v9" fill="#8e3446"/><path d="m18 33 4 7 4-7" fill="#f7e6d3"/><circle cx="34" cy="25" r="2" fill="none" stroke="#e7bd62" stroke-width="1.2"/><circle cx="9" cy="43" r="4" fill="#f2c5ad"/><circle cx="35" cy="43" r="4" fill="#f2c5ad"/></svg>`,
+    };
+    return art[id] || art.corgi;
+  }
   function mascotSkin() {
     const value=localStorage.getItem(SKIN_KEY);
     return MASCOT_SKINS[value] ? value : 'corgi';
   }
   function edgeDockEnabled() { return localStorage.getItem(EDGE_DOCK_KEY)!=='false'; }
-  function skinOptions() {
+  function skinButtons() {
     const zh=uiLanguage()==='zh';
-    return Object.entries(MASCOT_SKINS).map(([id,skin])=>`<option value="${id}">${skin.emoji} ${zh?skin.zh:skin.en}</option>`).join('');
+    return Object.entries(MASCOT_SKINS).map(([id,skin])=>`<button type="button" class="cti-skin-button" data-skin-choice="${id}" aria-label="${zh?skin.zh:skin.en}" title="${zh?skin.zh:skin.en}">${mascotSvg(id)}<small>${zh?skin.zh:skin.en}</small></button>`).join('');
+  }
+  function updateSkinButtons(root) {
+    root.querySelectorAll('[data-skin-choice]').forEach(button=>{
+      const active=button.dataset.skinChoice===mascotSkin();
+      button.dataset.active=String(active);button.setAttribute('aria-pressed',String(active));
+    });
   }
 
   function n(value) {
@@ -739,13 +755,13 @@ INJECTION_SCRIPT = r"""
         background:color-mix(in srgb,Canvas 91%,var(--cti-mascot-accent) 9%);
         color:CanvasText;
         box-shadow:0 8px 24px #0004,inset 0 0 16px color-mix(in srgb,var(--cti-mascot-accent) 10%,transparent);
-        font:27px/1 "Apple Color Emoji","Segoe UI Emoji",sans-serif;
         cursor:pointer;
         user-select:none;
         -webkit-app-region:no-drag !important;
         transition:transform .16s ease,box-shadow .16s ease;
       }
       .cti-edge-mascot[data-visible="true"] { display:grid; }
+      .cti-edge-mascot svg { width:42px; height:46px; overflow:visible; filter:drop-shadow(0 2px 2px #0005); }
       .cti-edge-mascot:hover,.cti-edge-mascot:focus-visible { transform:translateX(-3px) scale(1.04); box-shadow:0 8px 26px #0005,0 0 0 2px color-mix(in srgb,var(--cti-mascot-accent) 45%,transparent); outline:none; }
       .cti-edge-mascot[data-edge="left"] { border-radius:0 16px 16px 0; }
       .cti-edge-mascot[data-edge="left"]:hover,.cti-edge-mascot[data-edge="left"]:focus-visible { transform:translateX(3px) scale(1.04); }
@@ -835,6 +851,11 @@ INJECTION_SCRIPT = r"""
       .cti-preset-group { display:inline-flex; gap:2px; padding:2px; border-radius:7px; background:color-mix(in srgb,CanvasText 4%,transparent); border:1px solid color-mix(in srgb,CanvasText 10%,transparent); }
       .cti-hud .cti-preset-button { width:auto; min-width:34px; height:21px; padding:0 6px; border:0; border-radius:5px; font:11px/1 system-ui; }
       .cti-hud .cti-preset-button[data-active="true"] { background:color-mix(in srgb,var(--cti-tone) 16%,transparent); color:var(--cti-tone); }
+      .cti-skin-group { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:4px; margin:8px 0 12px; }
+      .cti-hud .cti-skin-button { width:100%; height:58px; padding:3px 1px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; border:1px solid color-mix(in srgb,CanvasText 9%,transparent); border-radius:9px; background:color-mix(in srgb,CanvasText 3%,transparent); }
+      .cti-hud .cti-skin-button svg { width:29px; height:34px; flex:none; }
+      .cti-hud .cti-skin-button small { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font:8px/1 system-ui; opacity:.65; }
+      .cti-hud .cti-skin-button[data-active="true"] { border-color:var(--cti-safe); background:color-mix(in srgb,var(--cti-safe) 12%,transparent); box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--cti-safe) 30%,transparent); }
       .cti-hud[data-dragging="true"] {
         transition: none;
         opacity: 0.92;
@@ -1036,7 +1057,7 @@ INJECTION_SCRIPT = r"""
   }
   function applyMascotSkin(root) {
     const mascot=ensureMascot(root),id=mascotSkin(),skin=MASCOT_SKINS[id];
-    mascot.textContent=skin.emoji;mascot.dataset.skin=id;
+    mascot.innerHTML=mascotSvg(id);mascot.dataset.skin=id;
     mascot.style.setProperty('--cti-mascot-accent',skin.accent);
     mascot.setAttribute('aria-label',`${uiLanguage()==='zh'?skin.zh:skin.en} · ${uiLanguage()==='zh'?'悬停查看，点击保持展开':'Hover to view; click to pin'}`);
     mascot.title=mascot.getAttribute('aria-label');
@@ -1230,6 +1251,7 @@ INJECTION_SCRIPT = r"""
       button.setAttribute('data-active', String(button.getAttribute('data-cti-unit') === unitMode()));
     });
     updatePresetButtons(root);
+    updateSkinButtons(root);
   }
   function updateHudLanguage(root) {
     const language = uiLanguage();
@@ -1609,7 +1631,7 @@ INJECTION_SCRIPT = r"""
           <div class="cti-line"><span class="cti-muted">${zh?'显示设置':'Display settings'}</span><button class="cti-text-button" type="button" data-position-reset>${zh?'恢复位置':'Reset position'}</button></div>
           <div class="cti-setting"><span>${zh?'面板尺寸':'Panel size'}</span><div class="cti-preset-group" role="group" aria-label="${zh?'面板尺寸':'Panel size'}"><button class="cti-preset-button" type="button" data-layout-preset="mini">${zh?'迷你':'Mini'}</button><button class="cti-preset-button" type="button" data-layout-preset="standard">${zh?'标准':'Standard'}</button><button class="cti-preset-button" type="button" data-layout-preset="large">${zh?'大字':'Large'}</button></div></div>
           <label class="cti-setting"><span>${zh?'边缘软吸附':'Soft edge docking'}</span><input type="checkbox" data-edge-dock></label>
-          <label class="cti-setting"><span>${zh?'角色皮肤':'Character skin'}</span><select data-mascot-skin>${skinOptions()}</select></label>
+          <div class="cti-muted">${zh?'角色皮肤':'Character skin'}</div><div class="cti-skin-group" role="group" aria-label="${zh?'角色皮肤':'Character skin'}">${skinButtons()}</div>
           <div class="cti-setting"><span>${zh?'数字单位':'Number format'}</span><div data-units></div></div>
           <label class="cti-setting"><span>${zh?'配额 ≤20% 时通知':'Notify at ≤20% remaining'}</span><input type="checkbox" data-alerts></label>
           <label class="cti-setting"><span>${zh?'上下文轻提醒':'Context hints'}</span><input type="checkbox" data-context-alerts></label>
@@ -1629,8 +1651,10 @@ INJECTION_SCRIPT = r"""
         localStorage.setItem(EDGE_DOCK_KEY,String(edgeDock.checked));
         if(!edgeDock.checked)undockHud(root);applyStoredHudPosition(root);
       });
-      const skin=body.querySelector('[data-mascot-skin]');skin.value=mascotSkin();
-      skin.addEventListener('change',()=>{localStorage.setItem(SKIN_KEY,skin.value);applyMascotSkin(root);});
+      body.querySelectorAll('[data-skin-choice]').forEach(button=>button.addEventListener('click',()=>{
+        localStorage.setItem(SKIN_KEY,button.dataset.skinChoice);applyMascotSkin(root);updateSkinButtons(root);
+      }));
+      updateSkinButtons(root);
       const tips=body.querySelector('[data-context-alerts]');tips.checked=localStorage.getItem('cti-context-reminders')!=='false';
       tips.addEventListener('change',()=>localStorage.setItem('cti-context-reminders',String(tips.checked)));
       const details = body.querySelector('[data-details]');
