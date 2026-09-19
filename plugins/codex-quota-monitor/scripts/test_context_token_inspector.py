@@ -4,10 +4,17 @@ import unittest
 from pathlib import Path
 
 from context_token_inspector import summarize_session, summarize_session_fast
-from context_token_injector import build_payload
+from context_token_injector import INJECTION_SCRIPT, build_payload
 
 
 class InspectorTests(unittest.TestCase):
+    def test_edge_docking_and_all_companion_skins_are_bundled(self):
+        self.assertIn("function dockCandidate", INJECTION_SCRIPT)
+        self.assertIn("distance<=14", INJECTION_SCRIPT)
+        self.assertIn("setTimeout(()=>", INJECTION_SCRIPT)
+        for skin in ("candy", "corgi", "mint", "frost", "tea"):
+            self.assertIn(f"{skin}:", INJECTION_SCRIPT)
+
     def test_latest_model_and_effort_are_reported(self):
         rows = [
             {'type':'session_meta','payload':{'id':'thread','cwd':'/tmp'}},

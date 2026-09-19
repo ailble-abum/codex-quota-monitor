@@ -6,6 +6,8 @@ Created by **Ailble** · 创作人：**Ailble**. See [INTRODUCTION.md](INTRODUCT
 
 Drag from any compact meter or the expanded header. The small bottom-right grip resizes the panel and its typography; when focused, arrow keys resize it in 12px steps. Compact and expanded positions/sizes are remembered separately. Temporary viewport clamping does not overwrite the saved anchor. A 64px top safe area avoids the app title bar, and the overlay is explicitly marked as a non-native-drag region.
 
+Soft edge docking is enabled by default. Release the panel within 14px of the left, right, top-safe-area, or bottom edge to tuck it away behind a small companion; hovering reveals the unchanged panel toward the screen interior, leaving hides it after 500ms, and clicking the companion pins it open. Drag the revealed header to detach it. Display settings can disable docking and choose Candy Girl, Corgi Helper, Mint Boy, Mr. Frost, or Tea Lady; the current lightweight skins use system emoji so they add no image dependency.
+
 Only quota windows actually supplied by the account source are shown. A secondary-only weekly window is not relabeled as 5h. Unknown durations keep generic primary/secondary labels; absent windows are not invented as 100% or called unlimited. The same labels are used in the menu bar and history.
 
 Settings now include Chinese/English/automatic language and context hints. Hints appear for seven seconds at 75%/85% of the reported model window, or on the existing compaction recommendation. They are advisory task-boundary reminders, not universal cost thresholds, and are limited to once per stage/thread with a 30-minute cooldown. Switching context can lose useful state and caching, so the monitor never opens a new conversation automatically.

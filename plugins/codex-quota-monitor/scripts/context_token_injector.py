@@ -472,7 +472,7 @@ INJECTION_SCRIPT = r"""
 (payload => {
   // Bump this only when closures or event handlers change. A long-lived
   // renderer may still contain an observer from an older plugin release.
-  const RUNTIME_VERSION = 13;
+  const RUNTIME_VERSION = 14;
   const ROOT_ID = 'codex-context-token-inspector-root';
   const STYLE_ID = 'codex-context-token-inspector-style';
   const FOOTER_ATTR = 'data-context-token-footer';
@@ -484,6 +484,9 @@ INJECTION_SCRIPT = r"""
   const UNIT_KEY = 'codex-context-token-inspector-unit';
   const LAYOUT_PRESET_KEY = 'cti-layout-preset';
   const UNIT_DEFAULTED_KEY = 'codex-context-token-inspector-unit-defaulted';
+  const EDGE_DOCK_KEY = 'cti-edge-dock';
+  const SKIN_KEY = 'cti-mascot-skin';
+  const MASCOT_ID = 'codex-context-token-inspector-mascot';
   const previousRuntimeVersion = window.__codexContextTokenInspectorRuntimeVersion;
   const runtimeChanged = previousRuntimeVersion !== RUNTIME_VERSION;
   window.__codexContextTokenInspectorRuntimeVersion = RUNTIME_VERSION;
@@ -535,6 +538,23 @@ INJECTION_SCRIPT = r"""
   }
   function joined(values) {
     return values.join(uiLanguage() === 'zh' ? '，' : ', ');
+  }
+
+  const MASCOT_SKINS = {
+    candy: {emoji:'👧🏻', zh:'软糖女孩', en:'Candy Girl', accent:'#ff9fc5'},
+    corgi: {emoji:'🐶', zh:'柯基助手', en:'Corgi Helper', accent:'#f2ae62'},
+    mint: {emoji:'🧑🏻', zh:'薄荷萌男', en:'Mint Boy', accent:'#70d4a6'},
+    frost: {emoji:'🧑🏼‍🦳', zh:'霜夜先生', en:'Mr. Frost', accent:'#8ab5ff'},
+    tea: {emoji:'👩🏻', zh:'红茶御姐', en:'Tea Lady', accent:'#c97b88'},
+  };
+  function mascotSkin() {
+    const value=localStorage.getItem(SKIN_KEY);
+    return MASCOT_SKINS[value] ? value : 'corgi';
+  }
+  function edgeDockEnabled() { return localStorage.getItem(EDGE_DOCK_KEY)!=='false'; }
+  function skinOptions() {
+    const zh=uiLanguage()==='zh';
+    return Object.entries(MASCOT_SKINS).map(([id,skin])=>`<option value="${id}">${skin.emoji} ${zh?skin.zh:skin.en}</option>`).join('');
   }
 
   function n(value) {
@@ -701,7 +721,43 @@ INJECTION_SCRIPT = r"""
         font: 12px/1.35 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
         overflow: hidden;
         user-select: none;
+        transition: left .2s ease, top .2s ease, opacity .15s ease, box-shadow .15s ease;
       }
+      .cti-hud[data-docked="true"][data-revealed="false"] { opacity:0; pointer-events:none; }
+      .cti-hud[data-snap-edge] { box-shadow:0 0 0 2px color-mix(in srgb,var(--cti-safe) 55%,transparent),0 12px 36px #0002; }
+      .cti-edge-mascot {
+        --cti-mascot-accent:#70d4a6;
+        position:fixed;
+        z-index:2147483647;
+        display:none;
+        place-items:center;
+        width:44px;
+        height:48px;
+        padding:0;
+        border:1px solid color-mix(in srgb,var(--cti-mascot-accent) 42%,transparent);
+        border-radius:16px 0 0 16px;
+        background:color-mix(in srgb,Canvas 91%,var(--cti-mascot-accent) 9%);
+        color:CanvasText;
+        box-shadow:0 8px 24px #0004,inset 0 0 16px color-mix(in srgb,var(--cti-mascot-accent) 10%,transparent);
+        font:27px/1 "Apple Color Emoji","Segoe UI Emoji",sans-serif;
+        cursor:pointer;
+        user-select:none;
+        -webkit-app-region:no-drag !important;
+        transition:transform .16s ease,box-shadow .16s ease;
+      }
+      .cti-edge-mascot[data-visible="true"] { display:grid; }
+      .cti-edge-mascot:hover,.cti-edge-mascot:focus-visible { transform:translateX(-3px) scale(1.04); box-shadow:0 8px 26px #0005,0 0 0 2px color-mix(in srgb,var(--cti-mascot-accent) 45%,transparent); outline:none; }
+      .cti-edge-mascot[data-edge="left"] { border-radius:0 16px 16px 0; }
+      .cti-edge-mascot[data-edge="left"]:hover,.cti-edge-mascot[data-edge="left"]:focus-visible { transform:translateX(3px) scale(1.04); }
+      .cti-edge-mascot[data-edge="top"] { border-radius:0 0 16px 16px; }
+      .cti-edge-mascot[data-edge="bottom"] { border-radius:16px 16px 0 0; }
+      .cti-edge-mascot[data-edge="top"]:hover,.cti-edge-mascot[data-edge="top"]:focus-visible { transform:translateY(3px) scale(1.04); }
+      .cti-edge-mascot[data-edge="bottom"]:hover,.cti-edge-mascot[data-edge="bottom"]:focus-visible { transform:translateY(-3px) scale(1.04); }
+      .cti-edge-mascot::after { content:''; position:absolute; width:22px; height:7px; bottom:-3px; border-radius:6px; background:var(--cti-mascot-accent); opacity:.8; }
+      .cti-edge-mascot[data-edge="top"]::after { bottom:-3px; }
+      .cti-edge-mascot[data-edge="bottom"]::after { top:-3px; bottom:auto; }
+      .cti-edge-mascot[data-edge="left"]::after { right:-3px; top:13px; width:7px; height:22px; }
+      .cti-edge-mascot[data-edge="right"]::after { left:-3px; top:13px; width:7px; height:22px; }
       .cti-hud, .cti-hud * { -webkit-app-region:no-drag !important; }
       .cti-hud-head, .cti-hud-body { zoom:var(--cti-scale,1); }
       .cti-hud [data-resize] { position:absolute;right:2px;bottom:2px;width:16px;height:16px;cursor:nwse-resize;touch-action:none;z-index:5;opacity:.4;background:linear-gradient(135deg,transparent 60%,CanvasText 60%,CanvasText 65%,transparent 65%,transparent 78%,CanvasText 78%,CanvasText 83%,transparent 83%);border-radius:4px; }
@@ -803,7 +859,7 @@ INJECTION_SCRIPT = r"""
       .cti-value { font-variant-numeric:tabular-nums; font-weight:600; color:CanvasText; }
       .cti-meter { height:5px; border-radius:4px; overflow:hidden; background:color-mix(in srgb,var(--cti-tone) 10%,transparent); margin:10px 0 8px; }
       .cti-meter span { display:block; height:100%; border-radius:inherit; background:var(--cti-tone); transition:width .18s ease, background-color .18s ease; }
-      @media (prefers-reduced-motion: reduce) { .cti-meter span { transition:none; } }
+      @media (prefers-reduced-motion: reduce) { .cti-meter span,.cti-hud,.cti-edge-mascot { transition:none; } }
       .cti-metrics { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px; }
       .cti-metric { padding:10px; border-radius:10px; background:color-mix(in srgb,CanvasText 4%,transparent); }
       .cti-metric .cti-value { display:block; font-size:16px; overflow-wrap:anywhere; letter-spacing:-.5px; margin-top:4px; }
@@ -944,6 +1000,80 @@ INJECTION_SCRIPT = r"""
     return hudMode(root)==='compact' ? Math.max(180, 58 + Math.max(1,root.querySelectorAll('.cti-mini').length)*78) : 292;
   }
   function saveLayout(root) { localStorage.setItem('cti-layout-v2',JSON.stringify(root.__ctiLayout)); }
+  function dockSafeTop() { return Math.min(64,Math.max(8,window.innerHeight-100)); }
+  function clearDockHide(root) {
+    if(root.__ctiDockHideTimer)clearTimeout(root.__ctiDockHideTimer);
+    root.__ctiDockHideTimer=null;
+  }
+  function scheduleDockHide(root) {
+    clearDockHide(root);
+    if(root.dataset.dockPinned==='true')return;
+    root.__ctiDockHideTimer=setTimeout(()=>{
+      const mascot=document.getElementById(MASCOT_ID);
+      if(root.matches(':hover') || mascot?.matches(':hover'))return;
+      root.dataset.revealed='false';applyStoredHudPosition(root);
+    },500);
+  }
+  function revealDock(root, revealed=true) {
+    if(root.dataset.docked!=='true')return;
+    clearDockHide(root);root.dataset.revealed=String(revealed);applyStoredHudPosition(root);
+  }
+  function ensureMascot(root) {
+    let mascot=document.getElementById(MASCOT_ID);
+    if(mascot)return mascot;
+    mascot=document.createElement('button');
+    mascot.id=MASCOT_ID;mascot.className='cti-edge-mascot';mascot.type='button';
+    mascot.addEventListener('pointerenter',()=>revealDock(root,true));
+    mascot.addEventListener('pointerleave',()=>scheduleDockHide(root));
+    mascot.addEventListener('focus',()=>revealDock(root,true));
+    mascot.addEventListener('blur',()=>scheduleDockHide(root));
+    mascot.addEventListener('click',()=>{
+      const pinned=root.dataset.dockPinned!=='true';root.dataset.dockPinned=String(pinned);
+      mascot.setAttribute('aria-pressed',String(pinned));revealDock(root,true);
+    });
+    document.body.appendChild(mascot);
+    return mascot;
+  }
+  function applyMascotSkin(root) {
+    const mascot=ensureMascot(root),id=mascotSkin(),skin=MASCOT_SKINS[id];
+    mascot.textContent=skin.emoji;mascot.dataset.skin=id;
+    mascot.style.setProperty('--cti-mascot-accent',skin.accent);
+    mascot.setAttribute('aria-label',`${uiLanguage()==='zh'?skin.zh:skin.en} · ${uiLanguage()==='zh'?'悬停查看，点击保持展开':'Hover to view; click to pin'}`);
+    mascot.title=mascot.getAttribute('aria-label');
+  }
+  function undockHud(root) {
+    if(!root.__ctiLayout)return;
+    const mode=hudMode(root),previous=root.__ctiLayout[mode]||{},rect=root.getBoundingClientRect();
+    root.__ctiLayout[mode]={...previous,x:Math.max(8,Math.min(innerWidth-rect.width-8,rect.left)),y:Math.max(dockSafeTop(),Math.min(innerHeight-rect.height-8,rect.top))};
+    delete root.__ctiLayout[mode].edge;
+    delete root.dataset.docked;delete root.dataset.dockEdge;delete root.dataset.revealed;delete root.dataset.dockPinned;
+    const mascot=document.getElementById(MASCOT_ID);if(mascot)mascot.dataset.visible='false';
+    saveLayout(root);
+  }
+  function dockCandidate(x,y,width,height) {
+    if(!edgeDockEnabled())return null;
+    const edges=[['left',Math.abs(x-8)],['right',Math.abs(innerWidth-8-(x+width))],['top',Math.abs(y-dockSafeTop())],['bottom',Math.abs(innerHeight-8-(y+height))]];
+    const [edge,distance]=edges.sort((a,b)=>a[1]-b[1])[0];
+    return distance<=14?edge:null;
+  }
+  function applyDockPosition(root,wanted,edge) {
+    const mascot=ensureMascot(root),gap=44,topMin=dockSafeTop(),rect=root.getBoundingClientRect();
+    root.dataset.docked='true';root.dataset.dockEdge=edge;
+    if(!root.dataset.revealed)root.dataset.revealed='false';
+    mascot.dataset.visible='true';mascot.dataset.edge=edge;applyMascotSkin(root);
+    const revealed=root.dataset.revealed==='true';
+    if(edge==='left' || edge==='right') {
+      const y=Math.max(topMin,Math.min(innerHeight-Math.max(rect.height,48)-8,Number.isFinite(wanted.y)?wanted.y:topMin));
+      mascot.style.left=edge==='left'?'0px':`${innerWidth-44}px`;mascot.style.top=`${y}px`;
+      root.style.left=edge==='left'?(revealed?`${gap}px`:`${-rect.width-2}px`):(revealed?`${innerWidth-rect.width-gap}px`:`${innerWidth+2}px`);
+      root.style.top=`${y}px`;
+    } else {
+      const x=Math.max(8,Math.min(innerWidth-Math.max(rect.width,44)-8,Number.isFinite(wanted.x)?wanted.x:8));
+      mascot.style.left=`${x}px`;mascot.style.top=edge==='top'?`${topMin}px`:`${innerHeight-48}px`;
+      root.style.left=`${x}px`;
+      root.style.top=edge==='top'?(revealed?`${topMin+48}px`:`${topMin-rect.height-2}px`):(revealed?`${innerHeight-rect.height-48}px`:`${innerHeight+2}px`);
+    }
+  }
   function applyStoredHudPosition(root) {
     if(root.__ctiGesture) return;
     if(!root.__ctiLayout) {
@@ -961,8 +1091,11 @@ INJECTION_SCRIPT = r"""
     root.style.setProperty('--cti-scale',String(Math.max(.55,Math.min(1.65,width/base))));
     root.style.maxHeight=Math.max(80,window.innerHeight-80)+'px';
     root.style.right='auto';root.style.bottom='auto';
-    const topMin=Math.min(64,Math.max(8,window.innerHeight-100));
+    const topMin=dockSafeTop();
     const rect=root.getBoundingClientRect();
+    if(wanted.edge && edgeDockEnabled()) { applyDockPosition(root,wanted,wanted.edge); return; }
+    delete root.dataset.docked;delete root.dataset.dockEdge;delete root.dataset.revealed;
+    const mascot=document.getElementById(MASCOT_ID);if(mascot)mascot.dataset.visible='false';
     const x=Number.isFinite(wanted.x)?wanted.x:14;
     const y=Number.isFinite(wanted.y)?wanted.y:window.innerHeight-rect.height-16;
     root.style.left=Math.max(8,Math.min(window.innerWidth-rect.width-8,x))+'px';
@@ -1000,11 +1133,20 @@ INJECTION_SCRIPT = r"""
   function installHudDrag(root) {
     if(root.__ctiDragInstalled)return;
     root.__ctiDragInstalled=true;
+    root.__ctiApplyPosition=()=>applyStoredHudPosition(root);
+    root.__ctiRevealDock=()=>{root.dataset.dockPinned='true';revealDock(root,true);};
     const handle=document.createElement('div');
     handle.dataset.resize='true';handle.tabIndex=0;handle.setAttribute('role','slider');
     handle.setAttribute('aria-label',uiLanguage()==='zh'?'调整面板大小':'Resize panel');
     handle.setAttribute('aria-valuemin','180');handle.setAttribute('aria-valuemax','600');
     root.appendChild(handle);
+    root.addEventListener('pointerenter',()=>clearDockHide(root));
+    root.addEventListener('pointerleave',()=>scheduleDockHide(root));
+    root.addEventListener('keydown',event=>{
+      if(event.key==='Escape' && root.dataset.docked==='true'){
+        root.dataset.dockPinned='false';document.getElementById(MASCOT_ID)?.setAttribute('aria-pressed','false');revealDock(root,false);
+      }
+    });
     function persist(x,y,width) {
       const mode=hudMode(root);const previous=root.__ctiLayout[mode] || {};
       root.__ctiLayout[mode]={...previous,x,y,...(width?{width}:{})};
@@ -1015,6 +1157,7 @@ INJECTION_SCRIPT = r"""
       const resize=!!event.target.closest('[data-resize]');
       const head=event.target.closest('.cti-hud-head');
       if(!resize && (!head || (event.target.closest('button,input,summary') && !event.target.closest('[data-cti-title]'))))return;
+      if(!resize && root.dataset.docked==='true')undockHud(root);
       const rect=root.getBoundingClientRect();
       root.__ctiGesture={resize,x:event.clientX,y:event.clientY,left:rect.left,top:rect.top,width:rect.width,moved:false};
       root.setPointerCapture(event.pointerId);
@@ -1028,13 +1171,18 @@ INJECTION_SCRIPT = r"""
       if(g.resize) {
         const width=Math.max(180,Math.min(600,window.innerWidth-g.left-8,g.width+dx));
         persist(g.left,g.top,width);
-      } else {persist(g.left+dx,g.top+dy);}
+      } else {
+        const x=g.left+dx,y=g.top+dy;persist(x,y);
+        g.candidate=dockCandidate(x,y,g.width,root.getBoundingClientRect().height);
+        if(g.candidate)root.dataset.snapEdge=g.candidate;else delete root.dataset.snapEdge;
+      }
       root.__ctiGesture=null;applyStoredHudPosition(root);root.__ctiGesture=g;
     };
     window.addEventListener('pointermove',move,true);
     function end(event) {
       const g=root.__ctiGesture;if(!g)return;
       root.__ctiGesture=null;delete root.dataset.dragging;
+      delete root.dataset.snapEdge;
       if(g.moved)root.__ctiSuppressClickUntil=performance.now()+400;
       try{root.releasePointerCapture(event.pointerId);}catch{}
       applyStoredHudPosition(root);
@@ -1047,6 +1195,11 @@ INJECTION_SCRIPT = r"""
         root.__ctiLayout.compact={...compact,x:actual.left,y:actual.top};
         syncExpandedAnchor(root,actual.left,actual.top);
         saveLayout(root);
+      }
+      if(g.moved && !g.resize && g.candidate) {
+        const mode=hudMode(root),actual=root.getBoundingClientRect(),previous=root.__ctiLayout[mode]||{};
+        root.__ctiLayout[mode]={...previous,x:actual.left,y:actual.top,edge:g.candidate};
+        root.dataset.revealed='false';root.dataset.dockPinned='false';saveLayout(root);applyStoredHudPosition(root);
       }
     }
     window.addEventListener('pointerup',end,true);
@@ -1455,6 +1608,8 @@ INJECTION_SCRIPT = r"""
         <div data-settings hidden>
           <div class="cti-line"><span class="cti-muted">${zh?'显示设置':'Display settings'}</span><button class="cti-text-button" type="button" data-position-reset>${zh?'恢复位置':'Reset position'}</button></div>
           <div class="cti-setting"><span>${zh?'面板尺寸':'Panel size'}</span><div class="cti-preset-group" role="group" aria-label="${zh?'面板尺寸':'Panel size'}"><button class="cti-preset-button" type="button" data-layout-preset="mini">${zh?'迷你':'Mini'}</button><button class="cti-preset-button" type="button" data-layout-preset="standard">${zh?'标准':'Standard'}</button><button class="cti-preset-button" type="button" data-layout-preset="large">${zh?'大字':'Large'}</button></div></div>
+          <label class="cti-setting"><span>${zh?'边缘软吸附':'Soft edge docking'}</span><input type="checkbox" data-edge-dock></label>
+          <label class="cti-setting"><span>${zh?'角色皮肤':'Character skin'}</span><select data-mascot-skin>${skinOptions()}</select></label>
           <div class="cti-setting"><span>${zh?'数字单位':'Number format'}</span><div data-units></div></div>
           <label class="cti-setting"><span>${zh?'配额 ≤20% 时通知':'Notify at ≤20% remaining'}</span><input type="checkbox" data-alerts></label>
           <label class="cti-setting"><span>${zh?'上下文轻提醒':'Context hints'}</span><input type="checkbox" data-context-alerts></label>
@@ -1469,6 +1624,13 @@ INJECTION_SCRIPT = r"""
       const language=body.querySelector('[data-language]');language.value=localStorage.getItem('cti-language')||'auto';
       language.addEventListener('change',()=>{localStorage.setItem('cti-language',language.value);applyAll(window.__codexContextTokenInspectorPayload);});
       body.querySelectorAll('[data-layout-preset]').forEach(button=>button.addEventListener('click',()=>setLayoutPreset(root,button.getAttribute('data-layout-preset'))));
+      const edgeDock=body.querySelector('[data-edge-dock]');edgeDock.checked=edgeDockEnabled();
+      edgeDock.addEventListener('change',()=>{
+        localStorage.setItem(EDGE_DOCK_KEY,String(edgeDock.checked));
+        if(!edgeDock.checked)undockHud(root);applyStoredHudPosition(root);
+      });
+      const skin=body.querySelector('[data-mascot-skin]');skin.value=mascotSkin();
+      skin.addEventListener('change',()=>{localStorage.setItem(SKIN_KEY,skin.value);applyMascotSkin(root);});
       const tips=body.querySelector('[data-context-alerts]');tips.checked=localStorage.getItem('cti-context-reminders')!=='false';
       tips.addEventListener('change',()=>localStorage.setItem('cti-context-reminders',String(tips.checked)));
       const details = body.querySelector('[data-details]');
@@ -1727,6 +1889,7 @@ INJECTION_SCRIPT = r"""
     document.getElementById(ROOT_ID)?.__ctiRemoveResize?.();
     document.getElementById(ROOT_ID)?.__ctiClearHint?.();
     document.getElementById(ROOT_ID)?.remove();
+    document.getElementById(MASCOT_ID)?.remove();
   }
 
   resetStaleRuntime();

@@ -9,6 +9,8 @@ Creator: Ailble. On Windows use the Windows adapter through `python scripts/moni
 
 The compact meters themselves are drag handles. Use the bottom-right resize grip or its arrow keys for resizing. Compact/expanded layouts are stored separately; reserve the top safe area and apply `-webkit-app-region: no-drag`. Position reset must clear both the legacy position key and `cti-layout-v2`, otherwise the new geometry will restore old coordinates.
 
+The overlay can softly dock when released close to an edge. A docked overlay leaves only its selected companion skin visible; hover to reveal it, leave to hide it, click the companion to pin it open, or drag the revealed header to detach it. Docking can be disabled and the companion changed in display settings. Free-floating overlays remain the ordinary full panel.
+
 Quota labels derive from actual window durations, not primary/secondary array positions. A missing 5h window must not be synthesized. Unknown/absent limits are neither zero remaining nor unlimited.
 
 Context hints last seven seconds, default at 75%/85% of the reported window, and can be disabled in settings. These are heuristic workflow reminders, not researched universal cost-optimal values. Different models, cached input, repeated prefix reuse, and compaction policy matter; never promise a fixed-token handoff saves money. Preserve settings and avoid repeated prompts for the same task/stage.

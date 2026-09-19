@@ -1,6 +1,6 @@
 {
   "name": "codex-quota-monitor",
-  "version": "0.1.0+codex.20260919124509",
+  "version": "0.1.0+codex.20260919205823",
   "description": "English: A local, read-only Codex quota monitor for token usage, context, and compaction state. Account limits and windows are dynamic\u2014there is no assumed 5-hour window for every user. The draggable, resizable overlay adapts to its content, with Mini/Standard/Large presets; quota history and local context/cache trends are stored locally. macOS menu bar support is available; a Windows adapter and tray companion are included, pending real-machine runtime verification.\n\u4e2d\u6587\uff1a\u672c\u5730\u53ea\u8bfb\u7684 Codex \u914d\u989d\u76d1\u89c6\u5668\uff0c\u7528\u4e8e\u67e5\u770b\u4ee4\u724c\u4f7f\u7528\u91cf\u3001\u4e0a\u4e0b\u6587\u548c\u538b\u7f29\u72b6\u6001\u3002\u8d26\u6237\u9650\u5236\u548c\u7a97\u53e3\u662f\u52a8\u6001\u7684\uff0c\u5e76\u975e\u6bcf\u4e2a\u7528\u6237\u90fd\u6709 5 \u5c0f\u65f6\u7a97\u53e3\uff0c\u56e0\u6b64\u4e0d\u4f1a\u9ed8\u8ba4\u5047\u8bbe\u5b58\u5728\u8be5\u7a97\u53e3\u3002\u53ef\u62d6\u52a8\u3001\u53ef\u8c03\u6574\u5927\u5c0f\u7684\u60ac\u6d6e\u5c42\u4f1a\u6839\u636e\u5185\u5bb9\u81ea\u9002\u5e94\uff0c\u914d\u989d\u5386\u53f2\u4fdd\u5b58\u5728\u672c\u5730\u3002macOS \u83dc\u5355\u680f\u652f\u6301\u53ef\u7528\uff1b\u5df2\u5305\u542b Windows \u9002\u914d\u5668\u4e0e\u6258\u76d8\u7ec4\u4ef6\uff0c\u4ecd\u5f85 Windows \u5b9e\u673a\u8fd0\u884c\u9a8c\u8bc1\u3002",
   "author": {
     "name": "Ailble",

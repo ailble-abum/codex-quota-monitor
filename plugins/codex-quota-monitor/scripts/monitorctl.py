@@ -99,14 +99,15 @@ def main():
                 document.getElementById('codex-context-token-inspector-root')?.__ctiClearHint?.();
                 clearTimeout(window.__codexContextTokenInspectorDetailTimer);
                 cancelIdleCallback(window.__codexContextTokenInspectorIdleCallback || 0);
-                document.querySelectorAll('#codex-context-token-inspector-root,#codex-context-token-inspector-style,[data-context-token-chip],[data-context-token-footer],[data-context-token-badge]').forEach(n=>n.remove());
+                document.querySelectorAll('#codex-context-token-inspector-root,#codex-context-token-inspector-mascot,#codex-context-token-inspector-style,[data-context-token-chip],[data-context-token-footer],[data-context-token-badge]').forEach(n=>n.remove());
                 window.__codexContextTokenInspectorRuntimeVersion=null; true"""
             else:
                 expression = """localStorage.removeItem('codex-context-token-inspector-position');
                 localStorage.removeItem('cti-layout-v2');
-                (()=>{const n=document.getElementById('codex-context-token-inspector-root');if(n){n.__ctiLayout={};n.style.left='14px';n.style.top='auto';n.style.bottom='16px';}})(); true"""
+                (()=>{const n=document.getElementById('codex-context-token-inspector-root');if(n){n.__ctiLayout={};delete n.dataset.docked;delete n.dataset.dockEdge;delete n.dataset.revealed;n.style.left='14px';n.style.top='auto';n.style.bottom='16px';n.__ctiApplyPosition?.();}document.getElementById('codex-context-token-inspector-mascot')?.setAttribute('data-visible','false');})(); true"""
                 if args.action=='show':
                     expression = """(()=>{const n=document.getElementById('codex-context-token-inspector-root');
+                    if(n?.dataset.docked==='true')n.__ctiRevealDock?.();
                     if(n?.getAttribute('data-collapsed')==='true')n.querySelector('[data-cti-toggle]')?.click();
                     return !!n;})();true"""
             client.evaluate(expression)
