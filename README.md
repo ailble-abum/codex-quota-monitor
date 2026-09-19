@@ -25,7 +25,7 @@ Codex Quota Monitor 把这些信息放回工作现场。它在 Codex 桌面窗�
 
 把面板拖到屏幕左侧或右侧边缘松手，它会软吸附收起，只剩一只角色伴宠。鼠标移到伴宠上展开面板，移开自动收起，点一下则固定展开；拖动展开后的标题栏可以重新脱离。
 
-显示设置里提供六款角色：薄荷黑猫、软糖女孩、柯基助手、薄荷萌男、霜夜先生、红茶御姐。吸附只覆盖左右两侧——每只角色都是"从侧边探头"的姿态，贴到上边或下边只会变成躺倒。其中五款带插画，薄荷黑猫在补齐插画前使用内置矢量形象。
+显示设置里提供六款角色：薄荷黑猫、软糖女孩、柯基助手、薄荷萌男、霜夜先生、红茶御姐。吸附只覆盖左右两侧——每只角色都是"从侧边探头"的姿态，贴到上边或下边只会变成躺倒。六款都带插画，构建脚本 `scripts/build_companion_art.py` 把源图背景抠成透明后内联进注入脚本。
 
 ### 安装
 
@@ -152,7 +152,7 @@ Start a new Codex task and ask it to start Codex Quota Monitor. For diagnostics,
 
 Release the panel within 14px of the left or right wall and it tucks away, leaving only a companion. Hover the companion to reveal the panel, move away to hide it, click to pin it open, or drag the revealed header to detach it.
 
-Display settings offer six companions. Docking covers the two side walls only, because every companion is drawn peeking in from a vertical edge. Five ship illustrated artwork; Mint Cat uses its bundled vector until a source render is added for it.
+Display settings offer six companions. Docking covers the two side walls only, because every companion is drawn peeking in from a vertical edge. All six ship illustrated artwork, keyed out of the source renders and inlined into the injected script by `scripts/build_companion_art.py`.
 
 macOS is the tested platform. The Windows adapter is included but still needs full validation on real hardware.
 

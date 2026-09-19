@@ -11,7 +11,7 @@ Codex Quota Monitor is a local, read-only monitor for Codex quota, token usage, 
 - Mini, Standard, and Large layout presets are available.
 - Quota history is kept locally.
 - Context occupancy and cached-input share trends are included when local records provide them.
-- Soft edge docking tucks the overlay behind a companion on the left or right wall. Six selectable companions are included, and five ship illustrated artwork.
+- Soft edge docking tucks the overlay behind a companion on the left or right wall. Six selectable companions are included, all six shipping illustrated artwork.
 - macOS menu bar support is available.
 - A Windows adapter and tray companion are included; real-machine runtime verification is still pending.
 
