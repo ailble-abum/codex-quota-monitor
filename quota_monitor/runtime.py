@@ -107,7 +107,7 @@ class JournalSource:
 class UpdateLoop:
     """Single owner, explicit target and task files, optional local sidebar adapter.
 
-    panel=True forwards to an already installed consumer; it never installs UI.
+    panel=True forwards to an existing consumer or an explicitly pinned initializer.
     """
     def __init__(self, origin, page_url, paths=None, *, panel=False, host='explicit', session_root=None, consumer=None):
         local_origin(origin)
@@ -130,6 +130,7 @@ class UpdateLoop:
         self.status = 'idle'
         self.owner = uuid.uuid4().hex
         self._published = False
+        self._initialized = False
 
     async def close(self):
         client, self.client = self.client, None
@@ -138,13 +139,14 @@ class UpdateLoop:
 
     async def shutdown(self):
         """Release this runner's page state when connected, without reconnecting."""
-        result = 'lease_pending' if self._published else 'closed'
+        result = 'lease_pending' if self._published or self._initialized else 'closed'
         try:
-            if self._published and self.client is not None:
+            if (self._published or self._initialized) and self.client is not None:
                 released = await self.client.evaluate(page_expression(
                     action='release', expected=self.page_url, owner=self.owner))
                 if released is True:
                     self._published = False
+                    self._initialized = False
                     result = 'released'
         except CDPError:
             result = 'lease_pending'
@@ -173,9 +175,10 @@ class UpdateLoop:
                 ready = await self.client.evaluate(page_expression(
                     action='prepare', expected=self.page_url, key=key, host=self.host))
                 if ready == 'missing':
+                    self._initialized = True
                     ready = await self.client.evaluate(page_expression(
                         action='initialize', expected=self.page_url, key=key, host=self.host,
-                        consumer=self.consumer))
+                        consumer=self.consumer, owner=self.owner))
                 if ready != 'ready':
                     self.status = 'changed'
                     return self.status

@@ -42,6 +42,24 @@ class SelectionTests(unittest.TestCase):
 
 
 class LoopTests(unittest.IsolatedAsyncioTestCase):
+    async def test_shutdown_after_initialization_without_publication(self):
+        calls = []
+        class Client:
+            async def evaluate(self, expression):
+                calls.append(expression)
+                return True
+            async def close(self):
+                calls.append('closed')
+        loop = runtime.UpdateLoop('http://127.0.0.1:9222', 'about:blank', {})
+        loop.client = Client()
+        loop._initialized = True
+        self.assertEqual(await loop.shutdown(), 'released')
+        self.assertIn('"action": "release"', calls[0])
+        self.assertEqual(calls[-1], 'closed')
+        self.assertFalse(loop._initialized)
+        loop._initialized = True
+        self.assertEqual(await loop.shutdown(), 'lease_pending')
+
     async def test_run_cancellation_closes_owned_connection(self):
         loop = runtime.UpdateLoop('http://127.0.0.1:9222', 'http://fixture.invalid/', {})
         started = asyncio.Event()

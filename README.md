@@ -26,3 +26,5 @@ python3 -m unittest discover -s tests -v
 [Renderer 首次拆分](docs/panel-split-contract.md) 提供带完整来源/许可的隔离候选，移除旧宿主扫描与观察器，保留现有面板视图；尚未完成整份 renderer 的来源替换。
 
 [候选视图挂载替换](docs/panel-mount-contract.md) 已替换旧 ensureHud/ensureStyle，增加节点所有权保护和一次性事件绑定；HTML/CSS 视图资产继续归因。
+
+[受管消费者卸载](docs/consumer-dispose-contract.md) 支持带 owner 保护的同步 dispose，候选可清理自有节点、全局拖动监听器及伴宠定时器；断连时仍报告未确认清理。

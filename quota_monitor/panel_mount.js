@@ -1,6 +1,42 @@
 // V2-owned DOM mounting. Header/CSS are retained, attributed view assets.
   let mountedPanel = null;
   let mountedStyle = null;
+  let mountedMascot = null;
+  let disposed = false;
+  let disposalOK = false;
+  let appliedPayload = null;
+  function ensureMascot(root) {
+    if (disposed) throw new Error('consumer disposed');
+    if (mountedMascot) {
+      if (!mountedMascot.isConnected || document.getElementById(MASCOT_ID) !== mountedMascot)
+        throw new Error('mascot ownership lost');
+      return mountedMascot;
+    }
+    if (document.getElementById(MASCOT_ID)) throw new Error('mascot occupied');
+    mountedMascot = createRetainedMascot(root);
+    return mountedMascot;
+  }
+  function positionContextHint(root, toast) {
+    if (!disposed && root === mountedPanel) positionRetainedHint(root, toast);
+  }
+  function disposePanel() {
+    if (disposed) return disposalOK;
+    disposed = true;
+    let ok = true;
+    const clean = action => { try { action(); } catch (_) { ok = false; } };
+    clean(() => mountedPanel?.__ctiRemoveResize?.());
+    clean(() => mountedPanel?.__ctiClearHint?.());
+    clearTimeout(mountedPanel?.__ctiDockHideTimer);
+    clearTimeout(mountedMascot?.__ctiPetTimer);
+    clearTimeout(mountedMascot?.__ctiReactionTimer);
+    for (const node of [mountedPanel, mountedMascot, mountedStyle]) clean(() => node?.remove());
+    if (window.__codexContextTokenInspectorUpdate === applyAll)
+      clean(() => { if (!Reflect.deleteProperty(window, '__codexContextTokenInspectorUpdate')) ok = false; });
+    if (window.__codexContextTokenInspectorPayload === appliedPayload)
+      clean(() => { if (!Reflect.deleteProperty(window, '__codexContextTokenInspectorPayload')) ok = false; });
+    disposalOK = ok;
+    return ok;
+  }
   function ensureStyle() {
     if (mountedStyle) return;
     if (document.getElementById(STYLE_ID)) throw new Error('style occupied');
@@ -11,6 +47,7 @@
     mountedStyle = node;
   }
   function ensureHud() {
+    if (disposed) throw new Error('consumer disposed');
     if (mountedPanel) {
       if (!mountedPanel.isConnected || document.getElementById(ROOT_ID) !== mountedPanel)
         throw new Error('panel ownership lost');

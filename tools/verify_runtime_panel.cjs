@@ -125,6 +125,10 @@ async function main() {
       worker.stdin.end('stop\n');
       const [code] = await exited;
       assert.equal(code, 0, stderr);
+      if (process.env.QUOTA_PANEL_CANDIDATE) {
+        assert.equal(await page.locator('.cti-hud,.cti-edge-mascot,#codex-context-token-inspector-style').count(), 0);
+        assert.equal(await page.evaluate(() => window.__codexContextTokenInspectorUpdate), undefined);
+      }
     } finally {
       if (worker && worker.exitCode === null) { worker.kill(); await exited; }
       if (context) await context.close();

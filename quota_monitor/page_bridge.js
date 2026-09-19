@@ -19,15 +19,35 @@
     if (options.action === 'read') return current();
     if (options.action === 'invalidate' || options.action === 'release') {
         const previous = window.__quotaMonitorV2Delivery;
-        if (!previous || previous.owner !== options.owner) return true;
-        let cleared = false;
-        try { cleared = previous.invalidate(); }
+        if (previous && previous.owner !== options.owner) return true;
+        let cleared = true;
+        try { if (previous) cleared = previous.invalidate(); }
         finally {
             if (options.action === 'release') {
-                previous.stop();
-                if (window.__quotaMonitorV2Delivery === previous) {
-                    cleared = Reflect.deleteProperty(window, '__quotaMonitorV2Snapshot') && cleared;
-                    Reflect.deleteProperty(window, '__quotaMonitorV2Delivery');
+                previous?.stop();
+                try {
+                    const state = window.__quotaMonitorV2Consumer;
+                    if (state?.owner === options.owner && typeof state?.dispose === 'function' &&
+                        window.__codexContextTokenInspectorUpdate === state.hook) {
+                        state.status = 'failed'; // A failed teardown must not be reused as ready.
+                        const result = state.dispose();
+                        if (result && typeof result.then === 'function') {
+                            Promise.resolve(result).catch(() => {});
+                            throw new Error('consumer disposal failed');
+                        }
+                        if (result === false) throw new Error('consumer disposal failed');
+                        if (window.__codexContextTokenInspectorUpdate === state.hook &&
+                            !Reflect.deleteProperty(window, '__codexContextTokenInspectorUpdate'))
+                            throw new Error('consumer disposal failed');
+                        if (window.__quotaMonitorV2Consumer === state)
+                            Reflect.deleteProperty(window, '__quotaMonitorV2Consumer');
+                        cleared = true; // Disposal also handles an unavailable owned view.
+                    }
+                } finally {
+                    if (previous && window.__quotaMonitorV2Delivery === previous) {
+                        cleared = Reflect.deleteProperty(window, '__quotaMonitorV2Snapshot') && cleared;
+                        Reflect.deleteProperty(window, '__quotaMonitorV2Delivery');
+                    }
                 }
             }
         }
@@ -45,7 +65,7 @@
         if (hook != null) throw new Error('consumer hook occupied');
         if (window.__quotaMonitorV2Consumer) throw new Error('consumer hook lost');
         if (options.action === 'prepare') return 'missing';
-        const state = {digest: options.consumer.digest, status: 'failed'};
+        const state = {digest: options.consumer.digest, owner: options.owner, status: 'failed'};
         window.__quotaMonitorV2Consumer = state;
         try {
             const initialize = (0, eval)(options.consumer.source);
@@ -57,6 +77,8 @@
                 throw new Error();
             }
             if (typeof window.__codexContextTokenInspectorUpdate !== 'function') throw new Error();
+            state.hook = window.__codexContextTokenInspectorUpdate;
+            state.dispose = typeof result?.dispose === 'function' ? () => result.dispose() : null;
             state.status = 'ready';
             return 'ready';
         } catch (_) { throw new Error('consumer initialization failed'); }
@@ -115,6 +137,8 @@
         owner: options.owner, stop,
         invalidate: () => { valid = false; return refresh(); }
     };
+    const managed = window.__quotaMonitorV2Consumer;
+    if (managed?.status === 'ready' && managed.hook === lastConsumer) managed.owner = options.owner;
     if (previous) previous.stop();
     return true;
 })

@@ -47,6 +47,11 @@ def build(directory):
             raise ValueError('unrecognized source revision')
         texts[name] = data.decode('utf-8')
     script = literal(texts['context_token_injector.py'], 'INJECTION_SCRIPT')
+    # Retained view helpers run behind V2 ownership/lifetime checks.
+    script = script.replace('function ensureMascot(root)', 'function createRetainedMascot(root)', 1)
+    script = script.replace('function positionContextHint(', 'function positionRetainedHint(', 1)
+    script = cut(script, '  const previousRuntimeVersion', '  const I18N')
+    script = script.replace('  const I18N', '  const runtimeChanged = true;\n  const I18N', 1)
     # Extract only retained visual templates; replace their mounting functions.
     def template(function, declaration):
         section = script.split('  function ' + function + '(', 1)[1]

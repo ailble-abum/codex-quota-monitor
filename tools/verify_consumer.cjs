@@ -50,6 +50,27 @@ const {chromium, webkit} = require('playwright');
       });
       assert.equal(await call({...options, consumer: {source: 'throw Error()'}}), 'ready');
       assert.equal(await page.evaluate(() => window.mounts || 0), 0);
+      for (const outcome of ['throw Error("private")', 'return false', 'return Promise.reject(Error("private"))']) {
+        await page.reload();
+        await page.evaluate(() => { window.__quotaMonitorV2Thread = 'one'; });
+        const managed = {...options, owner: 'managed', consumer: {source: `(empty => {
+          window.__codexContextTokenInspectorUpdate = () => {};
+          return {dispose() { ${outcome}; }};
+        })`}};
+        assert.equal(await call(managed), 'ready');
+        await assert.rejects(call({...managed, action: 'release'}));
+        await assert.rejects(call({...managed, action: 'prepare'}));
+      }
+      await page.reload();
+      await page.evaluate(() => { window.__quotaMonitorV2Thread = 'one'; });
+      assert.equal(await call({...options, owner: 'old', consumer: {source: `(empty => {
+        window.disposedCount = 0;
+        window.__codexContextTokenInspectorUpdate = () => {};
+        return {dispose() { window.disposedCount++; }};
+      })`}}), 'ready');
+      await page.evaluate(() => { window.__codexContextTokenInspectorUpdate = () => {}; });
+      assert.equal(await call({...options, owner: 'old', action: 'release'}), true);
+      assert.equal(await page.evaluate(() => window.disposedCount), 0);
       console.log(engine.name() + ': guarded init, empty first paint, reuse, reload, failed/lost hook and existing consumer passed');
     } finally { await browser.close(); }
   }

@@ -42,6 +42,11 @@ async function main() {
         document.querySelector('output').textContent = payload.summaries[0]?.latest_context_tokens ?? '';
       };
       window.__codexContextTokenInspectorUpdate(empty);
+      return {dispose() {
+        window.consumerDisposals = (window.consumerDisposals || 0) + 1;
+        document.querySelector('output').textContent = '';
+        delete window.__codexContextTokenInspectorUpdate;
+      }};
     })`;
     await fs.writeFile(path.join(directory, 'consumer.js'), consumerSource);
     const consumer = {path: 'consumer.js', sha256: createHash('sha256').update(consumerSource).digest('hex')};
@@ -74,6 +79,8 @@ async function main() {
       assert.equal(await page.locator('output').textContent(), '');
       assert.equal(await page.evaluate(() => Object.hasOwn(window, '__quotaMonitorV2Snapshot')), false);
       assert.equal(await page.evaluate(() => Object.hasOwn(window, '__quotaMonitorV2Delivery')), false);
+      assert.equal(await page.evaluate(() => window.consumerDisposals), 1);
+      assert.equal(await page.evaluate(() => window.__quotaMonitorV2Consumer), undefined);
       assert.equal(run.stderr(), '');
       assert.ok(!JSON.stringify(run.rows).includes(directory));
     }

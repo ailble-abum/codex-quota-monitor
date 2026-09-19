@@ -25,7 +25,7 @@ async def main():
                 raise ValueError('invalid probe command')
             print(json.dumps({'status': await loop.step()}), flush=True)
     finally:
-        await loop.close()
+        await loop.shutdown()
 
 
 if __name__ == '__main__':
