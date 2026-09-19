@@ -86,7 +86,7 @@ INJECTION_SCRIPT = r"""
   // new script: stacked observers and timers are torn down, and the companion
   // bitmap is rebuilt from the new data URIs. A renderer may still contain an
   // observer from an older plugin release.
-  const RUNTIME_VERSION = 29;
+  const RUNTIME_VERSION = 31;
   const ROOT_ID = 'codex-context-token-inspector-root';
   const STYLE_ID = 'codex-context-token-inspector-style';
   const FOOTER_ATTR = 'data-context-token-footer';
@@ -100,6 +100,7 @@ INJECTION_SCRIPT = r"""
   const UNIT_DEFAULTED_KEY = 'codex-context-token-inspector-unit-defaulted';
   const EDGE_DOCK_KEY = 'cti-edge-dock';
   const SKIN_KEY = 'cti-mascot-skin';
+  const MASCOT_SCALE_KEY = 'cti-mascot-scale';
   const SKINS_OPEN_KEY = 'cti-skins-open';
   const MASCOT_ID = 'codex-context-token-inspector-mascot';
   const previousRuntimeVersion = window.__codexContextTokenInspectorRuntimeVersion;
@@ -182,6 +183,23 @@ INJECTION_SCRIPT = r"""
   function mascotSkin() {
     const value=localStorage.getItem(SKIN_KEY);
     return MASCOT_SKINS[value] ? value : 'cat';
+  }
+  // Logical window dimensions, not physical pixels or Retina density.
+  function companionScale(preference,width,height) {
+    const manual=Number(preference);
+    if(Number.isFinite(manual)&&manual>=.75&&manual<=2)return manual;
+    return Math.max(1,Math.min(1.5,width/1440,height/900));
+  }
+  function mascotScale() { return companionScale(localStorage.getItem(MASCOT_SCALE_KEY),innerWidth,innerHeight); }
+  function updateMascotSizeControls(root) {
+    const scale=mascotScale(),percent=Math.round(scale*100);
+    const manual=Number(localStorage.getItem(MASCOT_SCALE_KEY));
+    const automatic=!(Number.isFinite(manual)&&manual>=.75&&manual<=2);
+    const slider=root.querySelector('[data-mascot-scale]');
+    if(slider)slider.value=String(percent);
+    const value=root.querySelector('[data-mascot-scale-value]');
+    if(value)value.textContent=`${automatic?(uiLanguage()==='zh'?'自动 · ':'Auto · '):''}${percent}%`;
+    root.querySelector('[data-mascot-scale-auto]')?.setAttribute('aria-pressed',String(automatic));
   }
   function edgeDockEnabled() { return localStorage.getItem(EDGE_DOCK_KEY)!=='false'; }
   function mascotArt(id) { return MASCOT_ART[id] || ''; }
@@ -433,6 +451,8 @@ INJECTION_SCRIPT = r"""
         width:44px;
         height:48px;
         padding:0;
+        zoom:var(--cti-mascot-scale,1);
+        transform-origin:right top;
         cursor:ns-resize;
         touch-action:none;
         color:CanvasText;
@@ -440,6 +460,7 @@ INJECTION_SCRIPT = r"""
         -webkit-app-region:no-drag !important;
         transition:transform .16s ease,box-shadow .16s ease,filter .16s ease;
       }
+      .cti-edge-mascot[data-edge="left"] { transform-origin:left top; }
       .cti-edge-mascot[data-visible="true"] { display:grid; }
       .cti-edge-mascot svg { width:42px; height:46px; overflow:visible; filter:drop-shadow(0 2px 2px #0005); }
       /* A bitmap companion already has its own shading and silhouette, so it
@@ -590,6 +611,8 @@ INJECTION_SCRIPT = r"""
       .cti-hud [data-settings] { border-top:1px solid color-mix(in srgb,CanvasText 8%,transparent); padding-top:10px; }
       .cti-setting { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:10px 0; font-size:11px; }
       .cti-setting input { accent-color:var(--cti-safe); width:14px; height:14px; }
+      .cti-setting input[data-mascot-scale] { flex:1; min-width:0; width:90px; height:18px; }
+      [data-mascot-scale-value] { font-variant-numeric:tabular-nums; white-space:nowrap; }
       [data-update] { margin:8px 0; }
       .cti-update-row { display:flex; align-items:center; gap:7px; font-size:11px; }
       .cti-update-row strong { font-weight:650; }
@@ -837,14 +860,14 @@ INJECTION_SCRIPT = r"""
     if(root.dataset.docked!=='true')return;
     clearDockHide(root);root.dataset.revealed=String(revealed);applyStoredHudPosition(root);
   }
-  function dockVerticalY(y,viewportHeight,panelHeight) {
+  function dockVerticalY(y,viewportHeight,panelHeight,mascotHeight=48) {
     const top=Math.min(64,Math.max(8,viewportHeight-100));
-    const bottom=Math.max(top,viewportHeight-Math.max(panelHeight,48)-8);
+    const bottom=Math.max(top,viewportHeight-Math.max(panelHeight,mascotHeight)-8);
     return Math.max(top,Math.min(bottom,y));
   }
-  function mascotDragGeometry(start,clientY,viewportHeight,panelHeight) {
+  function mascotDragGeometry(start,clientY,viewportHeight,panelHeight,mascotHeight=48) {
     const delta=clientY-start.pointerY,moved=start.moved||Math.abs(delta)>=4;
-    return {moved,y:moved?dockVerticalY(start.top+delta,viewportHeight,panelHeight):start.top};
+    return {moved,y:moved?dockVerticalY(start.top+delta,viewportHeight,panelHeight,mascotHeight):start.top};
   }
   function ensureMascot(root) {
     let mascot=document.getElementById(MASCOT_ID);
@@ -863,7 +886,7 @@ INJECTION_SCRIPT = r"""
     });
     mascot.addEventListener('pointermove',event=>{
       const gesture=mascot.__ctiGesture;if(!gesture)return;
-      const next=mascotDragGeometry(gesture,event.clientY,innerHeight,root.getBoundingClientRect().height);
+      const next=mascotDragGeometry(gesture,event.clientY,innerHeight,root.getBoundingClientRect().height,48*mascotScale());
       if(!next.moved)return;
       gesture.moved=true;event.preventDefault();
       const mode=hudMode(root),previous=root.__ctiLayout[mode]||{};
@@ -998,15 +1021,17 @@ INJECTION_SCRIPT = r"""
     root.dataset.docked='true';root.dataset.dockEdge=edge;
     if(!root.dataset.revealed)root.dataset.revealed='false';
     mascot.dataset.visible='true';mascot.dataset.edge=edge;applyMascotSkin(root);
-    const revealed=root.dataset.revealed==='true';
+    const revealed=root.dataset.revealed==='true',scale=mascotScale();
+    mascot.style.setProperty('--cti-mascot-scale',String(scale));
     // The companion is pinned with left/right instead of a computed offset, so
     // its cut edge stays flush no matter how wide the skin's artwork is. The
     // panel clears the tallest companion plus its shadow.
     mascot.style.left=edge==='left'?'0px':'auto';
     mascot.style.right=edge==='right'?'0px':'auto';
-    const y=dockVerticalY(Number.isFinite(wanted.y)?wanted.y:topMin,innerHeight,rect.height);
-    const gap=52;
-    mascot.style.top=`${y}px`;
+    const y=dockVerticalY(Number.isFinite(wanted.y)?wanted.y:topMin,innerHeight,rect.height,48*scale);
+    const gap=52*scale;
+    // CSS zoom also scales fixed offsets; keep the saved position in viewport pixels.
+    mascot.style.top=`${y/scale}px`;
     root.style.left=edge==='left'?(revealed?`${gap}px`:`${-rect.width-2}px`):(revealed?`${innerWidth-rect.width-gap}px`:`${innerWidth+2}px`);
     root.style.top=`${y}px`;
     positionContextHint(root);
@@ -1023,7 +1048,10 @@ INJECTION_SCRIPT = r"""
     const mode=hudMode(root), layout=root.__ctiLayout;
     const wanted=layout[mode] || layout.compact || {};
     const base=hudBase(root);
-    const width=Math.max(160,Math.min(window.innerWidth-16, wanted.width || base));
+    updateMascotSizeControls(root);
+    const docked=edgeDockEnabled()&&(wanted.edge==='left'||wanted.edge==='right');
+    const available=window.innerWidth-(docked?52*mascotScale()+8:16);
+    const width=Math.max(160,Math.min(available, wanted.width || base));
     root.style.width=width+'px';
     root.style.setProperty('--cti-scale',String(Math.max(.55,Math.min(1.65,width/base))));
     root.style.maxHeight=Math.max(80,window.innerHeight-80)+'px';
@@ -1585,6 +1613,8 @@ INJECTION_SCRIPT = r"""
           <div class="cti-line"><span class="cti-muted">${zh?'显示设置':'Display settings'}</span><button class="cti-text-button" type="button" data-position-reset>${zh?'恢复位置':'Reset position'}</button></div>
           <div class="cti-setting"><span>${zh?'面板尺寸':'Panel size'}</span><div class="cti-preset-group" role="group" aria-label="${zh?'面板尺寸':'Panel size'}"><button class="cti-preset-button" type="button" data-layout-preset="mini">${zh?'迷你':'Mini'}</button><button class="cti-preset-button" type="button" data-layout-preset="standard">${zh?'标准':'Standard'}</button><button class="cti-preset-button" type="button" data-layout-preset="large">${zh?'大字':'Large'}</button></div></div>
           <label class="cti-setting"><span>${zh?'边缘软吸附':'Soft edge docking'}</span><input type="checkbox" data-edge-dock></label>
+          <div class="cti-setting"><span>${zh?'小伴侣大小':'Companion size'}</span><output data-mascot-scale-value></output><button class="cti-text-button" type="button" data-mascot-scale-auto>${zh?'恢复自动':'Reset to auto'}</button></div>
+          <label class="cti-setting"><span>75%</span><input type="range" min="75" max="200" step="1" data-mascot-scale aria-label="${zh?'小伴侣大小':'Companion size'}"><span>200%</span></label>
           <details data-skins>
             <summary>${zh?'角色皮肤':'Character skin'} · <em data-skin-current></em></summary>
             <div class="cti-skin-group" role="group" aria-label="${zh?'角色皮肤':'Character skin'}">${skinButtons()}</div>
@@ -1607,6 +1637,14 @@ INJECTION_SCRIPT = r"""
       const language=body.querySelector('[data-language]');language.value=localStorage.getItem('cti-language')||'auto';
       language.addEventListener('change',()=>{localStorage.setItem('cti-language',language.value);applyAll(window.__codexContextTokenInspectorPayload);});
       body.querySelectorAll('[data-layout-preset]').forEach(button=>button.addEventListener('click',()=>setLayoutPreset(root,button.getAttribute('data-layout-preset'))));
+      body.querySelector('[data-mascot-scale]').addEventListener('input',event=>{
+        localStorage.setItem(MASCOT_SCALE_KEY,String(Number(event.target.value)/100));
+        applyStoredHudPosition(root);
+      });
+      body.querySelector('[data-mascot-scale-auto]').addEventListener('click',()=>{
+        localStorage.removeItem(MASCOT_SCALE_KEY);applyStoredHudPosition(root);
+      });
+      updateMascotSizeControls(root);
       const edgeDock=body.querySelector('[data-edge-dock]');edgeDock.checked=edgeDockEnabled();
       edgeDock.addEventListener('change',()=>{
         localStorage.setItem(EDGE_DOCK_KEY,String(edgeDock.checked));
