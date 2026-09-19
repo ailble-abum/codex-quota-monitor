@@ -9,7 +9,9 @@ const near = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1, `$
   for (const engine of [chromium, webkit]) {
     const browser = await engine.launch();
     try {
-      const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, locale: 'zh-CN' });
+      // Measure layout without the post-drag landing animation scaling the image.
+      // Animated feedback is covered separately by verify_companion_ui.cjs.
+      const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, locale: 'zh-CN', reducedMotion: 'reduce' });
       const errors = [];
       page.on('pageerror', error => errors.push(error.message));
       await page.route('http://companion.test/**', route => route.fulfill({ contentType: 'text/html', body: '<html lang="zh-CN"><style>:root{color-scheme:light dark}body{background:Canvas;color:CanvasText}</style><body></body></html>' }));

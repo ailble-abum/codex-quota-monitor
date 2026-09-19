@@ -88,7 +88,7 @@ INJECTION_SCRIPT = r"""
   // new script: stacked observers and timers are torn down, and the companion
   // bitmap is rebuilt from the new data URIs. A renderer may still contain an
   // observer from an older plugin release.
-  const RUNTIME_VERSION = 34;
+  const RUNTIME_VERSION = 35;
   const ROOT_ID = 'codex-context-token-inspector-root';
   const STYLE_ID = 'codex-context-token-inspector-style';
   const FOOTER_ATTR = 'data-context-token-footer';

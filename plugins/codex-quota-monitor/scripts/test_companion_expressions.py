@@ -1,4 +1,4 @@
-"""Checks for the deterministic cat-expression sprite bundle."""
+"""Checks for the deterministic companion-expression sprite bundle."""
 
 from __future__ import annotations
 
@@ -7,7 +7,6 @@ import io
 import unittest
 
 from companion_expressions import (
-    CANVAS_WIDTH,
     COMPANION_EXPRESSIONS,
     EXPRESSION_ORDER,
     RUNTIME_HEIGHT,
@@ -17,6 +16,11 @@ try:
     from PIL import Image
 except ImportError:  # pragma: no cover - CI without the build-time stack
     Image = None
+
+try:
+    import numpy
+except ImportError:  # pragma: no cover - optional build-time dependency
+    numpy = None
 
 HAVE_IMAGE_STACK = Image is not None
 
@@ -33,33 +37,50 @@ def webp_size(data: bytes) -> tuple[int, int] | None:
 
 
 class CompanionExpressionTests(unittest.TestCase):
-    def test_cat_exports_all_six_expressions(self):
-        self.assertEqual(sorted(COMPANION_EXPRESSIONS), ["cat"])
-        self.assertEqual(tuple(COMPANION_EXPRESSIONS["cat"]), EXPRESSION_ORDER)
+    def test_all_skins_export_six_distinct_expressions(self):
+        self.assertEqual(sorted(COMPANION_EXPRESSIONS), ["candy", "cat", "corgi", "frost", "mint", "tea"])
+        for skin, frames in COMPANION_EXPRESSIONS.items():
+            self.assertEqual(tuple(frames), EXPRESSION_ORDER, skin)
+            self.assertEqual(len(set(frames.values())), 6, skin)
         self.assertEqual(EXPRESSION_ORDER, ("idle", "happy", "concerned", "notice", "waiting", "pet"))
 
     def test_every_expression_is_a_canvas_sized_webp(self):
-        for name, uri in COMPANION_EXPRESSIONS["cat"].items():
-            with self.subTest(expression=name):
-                self.assertTrue(uri.startswith("data:image/webp;base64,"))
-                payload = base64.b64decode(uri.split(",", 1)[1])
-                self.assertGreater(len(payload), 2048)
-                self.assertEqual(webp_size(payload), (CANVAS_WIDTH, RUNTIME_HEIGHT))
+        for skin, frames in COMPANION_EXPRESSIONS.items():
+            for name, uri in frames.items():
+                with self.subTest(skin=skin, expression=name):
+                    self.assertTrue(uri.startswith("data:image/webp;base64,"))
+                    payload = base64.b64decode(uri.split(",", 1)[1])
+                    self.assertGreater(len(payload), 2048)
+                    size = webp_size(payload)
+                    self.assertEqual(size[1], RUNTIME_HEIGHT)
+                    self.assertEqual(size, webp_size(base64.b64decode(frames["idle"].split(",", 1)[1])))
+                    self.assertGreaterEqual(size[0], 96)
+                    self.assertLessEqual(size[0], 384)
 
     @unittest.skipUnless(HAVE_IMAGE_STACK, "needs the build-time pillow stack")
     def test_every_expression_keeps_alpha_and_reaches_the_right_edge(self):
-        for name, uri in COMPANION_EXPRESSIONS["cat"].items():
-            with self.subTest(expression=name):
-                payload = base64.b64decode(uri.split(",", 1)[1])
-                with Image.open(io.BytesIO(payload)) as decoded:
-                    self.assertEqual(decoded.mode, "RGBA")
-                    alpha = decoded.getchannel("A")
-                    alpha_min, alpha_max = alpha.getextrema()
-                    self.assertEqual(alpha_min, 0)
-                    self.assertGreater(alpha_max, 128)
-                    edge = alpha.crop((CANVAS_WIDTH - 1, 0, CANVAS_WIDTH, RUNTIME_HEIGHT))
-                    edge_values = edge.tobytes()
-                    self.assertGreaterEqual(sum(value >= 32 for value in edge_values), RUNTIME_HEIGHT // 20)
+        for skin, frames in COMPANION_EXPRESSIONS.items():
+            for name, uri in frames.items():
+                with self.subTest(skin=skin, expression=name):
+                    payload = base64.b64decode(uri.split(",", 1)[1])
+                    with Image.open(io.BytesIO(payload)) as decoded:
+                        self.assertEqual(decoded.mode, "RGBA")
+                        alpha = decoded.getchannel("A")
+                        alpha_min, alpha_max = alpha.getextrema()
+                        self.assertEqual(alpha_min, 0)
+                        self.assertGreater(alpha_max, 128)
+                        # Hair/fingertip contours can touch the wall in only a few
+                        # pixels; require a visible edge, not the cat-specific
+                        # minimum length of a straight body cut.
+                        visible = alpha.point(lambda value: 255 if value >= 32 else 0)
+                        self.assertEqual(visible.getbbox()[2], decoded.width)
+
+    @unittest.skipUnless(HAVE_IMAGE_STACK and numpy is not None, "needs the build-time pillow/numpy stack")
+    def test_builder_rejects_opaque_and_empty_source_sheets(self):
+        from build_companion_expressions import source_cells
+        for rgba in [(10, 20, 30, 255), (0, 0, 0, 0)]:
+            with self.subTest(rgba=rgba), self.assertRaises(SystemExit):
+                source_cells(Image.new("RGBA", (1536, 1024), rgba))
 
 
 if __name__ == "__main__":

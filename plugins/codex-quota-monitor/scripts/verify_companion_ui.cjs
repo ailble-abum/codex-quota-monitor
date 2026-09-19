@@ -35,8 +35,8 @@ function payload(remaining, ctx = 20, thread = 'a') {
     quota: {
       status: 'live', updatedAt: Date.now() / 1000, accountKey: 'fixture-account', planType: 'fixture',
       ordinaryUsageAllowed: remaining > 0, rateLimitReachedType: remaining <= 0 ? 'weekly' : null,
-      windows: [{ id: 'short', windowMinutes: 300, resetsAt: 2000000000, remaining, label: '5h' },
-                { id: 'weekly', windowMinutes: 10080, resetsAt: 2000600000, remaining: Math.max(remaining, 40), label: 'Weekly' }],
+      windows: [{ key: 'short', duration: 300, resetsAt: 2000000000, remaining, label: '5h' },
+                { key: 'weekly', duration: 10080, resetsAt: 2000600000, remaining: Math.max(remaining, 40), label: 'Weekly' }],
     },
     health: { count: 0, latestAt: null, recommendHandoff: false },
     healthThreadId: 'a',
@@ -46,8 +46,8 @@ function payload(remaining, ctx = 20, thread = 'a') {
   };
 }
 
-async function run(engine) {
-  const name = engine.name();
+async function run(engine, skin) {
+  const name = `${engine.name()}-${skin}`;
   const browser = await engine.launch({ headless: true });
   const errors = [];
   const consoleErrors = [];
@@ -62,11 +62,12 @@ async function run(engine) {
       body: '<!doctype html><html lang="zh-CN"><style>:root{color-scheme:light dark}body{margin:0;background:Canvas;color:CanvasText}</style><body><nav><button data-app-action-sidebar-thread-row data-app-action-sidebar-thread-active="true" data-app-action-sidebar-thread-id="a">A</button><button data-app-action-sidebar-thread-row data-app-action-sidebar-thread-active="false" data-app-action-sidebar-thread-id="b">B</button></nav></body></html>',
     }));
     await page.goto('http://companion.test/');
-    await page.evaluate(() => {
+    await page.evaluate(skin => {
+      localStorage.setItem('cti-mascot-skin', skin);
       localStorage.setItem('cti-language', 'zh');
       localStorage.removeItem('cti-companion-state');
       localStorage.setItem('cti-layout-v2', JSON.stringify({ compact: { edge: 'left', y: 150 }, expanded: { edge: 'left', y: 150 } }));
-    });
+    }, skin);
     await page.evaluate(`(${injection})(${JSON.stringify(payload(50))})`);
     await page.locator('.cti-edge-mascot img').evaluate(img => img.decode());
     const update = p => page.evaluate(p => window.__codexContextTokenInspectorUpdate(p), p);
@@ -183,8 +184,14 @@ async function run(engine) {
     }
     assert.ok(expressionSources.size >= 6, `${name}: expression srcs did not switch: ${expressionSources.size} ${JSON.stringify(Object.fromEntries(Object.entries(expressionFrames).map(([k,v])=>[k,v?.length])))}`);
     await page.evaluate(() => { localStorage.setItem('cti-mascot-scale','2'); window.dispatchEvent(new Event('resize')); });
-    await page.waitForTimeout(50);
+    // Let the panel's 200ms position transition settle before checking clearance.
+    await page.waitForTimeout(250);
     assert.ok(Math.abs((await state()).height - idle.height * 2) < 1);
+    assert.ok(await page.evaluate(() => {
+      const root = document.querySelector('.cti-hud');
+      const mascot = document.querySelector('.cti-edge-mascot');
+      return root.dataset.revealed !== 'true' || root.getBoundingClientRect().left >= mascot.getBoundingClientRect().right;
+    }), `${name}: expanded panel overlaps companion at 2x`);
     await page.screenshot({ path: path.join(out, `${name}-2x-dark.png`) });
     await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' });
     await mascot.hover();
@@ -201,9 +208,10 @@ async function run(engine) {
 
 (async () => {
   const results = [];
-  for (const engine of [chromium, webkit]) {
-    try { results.push(await run(engine)); }
-    catch (error) { results.push({ engine: engine.name(), failure: error.stack || String(error) }); }
+  const skins = (process.env.COMPANION_SKINS || 'cat,candy,corgi,mint,frost,tea').split(',');
+  for (const engine of [chromium, webkit]) for (const skin of skins) {
+    try { results.push(await run(engine, skin)); }
+    catch (error) { results.push({ engine: engine.name(), skin, failure: error.stack || String(error) }); }
   }
   fs.writeFileSync(path.join(out, 'results.json'), JSON.stringify(results, null, 2));
   console.log(JSON.stringify(results, null, 2));
