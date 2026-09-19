@@ -36,6 +36,32 @@
     }
     if (!options.key || current() !== options.key) return false;
 
+    if (options.action === 'prepare' || options.action === 'initialize') {
+        // A partial/failed initializer must not be retried or adopted as healthy.
+        if (window.__quotaMonitorV2Consumer?.status === 'failed')
+            throw new Error('consumer initialization failed');
+        const hook = window.__codexContextTokenInspectorUpdate;
+        if (typeof hook === 'function') return 'ready';
+        if (hook != null) throw new Error('consumer hook occupied');
+        if (window.__quotaMonitorV2Consumer) throw new Error('consumer hook lost');
+        if (options.action === 'prepare') return 'missing';
+        const state = {digest: options.consumer.digest, status: 'failed'};
+        window.__quotaMonitorV2Consumer = state;
+        try {
+            const initialize = (0, eval)(options.consumer.source);
+            if (typeof initialize !== 'function') throw new Error();
+            const result = initialize({activeThreadId: null, selectedThreadId: null,
+                summaries: [], detail: null, detailsByThread: {}, observedAt: Date.now() / 1000});
+            if (result && typeof result.then === 'function') {
+                Promise.resolve(result).catch(() => {});
+                throw new Error();
+            }
+            if (typeof window.__codexContextTokenInspectorUpdate !== 'function') throw new Error();
+            state.status = 'ready';
+            return 'ready';
+        } catch (_) { throw new Error('consumer initialization failed'); }
+    }
+
     const previous = window.__quotaMonitorV2Delivery;
     const deadline = performance.now() + 120000;
     let valid = true;

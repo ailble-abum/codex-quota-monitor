@@ -56,7 +56,11 @@ async function main() {
           const empty = () => page.waitForFunction(() => {
             return !document.querySelector('[data-context] [role="meter"]') && document.querySelector('[data-metrics]')?.textContent === '';
           });
-          await page.evaluate(({ script, payload }) => (0, eval)(script)(payload), { script: fixture.script, payload: fixture.payloads.one });
+          await page.evaluate(({script, payload, bridge}) => {
+            if (!bridge) return (0, eval)(script)(payload);
+            return (0, eval)(bridge)({action: 'initialize', expected: location.href, key: 'one',
+              host: 'codex-sidebar', consumer: {source: script, digest: 'external-fixture'}});
+          }, {script: fixture.script, payload: fixture.payloads.one, bridge});
           await select('one');
           await push('one');
           await meter(25);

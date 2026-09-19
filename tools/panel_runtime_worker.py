@@ -1,5 +1,6 @@
 """Drive the real update loop against explicit synthetic test inputs over stdin."""
 import asyncio
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -12,7 +13,9 @@ async def main():
     origin, url, directory = sys.argv[1:4]
     root = Path(directory)
     loop = UpdateLoop(origin, url, {key: root / (key + '.jsonl') for key in ('one', 'two')},
-                      panel=True, host='codex-sidebar')
+                      panel=True, host='codex-sidebar', consumer={
+                          'path': root / 'consumer.js',
+                          'sha256': hashlib.sha256((root / 'consumer.js').read_bytes()).hexdigest()})
     try:
         while True:
             command = await asyncio.to_thread(sys.stdin.readline)

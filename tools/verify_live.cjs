@@ -4,6 +4,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const os = require('node:os');
 const readline = require('node:readline');
+const {createHash} = require('node:crypto');
 const {spawn} = require('node:child_process');
 const {chromium} = require('playwright');
 
@@ -26,9 +27,7 @@ async function main() {
     const mount = () => page.evaluate(() => {
       document.body.innerHTML = '<output></output>';
       window.__quotaMonitorV2Thread = 'one';
-      window.__codexContextTokenInspectorUpdate = payload => {
-        document.querySelector('output').textContent = payload.summaries[0]?.latest_context_tokens ?? '';
-      };
+
     });
     await fs.writeFile(path.join(directory, 'one.jsonl'), [
       {type: 'session_meta', payload: {id: 'one'}},
@@ -37,8 +36,17 @@ async function main() {
     ].map(JSON.stringify).join('\n') + '\n');
     const port = Number((await fs.readFile(path.join(directory, 'profile/DevToolsActivePort'), 'utf8')).split('\n')[0]);
     const config = path.join(directory, 'config.json');
+    const consumerSource = `(empty => {
+      window.consumerMounts = (window.consumerMounts || 0) + 1;
+      window.__codexContextTokenInspectorUpdate = payload => {
+        document.querySelector('output').textContent = payload.summaries[0]?.latest_context_tokens ?? '';
+      };
+      window.__codexContextTokenInspectorUpdate(empty);
+    })`;
+    await fs.writeFile(path.join(directory, 'consumer.js'), consumerSource);
+    const consumer = {path: 'consumer.js', sha256: createHash('sha256').update(consumerSource).digest('hex')};
     await fs.writeFile(config, JSON.stringify({origin: `http://127.0.0.1:${port}`, page_url: 'about:blank',
-      journals: {one: 'one.jsonl'}, panel: true}));
+      journals: {one: 'one.jsonl'}, panel: true, consumer}));
     function start(extra = []) {
       const proc = spawn(process.env.PYTHON || 'python3', ['-m', 'quota_monitor.live', '--config', config,
         '--interval', '0.1', '--max-failures', '3', ...extra], {cwd: path.join(__dirname, '..'), stdio: ['ignore', 'pipe', 'pipe']});
@@ -58,6 +66,7 @@ async function main() {
       await until(() => run.rows.some(row => row.status === 'unselected'));
       await mount();
       await page.waitForFunction(() => document.querySelector('output').textContent === '250');
+      assert.equal(await page.evaluate(() => window.consumerMounts), 1);
       run.proc.kill(sig);
       await until(() => run.proc.exitCode !== null);
       assert.equal(run.proc.exitCode, sig === 'SIGINT' ? 130 : 143, run.stderr());
@@ -79,7 +88,7 @@ async function main() {
     await fs.mkdir(path.join(directory, 'sessions'));
     await fs.copyFile(path.join(directory, 'one.jsonl'), path.join(directory, 'sessions/random.jsonl'));
     await fs.writeFile(config, JSON.stringify({origin: `http://127.0.0.1:${port}`, page_url: 'about:blank',
-      session_root: 'sessions', panel: true}));
+      session_root: 'sessions', panel: true, consumer}));
     await mount();
     const indexed = start();
     await until(() => indexed.rows.some(row => row.status === 'updated'));

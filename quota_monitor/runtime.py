@@ -14,6 +14,7 @@ from .cdp import CDPClient, CDPError
 from .compat import panel_payload, thread_key
 from .journal import SessionJournal
 from .indexed import DirectorySource
+from .consumer import load_consumer
 from .reader import finite_float, reject_constant
 
 
@@ -108,7 +109,7 @@ class UpdateLoop:
 
     panel=True forwards to an already installed consumer; it never installs UI.
     """
-    def __init__(self, origin, page_url, paths=None, *, panel=False, host='explicit', session_root=None):
+    def __init__(self, origin, page_url, paths=None, *, panel=False, host='explicit', session_root=None, consumer=None):
         local_origin(origin)
         if host not in ('explicit', 'codex-sidebar'):
             raise ValueError('invalid host adapter')
@@ -116,6 +117,9 @@ class UpdateLoop:
         if type(panel) is not bool:
             raise ValueError('invalid panel mode')
         self.panel = panel
+        if consumer is not None and not panel:
+            raise ValueError('consumer requires panel mode')
+        self.consumer = load_consumer(consumer) if consumer is not None else None
         if not isinstance(page_url, str) or not page_url:
             raise ValueError('explicit page URL required')
         self.origin, self.page_url = origin, page_url
@@ -165,6 +169,16 @@ class UpdateLoop:
                         action='invalidate', expected=self.page_url, owner=self.owner))
                 self.status = 'unselected'
                 return self.status
+            if self.consumer is not None:
+                ready = await self.client.evaluate(page_expression(
+                    action='prepare', expected=self.page_url, key=key, host=self.host))
+                if ready == 'missing':
+                    ready = await self.client.evaluate(page_expression(
+                        action='initialize', expected=self.page_url, key=key, host=self.host,
+                        consumer=self.consumer))
+                if ready != 'ready':
+                    self.status = 'changed'
+                    return self.status
             payload = self.source.read(key)
             applied = await self.client.evaluate(page_expression(
                 action='publish', expected=self.page_url, key=key,

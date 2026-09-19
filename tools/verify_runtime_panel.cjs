@@ -46,6 +46,7 @@ async function main() {
       page.on('pageerror', error => errors.push(error.message));
       await page.goto('http://panel.invalid/');
       const port = Number((await fs.readFile(path.join(temp, 'profile/DevToolsActivePort'), 'utf8')).split('\n')[0]);
+      await fs.writeFile(path.join(temp, 'consumer.js'), fixture.script);
       worker = spawn(python, [path.join(__dirname, 'panel_runtime_worker.py'),
         `http://127.0.0.1:${port}`, 'http://panel.invalid/', temp], {stdio: ['pipe', 'pipe', 'pipe']});
       exited = once(worker, 'exit');
@@ -68,11 +69,10 @@ async function main() {
           row.setAttribute('data-app-action-sidebar-thread-active', String(row.getAttribute('data-app-action-sidebar-thread-id') === key));
         });
       }, key);
-      const mount = () => page.evaluate(({script, payload}) => {
+      const mount = () => page.evaluate(() => {
         localStorage.setItem('cti-language', 'zh');
         localStorage.setItem('cti-layout-v2', JSON.stringify({expanded: {edge: 'right', y: 120}}));
-        (0, eval)(script)(payload);
-      }, {script: fixture.script, payload: fixture.payloads.missing});
+      });
       const meter = value => page.waitForFunction(value =>
         document.querySelector('[data-context] [role="meter"]')?.getAttribute('aria-valuenow') === String(value), value);
       const empty = () => page.waitForFunction(() =>
@@ -112,7 +112,7 @@ async function main() {
       await meter(35);
       await page.reload();
       await select('two');
-      assert.equal(await step(), 'javascript_error'); // Renderer intentionally absent after reload.
+      // V2 restores the missing renderer after reload without test-side injection.
       await mount();
       assert.equal(await step(), 'updated');
       await meter(50);

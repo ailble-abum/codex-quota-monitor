@@ -22,7 +22,7 @@
 }
 ```
 
-示例仅描述协议，运行时必须换成调用方自己授权的隔离目标。origin/page_url 必填，journals 与 session_root 必选其一（见[受限目录关联](directory-index-contract.md)）；host 默认 explicit，另支持 codex-sidebar；panel 默认 false。页面/面板协议见 [宿主与面板契约](host-panel-contract.md)。panel=true 要求目标已挂载消费者 hook；命令不自动注入旧 renderer。
+示例仅描述协议，运行时必须换成调用方自己授权的隔离目标。origin/page_url 必填，journals 与 session_root 必选其一（见[受限目录关联](directory-index-contract.md)）；host 默认 explicit，另支持 codex-sidebar；panel 默认 false。页面/面板协议见 [宿主与面板契约](host-panel-contract.md)。panel=true 要求目标已挂载消费者 hook；可选 consumer 配置提供[显式初始化](consumer-contract.md)，默认仍只使用已有 hook。
 
 配置文件最大 64 KiB；1–256 个任务映射；重复键、未知字段、非法任务 ID、错误类型、非回环 origin 均拒绝。任务 key 必须是无 local: 前缀的规范 ID，日志中的 session_meta 继续核对该身份。日志相对路径相对于配置文件所在目录；绝对路径也可显式提供。不会据此扫描父目录、读取认证或推断其他会话。
 
@@ -78,4 +78,4 @@ Node 使用已有 Playwright，通过 NODE_PATH 指向既有 node_modules；没�
 
 ## 接续边界
 
-已具备独立、显式配置的前台运行入口；真实宿主窗口仍未接入，现用安装保持不变。仍需完成受限生产会话关联、消费者初始化/来源替换、原生隔离验收，以及后续安装/Windows/发行工作。受限目录关联已在后续[目录索引阶段](directory-index-contract.md)实现并以合成数据验证；后续优先补齐独立消费者初始化。
+已具备独立、显式配置的前台运行入口；真实宿主窗口仍未接入，现用安装保持不变。仍需完成受限生产会话关联、消费者初始化/来源替换、原生隔离验收，以及后续安装/Windows/发行工作。受限目录关联已在后续[目录索引阶段](directory-index-contract.md)实现并以合成数据验证；后续[显式消费者初始化](consumer-contract.md)已补齐；消费者来源拆分与隔离原生验收继续开放。

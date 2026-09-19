@@ -37,7 +37,7 @@ def load_config(path):
     if len(raw) > 65536:
         raise ValueError('config limit')
     config = json.loads(raw, object_pairs_hook=unique_object, parse_constant=reject_constant)
-    if (not isinstance(config, dict) or set(config) - {'origin', 'page_url', 'journals', 'session_root', 'host', 'panel'}
+    if (not isinstance(config, dict) or set(config) - {'origin', 'page_url', 'journals', 'session_root', 'host', 'panel', 'consumer'}
             or not {'origin', 'page_url'} <= set(config)
             or ('journals' in config) == ('session_root' in config)):
         raise ValueError('invalid config fields')
@@ -54,6 +54,12 @@ def load_config(path):
         if not isinstance(root, str) or not root or '\0' in root:
             raise ValueError('invalid session root')
         config['session_root'] = path.parent / root
+    if 'consumer' in config:
+        consumer = config['consumer']
+        if (not isinstance(consumer, dict) or set(consumer) != {'path', 'sha256'}
+                or not isinstance(consumer['path'], str) or not consumer['path'] or '\0' in consumer['path']):
+            raise ValueError('invalid consumer config')
+        consumer['path'] = path.parent / consumer['path']
     url = config['page_url']
     if not isinstance(url, str) or not 1 <= len(url) <= 8192 or any(ord(c) < 32 for c in url):
         raise ValueError('invalid page URL')

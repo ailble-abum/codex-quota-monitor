@@ -80,6 +80,27 @@ class LiveCLITests(unittest.TestCase):
         with self.assertRaises(ValueError):
             load_config(self.config)
 
+    def test_consumer_requires_panel_and_valid_pinned_file(self):
+        import hashlib
+        from quota_monitor.live import load_config
+        source = b'(empty => {})'
+        script = self.config.parent / 'consumer.js'
+        script.write_bytes(source)
+        self.value['consumer'] = {'path': 'consumer.js', 'sha256': hashlib.sha256(source).hexdigest()}
+        self.config.write_text(json.dumps(self.value))
+        self.assertEqual(load_config(self.config)['consumer']['path'], script)
+        result = self.run_cli('--once')
+        self.assertIn('invalid_config', result.stderr)
+        self.value['panel'] = True
+        self.value['consumer']['sha256'] = '0' * 64
+        result = self.run_cli('--once')
+        self.assertIn('invalid_config', result.stderr)
+        self.assertNotIn('PRIVATE', result.stderr)
+        for consumer in (None, {}, {'path': 3, 'sha256': '0' * 64}):
+            self.value['consumer'] = consumer
+            result = self.run_cli('--once')
+            self.assertIn('invalid_config', result.stderr)
+
     def test_duplicate_config_keys_are_rejected(self):
         self.config.write_text('{"origin":"PRIVATE", "origin":"other"}')
         result = subprocess.run([sys.executable, '-m', 'quota_monitor.live', '--config', str(self.config)],
