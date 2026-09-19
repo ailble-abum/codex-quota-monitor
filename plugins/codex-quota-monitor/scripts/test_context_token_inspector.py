@@ -102,6 +102,14 @@ class InspectorTests(unittest.TestCase):
         # The collapsed summary is the only place the live companion is named.
         self.assertIn("querySelector('[data-skin-current]')", INJECTION_SCRIPT)
 
+    def test_the_quota_header_stays_pinned(self):
+        # The panel is its own scroll container, so an unpinned title row takes
+        # the quota readout and the window controls off screen with it.
+        head = block(".cti-hud-head {", "[data-cti-title]")
+        self.assertIn("position: sticky", head)
+        self.assertIn("top: 0", head)
+        self.assertIn("background: Canvas", head)
+
     def test_latest_model_and_effort_are_reported(self):
         rows = [
             {'type':'session_meta','payload':{'id':'thread','cwd':'/tmp'}},

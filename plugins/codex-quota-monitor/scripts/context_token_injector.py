@@ -832,6 +832,13 @@ INJECTION_SCRIPT = r"""
         font-weight: 650;
         cursor: move;
         touch-action: none;
+        /* The panel is its own scroll container, so the title row has to be
+           pinned: otherwise the quota readout and the window controls scroll
+           out of reach the moment the detail list grows past the viewport. */
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        background: Canvas;
       }
       [data-cti-title] {
         cursor: pointer;
