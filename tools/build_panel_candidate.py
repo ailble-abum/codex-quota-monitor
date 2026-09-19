@@ -91,6 +91,8 @@ def build(directory):
     script = cut(script, "    if (!body.querySelector('[data-quota]')", "      const language=body.querySelector('[data-language]');")
     script = script.replace("      const language=body.querySelector('[data-language]');",
                             "    if (preparePanelBody(root)) {\n      const language=body.querySelector('[data-language]');", 1)
+    script = cut(script, '  function uiLanguage(', '  function tr(')
+    script = cut(script, "      const language=body.querySelector('[data-language]');", "      body.querySelectorAll('[data-layout-preset]')")
     # Remove these after the intervening old mount/sidebar spans are gone.
     script = cut(script, '  function updateUnitButtons(', '  function applyHud(')
     start, end = '    if (selected) {', '    const errorLabels='
@@ -132,6 +134,7 @@ def build(directory):
         raise ValueError('unexpected lifecycle boundary')
     assets = Path(__file__).parents[1] / 'quota_monitor'
     script = (script[:script.index(tail)] + (assets / 'panel_format.js').read_text()
+              + (assets / 'panel_language.js').read_text()
               + (assets / 'panel_controls.js').read_text()
               + (assets / 'panel_details.js').read_text()
               + (assets / 'panel_context.js').read_text()

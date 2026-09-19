@@ -33,6 +33,8 @@
   function updateHudLanguage(root) {
     const chinese = uiLanguage() === 'zh';
     root.lang = chinese ? 'zh-CN' : 'en';
+    const language = root.querySelector('[data-language]');
+    if (language) language.value = languagePreference();
     const labels = [
       ['.cti-unit-group', tr('tokenUnit')],
       ['[data-cti-toggle]', tr(root.dataset.collapsed === 'true' ? 'expandMonitor' : 'collapseMonitor')],

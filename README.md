@@ -58,3 +58,5 @@ python3 -m unittest discover -s tests -v
 [V2 版本、更新与界面诊断正文](docs/panel-diagnostics-contract.md) 改为文本 DOM，更新入口随当前 HTTPS URL 同步，缺失诊断不再误报失败。
 
 [V2 正文挂载与语言重建](docs/panel-body-contract.md) 保留单位节点与设置区展开状态，修复切换语言后设置关闭但按钮仍标为展开的问题；正文模板继续归因。
+
+[V2 语言偏好与事件](docs/panel-language-contract.md) 校验自动/中/英选择，读取失败回退自动，写入失败保留当前挂载的临时语言，正文重建不重复绑定。

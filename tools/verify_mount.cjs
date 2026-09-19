@@ -165,6 +165,41 @@ const {chromium, webkit} = require('playwright');
           await page.locator('.cti-hud').screenshot({path:path.join(process.argv[3],`${engine.name()}-settings-${colorScheme}.png`)});
         }
       }
+      await page.evaluate(() => {
+        window.languageErrors = [];
+        window.addEventListener('error', event => window.languageErrors.push(event.message));
+        window.languageSetItem = Storage.prototype.setItem;
+        Storage.prototype.setItem = function(key, value) {
+          if (key === 'cti-language') throw new DOMException('Full', 'QuotaExceededError');
+          return window.languageSetItem.call(this, key, value);
+        };
+      });
+      await page.locator('[data-language]').selectOption('en');
+      assert.equal(await page.locator('.cti-hud').getAttribute('lang'), 'en');
+      assert.equal(await page.locator('[data-language]').inputValue(), 'en');
+      assert.equal(await page.evaluate(() => localStorage.getItem('cti-language')), 'zh');
+      await publish();
+      assert.equal(await page.locator('.cti-hud').getAttribute('lang'), 'en');
+      await page.evaluate(() => { Storage.prototype.setItem = window.languageSetItem; });
+      await page.locator('[data-language]').selectOption('auto');
+      assert.equal(await page.locator('[data-language]').inputValue(), 'auto');
+      assert.equal(await page.evaluate(() => localStorage.getItem('cti-language')), 'auto');
+      await page.evaluate(() => localStorage.setItem('cti-language', 'invalid'));
+      await publish();
+      assert.equal(await page.locator('[data-language]').inputValue(), 'auto');
+      await page.evaluate(() => {
+        window.languageGetItem = Storage.prototype.getItem;
+        Storage.prototype.getItem = function(key) {
+          if (key === 'cti-language') throw new DOMException('Denied', 'SecurityError');
+          return window.languageGetItem.call(this, key);
+        };
+      });
+      assert.equal(await publish(), true);
+      assert.equal(await page.locator('[data-language]').inputValue(), 'auto');
+      await page.evaluate(() => { Storage.prototype.getItem = window.languageGetItem; });
+      await page.locator('[data-language]').selectOption('zh');
+      assert.equal(await page.locator('.cti-hud').getAttribute('lang'), 'zh-CN');
+      assert.deepEqual(await page.evaluate(() => window.languageErrors), []);
       payload.build = {pluginVersion: '<b>test</b>'};
       payload.update = {status:'update_available',latestSemver:'2.0.0',url:'https://example.test/release'};
       await publish();

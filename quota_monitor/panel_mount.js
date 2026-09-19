@@ -74,6 +74,12 @@
     panel.addEventListener('pointerdown', event => {
       if (event.target.closest('[data-cti-unit],[data-cti-title],[data-cti-toggle]')) event.stopPropagation();
     });
+    panel.addEventListener('change', event => {
+      if (event.target.matches('[data-language]')) {
+        setLanguagePreference(event.target.value);
+        applyAll(window.__codexContextTokenInspectorPayload);
+      }
+    });
     panel.addEventListener('click', event => {
       const button = event.target.closest('button');
       if (!button || !panel.contains(button)) return;
