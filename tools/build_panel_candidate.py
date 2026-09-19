@@ -94,6 +94,7 @@ def build(directory):
     script = cut(script, '  function uiLanguage(', '  function tr(')
     script = cut(script, "      const language=body.querySelector('[data-language]');", "      body.querySelectorAll('[data-layout-preset]')")
     script = cut(script, "      body.querySelector('[data-handoff]').addEventListener(", "      alerts.checked = localStorage.getItem('cti-alerts')")
+    script = cut(script, "      const details = body.querySelector('[data-details]');", "      const alerts = body.querySelector('[data-alerts]');")
     # Remove these after the intervening old mount/sidebar spans are gone.
     script = cut(script, '  function updateUnitButtons(', '  function applyHud(')
     start, end = '    if (selected) {', '    const errorLabels='
@@ -144,6 +145,7 @@ def build(directory):
               + (assets / 'panel_account_windows.js').read_text()
               + (assets / 'panel_account_overview.js').read_text()
               + (assets / 'panel_diagnostics.js').read_text() + visual
+              + (assets / 'panel_disclosures.js').read_text()
               + (assets / 'panel_body.js').read_text()
               + (assets / 'panel_handoff.js').read_text()
               + (assets / 'panel_mount.js').read_text()

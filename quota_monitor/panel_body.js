@@ -9,6 +9,7 @@
     template.innerHTML = panelBodyTemplate(language === 'zh');
     template.content.querySelector('[data-units]').append(units);
     template.content.querySelector('[data-settings]').hidden = !settingsOpen;
+    restoreDisclosures(template.content, body);
     body.replaceChildren(template.content);
     root.querySelector('[data-settings-toggle]').setAttribute('aria-expanded', String(settingsOpen));
     root.__ctiBodyLanguage = language;

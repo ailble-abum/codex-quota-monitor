@@ -74,6 +74,7 @@
     panel.addEventListener('pointerdown', event => {
       if (event.target.closest('[data-cti-unit],[data-cti-title],[data-cti-toggle]')) event.stopPropagation();
     });
+    panel.addEventListener('toggle', event => handleDisclosureToggle(panel, event), true);
     panel.addEventListener('change', event => {
       if (event.target.matches('[data-language]')) {
         setLanguagePreference(event.target.value);

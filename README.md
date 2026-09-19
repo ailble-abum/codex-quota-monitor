@@ -62,3 +62,5 @@ python3 -m unittest discover -s tests -v
 [V2 语言偏好与事件](docs/panel-language-contract.md) 校验自动/中/英选择，读取失败回退自动，写入失败保留当前挂载的临时语言，正文重建不重复绑定。
 
 [V2 复制交接动作](docs/panel-handoff-contract.md) 使用独立双语指令与根节点委托，阻止同按钮重复复制，并忽略已断开按钮的异步完成。
+
+[V2 详情与皮肤展开偏好](docs/panel-disclosures-contract.md) 用根节点捕获事件替换旧绑定，初始化不写存储，语言重建保留当前展开状态，忽略旧节点事件。

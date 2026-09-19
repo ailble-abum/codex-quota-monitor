@@ -172,6 +172,15 @@ const {chromium, webkit} = require('playwright');
           await page.locator('[data-handoff]').screenshot({path:path.join(process.argv[3],`${engine.name()}-handoff-${colorScheme}.png`)});
         }
       }
+      await page.evaluate(() => {
+        window.disclosureSetItem = Storage.prototype.setItem;
+        Storage.prototype.setItem = function(key, value) {
+          if (key === 'cti-details-open' || key === 'cti-skins-open') throw new DOMException('Full', 'QuotaExceededError');
+          return window.disclosureSetItem.call(this, key, value);
+        };
+      });
+      await page.locator('[data-details] > summary').click();
+      await page.locator('[data-skins] > summary').click();
       await page.evaluate(() => { window.originalUnits = document.querySelector('.cti-unit-group'); });
       for (const language of ['en', 'zh']) {
         await page.locator('[data-language]').selectOption(language);
@@ -179,6 +188,8 @@ const {chromium, webkit} = require('playwright');
         assert.equal(await page.locator('[data-settings-toggle]').getAttribute('aria-expanded'), 'true');
         assert.equal(await page.evaluate(() => document.querySelector('.cti-unit-group') === window.originalUnits), true);
         assert.equal(await page.locator('.cti-unit-group').count(), 1);
+        assert.equal(await page.locator('[data-details]').evaluate(node => node.open), true);
+        assert.equal(await page.locator('[data-skins]').evaluate(node => node.open), true);
       }
       if (process.argv[3]) {
         await page.addStyleTag({content: ':root{color-scheme:light dark}body{background:Canvas}'});
@@ -222,6 +233,10 @@ const {chromium, webkit} = require('playwright');
       await page.locator('[data-language]').selectOption('zh');
       assert.equal(await page.locator('.cti-hud').getAttribute('lang'), 'zh-CN');
       assert.deepEqual(await page.evaluate(() => window.languageErrors), []);
+      await page.evaluate(() => { Storage.prototype.setItem = window.disclosureSetItem; });
+      await page.locator('[data-details] > summary').click();
+      await page.locator('[data-skins] > summary').click();
+      await page.waitForFunction(() => localStorage.getItem('cti-details-open') === 'false' && localStorage.getItem('cti-skins-open') === 'false');
       payload.build = {pluginVersion: '<b>test</b>'};
       payload.update = {status:'update_available',latestSemver:'2.0.0',url:'https://example.test/release'};
       await publish();
