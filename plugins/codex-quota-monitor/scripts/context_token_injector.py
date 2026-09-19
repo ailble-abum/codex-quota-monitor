@@ -30,6 +30,8 @@ from quota_reader import QuotaReader
 from quota_alerts import QuotaAlerts
 import context_health
 from companion_art import COMPANION_ART
+from companion_feedback import COMPANION_FEEDBACK_JS
+from companion_expressions import COMPANION_EXPRESSIONS
 from update_check import UpdateChecker
 from usage_history import History, recent_breakdown
 
@@ -86,7 +88,7 @@ INJECTION_SCRIPT = r"""
   // new script: stacked observers and timers are torn down, and the companion
   // bitmap is rebuilt from the new data URIs. A renderer may still contain an
   // observer from an older plugin release.
-  const RUNTIME_VERSION = 32;
+  const RUNTIME_VERSION = 34;
   const ROOT_ID = 'codex-context-token-inspector-root';
   const STYLE_ID = 'codex-context-token-inspector-style';
   const FOOTER_ATTR = 'data-context-token-footer';
@@ -163,8 +165,9 @@ INJECTION_SCRIPT = r"""
   // the image straight to the edge it docks to. A skin with no artwork here
   // falls back to its vector mascot below.
   const MASCOT_ART = __COMPANION_ART__;
+  const MASCOT_EXPRESSIONS = __COMPANION_EXPRESSIONS__;
   const MASCOT_SKINS = {
-    cat: {zh:'薄荷黑猫', en:'Mint Cat', accent:'#62efc2', ring:[11.5,23,42]},
+    cat: {zh:'薄荷黑猫', en:'Mint Cat', accent:'#62efc2', ring:[18,23,44]},
     candy: {zh:'软糖女孩', en:'Candy Girl', accent:'#ff9fc5', ring:[15,18,28]},
     corgi: {zh:'柯基助手', en:'Corgi Helper', accent:'#f2ae62', ring:[18,20,34]},
     mint: {zh:'薄荷萌男', en:'Mint Boy', accent:'#70d4a6', ring:[14.5,16,27]},
@@ -204,7 +207,7 @@ INJECTION_SCRIPT = r"""
     root.querySelector('[data-mascot-scale-auto]')?.setAttribute('aria-pressed',String(automatic));
   }
   function edgeDockEnabled() { return localStorage.getItem(EDGE_DOCK_KEY)!=='false'; }
-  function mascotArt(id) { return MASCOT_ART[id] || ''; }
+  function mascotArt(id) { return MASCOT_EXPRESSIONS[id]?.idle || MASCOT_ART[id] || ''; }
   function mascotMarkup(id, className) {
     const art=mascotArt(id);
     return art ? `<img class="${className}" src="${art}" alt="" draggable="false">` : mascotSvg(id);
@@ -487,11 +490,11 @@ INJECTION_SCRIPT = r"""
       .cti-edge-mascot[data-art="true"] img { display:block; height:48px; width:auto; }
       .cti-edge-mascot[data-art="true"] img { position:relative; z-index:1; }
       .cti-edge-mascot[data-art="true"][data-edge="left"] img { transform:scaleX(-1); }
-      .cti-edge-mascot:hover,.cti-edge-mascot:focus-visible { transform:translateX(-3px) scale(1.04); outline:none; }
+      .cti-edge-mascot:focus-visible { outline:2px solid var(--cti-mascot-accent); outline-offset:2px; }
       .cti-edge-mascot:not([data-art="true"]):hover,.cti-edge-mascot:not([data-art="true"]):focus-visible { box-shadow:0 8px 26px #0005,0 0 0 2px color-mix(in srgb,var(--cti-mascot-accent) 45%,transparent); }
       .cti-edge-mascot[data-art="true"]:hover,.cti-edge-mascot[data-art="true"]:focus-visible { filter:drop-shadow(0 6px 16px #0004) drop-shadow(0 0 12px color-mix(in srgb,var(--cti-mascot-accent) 60%,transparent)); }
       .cti-edge-mascot[data-edge="left"]:not([data-art="true"]) { border-radius:0 16px 16px 0; }
-      .cti-edge-mascot[data-edge="left"]:hover,.cti-edge-mascot[data-edge="left"]:focus-visible { transform:translateX(3px) scale(1.04); }
+      /* Keep the button hitbox fixed; only the inner artwork reacts. */
       /* The companion carries the account gauge: one cell per reported quota
          window, so the cell count itself states how many independent limits
          are in force. An account reporting a five-hour and a weekly window
@@ -706,6 +709,21 @@ INJECTION_SCRIPT = r"""
       .cti-value { font-variant-numeric:tabular-nums; font-weight:600; color:CanvasText; }
       .cti-meter { height:5px; border-radius:4px; overflow:hidden; background:color-mix(in srgb,var(--cti-tone) 10%,transparent); margin:10px 0 8px; }
       .cti-meter span { display:block; height:100%; border-radius:inherit; background:var(--cti-tone); transition:width .18s ease, background-color .18s ease; }
+      .cti-edge-mascot .cti-mascot-art { transform-origin:50% 85%; pointer-events:none; }
+      .cti-edge-mascot:where([data-visible="true"][data-mood="idle"]) .cti-mascot-art { animation:cti-breathe 4s ease-in-out infinite; }
+      @keyframes cti-breathe { 50% { translate:0 -1px; } }
+      .cti-edge-mascot[data-reaction="pet"] .cti-mascot-art { animation:cti-pet .7s ease-in-out 2; }
+      .cti-edge-mascot[data-reaction="hello"] .cti-mascot-art { animation:cti-nod .6s ease; }
+      .cti-edge-mascot[data-reaction="land"] .cti-mascot-art { animation:cti-land .5s ease; }
+      .cti-edge-mascot[data-reaction="notice"] .cti-mascot-art { animation:cti-nod .45s ease 2; }
+      .cti-edge-mascot[data-reaction="happy"] .cti-mascot-art { animation:cti-happy .7s ease; }
+      .cti-edge-mascot[data-mood="unknown"] [data-gauge] { opacity:.5; }
+      @keyframes cti-pet { 50% { rotate:-6deg;translate:0 1px; } }
+      @keyframes cti-nod { 50% { translate:0 3px;rotate:3deg; } }
+      @keyframes cti-land { 40% { scale:1.05 .92; } }
+      @keyframes cti-happy { 45% { translate:0 -7px;rotate:-4deg; } }
+      .cti-edge-mascot[data-motion="false"] .cti-mascot-art { animation:none !important; }
+      @media (prefers-reduced-motion: reduce) { .cti-edge-mascot .cti-mascot-art { animation:none !important; } }
       @media (prefers-reduced-motion: reduce) { .cti-meter span,.cti-hud,.cti-edge-mascot { transition:none; } }
       .cti-metrics { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px; }
       .cti-metric { padding:10px; border-radius:10px; background:color-mix(in srgb,CanvasText 4%,transparent); }
@@ -906,23 +924,33 @@ INJECTION_SCRIPT = r"""
     const delta=clientY-start.pointerY,moved=start.moved||Math.abs(delta)>=4;
     return {moved,y:moved?dockVerticalY(start.top+delta,viewportHeight,panelHeight,mascotHeight):start.top};
   }
+  __COMPANION_FEEDBACK__
   function ensureMascot(root) {
     let mascot=document.getElementById(MASCOT_ID);
     if(mascot)return mascot;
     mascot=document.createElement('button');
     mascot.id=MASCOT_ID;mascot.className='cti-edge-mascot';mascot.type='button';
-    mascot.addEventListener('pointerenter',()=>revealDock(root,true));
+    mascot.addEventListener('pointerenter',()=>{revealDock(root,true);companionReact(root,'hello');});
     mascot.addEventListener('pointerleave',()=>scheduleDockHide(root));
     mascot.addEventListener('focus',()=>revealDock(root,true));
     mascot.addEventListener('blur',()=>scheduleDockHide(root));
     mascot.addEventListener('pointerdown',event=>{
       if(event.button!==0 || root.dataset.docked!=='true')return;
       clearDockHide(root);
-      mascot.__ctiGesture={pointerY:event.clientY,top:mascot.getBoundingClientRect().top,moved:false};
+      const rect=mascot.getBoundingClientRect();
+      mascot.__ctiGesture={pointerY:event.clientY,top:rect.top,moved:false,x:event.clientX,y:event.clientY,at:performance.now(),head:localStorage.getItem('cti-companion-motion')!=='false'&&event.clientY<rect.top+rect.height*.6};
+      clearTimeout(mascot.__ctiPetTimer);
+      mascot.__ctiPetTimer=setTimeout(()=>{
+        const g=mascot.__ctiGesture;
+        if(g?.head&&!g.moved){g.mode='pet';companionReact(root,'pet');}
+      },350);
       mascot.setPointerCapture(event.pointerId);
     });
     mascot.addEventListener('pointermove',event=>{
       const gesture=mascot.__ctiGesture;if(!gesture)return;
+      const action=companionGesture(gesture,event.clientX,event.clientY,performance.now());
+      if(action==='pet'){gesture.mode='pet';event.preventDefault();companionReact(root,'pet');return;}
+      if(action==='drag'){gesture.mode='drag';clearTimeout(mascot.__ctiPetTimer);}
       const next=mascotDragGeometry(gesture,event.clientY,innerHeight,root.getBoundingClientRect().height,48*mascotScale());
       if(!next.moved)return;
       gesture.moved=true;event.preventDefault();
@@ -932,19 +960,78 @@ INJECTION_SCRIPT = r"""
     });
     const endDrag=event=>{
       const gesture=mascot.__ctiGesture;if(!gesture)return;
-      mascot.__ctiGesture=null;
-      if(gesture.moved)mascot.__ctiSuppressClickUntil=performance.now()+400;
+      mascot.__ctiGesture=null;clearTimeout(mascot.__ctiPetTimer);
+      if(gesture.moved)companionReact(root,'land');
+      if(gesture.moved||gesture.mode==='pet')mascot.__ctiSuppressClickUntil=performance.now()+400;
       try{mascot.releasePointerCapture(event.pointerId);}catch{}
     };
     mascot.addEventListener('pointerup',endDrag);
     mascot.addEventListener('pointercancel',endDrag);
     mascot.addEventListener('click',event=>{
       if(performance.now()<(mascot.__ctiSuppressClickUntil||0)){event.preventDefault();return;}
+      companionReact(root,'hello');
       const pinned=root.dataset.dockPinned!=='true';root.dataset.dockPinned=String(pinned);
       mascot.setAttribute('aria-pressed',String(pinned));revealDock(root,true);
     });
     document.body.appendChild(mascot);
     return mascot;
+  }
+  function applyCompanionExpression(mascot) {
+    const image=mascot.querySelector('img'),frames=MASCOT_EXPRESSIONS[mascot.dataset.skin];
+    if(!image||!frames)return;
+    const expression=companionExpression(mascot.dataset.reaction,mascot.dataset.mood);
+    mascot.dataset.expression=expression;
+    if(image.getAttribute('src')!==frames[expression])image.src=frames[expression];
+  }
+  function companionReact(root, action) {
+    const mascot=document.getElementById(MASCOT_ID);
+    if(!mascot||localStorage.getItem('cti-companion-motion')==='false')return;
+    if(mascot.dataset.reaction===action)return;
+    clearTimeout(mascot.__ctiReactionTimer);mascot.dataset.reaction=action;applyCompanionExpression(mascot);
+    mascot.__ctiReactionTimer=setTimeout(()=>{delete mascot.dataset.reaction;applyCompanionExpression(mascot);},action==='pet'?1400:900);
+  }
+  function applyCompanionFeedback(root,payload,selected,health,id) {
+    const mascot=document.getElementById(MASCOT_ID);if(!mascot)return;
+    const {quota,live,windows,blocked}=gaugeReading();
+    const values=windows.map(w=>w.remaining).filter(v=>typeof v==='number'&&Number.isFinite(v));
+    const input={account:quota.accountKey||null,windows,
+      live,blocked,remaining:values.length?Math.min(...values):null,thread:id||null,ctx:selected?.latest_context_percent,
+      compaction:health?.latestAt||null};
+    if(!root.__ctiCompanionState){
+      try{root.__ctiCompanionState=JSON.parse(localStorage.getItem('cti-companion-state')||'{}')||{};}catch{root.__ctiCompanionState={};}
+    }
+    const changed=root.__ctiCompanionThread!==id||root.__ctiCompanionAccount!==input.account;
+    if(changed||!live){root.__ctiClearHint?.();delete mascot.dataset.reaction;clearTimeout(mascot.__ctiReactionTimer);}
+    root.__ctiCompanionThread=id;root.__ctiCompanionAccount=input.account;
+    const result=companionStep(root.__ctiCompanionState,input,Date.now());
+    root.__ctiCompanionState=result.state;
+    try{localStorage.setItem('cti-companion-state',JSON.stringify(result.state));}catch{}
+    mascot.dataset.motion=String(localStorage.getItem('cti-companion-motion')!=='false');
+    mascot.dataset.mood=result.quotaLevel===null?'unknown':result.quotaLevel===3?'waiting':result.quotaLevel>=1||result.ctxLevel>=2?'concerned':'idle';
+    applyCompanionExpression(mascot);
+    let events=(result.event||'').split('+').filter(Boolean);
+    if(localStorage.getItem('cti-context-reminders')==='false')events=events.filter(e=>!e.startsWith('ctx-')&&e!=='compacted');
+    if(localStorage.getItem('cti-companion-reminders')==='false')events=[];
+    if(!events.length)return;
+    const zh=uiLanguage()==='zh';
+    const messages={
+      'quota-watch':zh?'额度剩余不多了，留意旁边的额度计。':'Quota is getting low. Check the gauge.',
+      'quota-low':zh?'额度已低于或等于 10%，建议安排好当前步骤。':'Quota is at or below 10%. Plan the next step.',
+      'quota-empty':zh?'额度已达上限，等待恢复。':'Quota limit reached. Waiting for recovery.',
+      'quota-restored':zh?'已确认额度恢复，可以继续啦。':'Quota recovery confirmed.',
+      'ctx-high':zh?'当前聊天上下文偏高，可在阶段结束后整理进度。':'This task has high context usage. Consider a handoff.',
+      'ctx-critical':zh?'当前聊天上下文接近窗口上限，建议准备接续。':'Context is close to the window size. Prepare a handoff.',
+      'compacted':zh?'已观察到上下文压缩。':'Context compaction observed.'};
+    let message=events.map(e=>messages[e]).join(' ');
+    if(events.some(e=>e.startsWith('quota-'))&&values.length)message+=` ${zh?'最低剩余':'Lowest remaining'} ${Math.round(Math.min(...values))}%。`;
+    if(events.some(e=>e.startsWith('ctx-')))message+=` CTX ${Math.round(input.ctx)}%（${zh?'最近观测':'last observed'}）。`;
+    if(events.includes('quota-empty')){const reset=nearestResetText(windows);if(reset)message+=` ${zh?'最近重置':'Next reset'} ${reset}`;}
+    companionReact(root,events.includes('quota-restored')?'happy':events.includes('compacted')?'land':'notice');
+    root.__ctiClearHint?.();
+    const toast=document.createElement('aside');toast.id='cti-context-hint';toast.setAttribute('role','status');
+    toast.style.cssText='position:fixed;z-index:2147483647;max-width:min(280px,calc(100vw - 32px));padding:12px 16px;border-radius:12px;background:Canvas;color:CanvasText;border:1px solid #8885;box-shadow:0 6px 24px #0002;font:12px/1.6 system-ui;-webkit-app-region:no-drag';
+    toast.textContent=message;document.body.appendChild(toast);positionContextHint(root,toast);
+    const timer=setTimeout(()=>toast.remove(),7000);root.__ctiClearHint=()=>{clearTimeout(timer);toast.remove();};
   }
   function applyMascotSkin(root) {
     const mascot=ensureMascot(root),id=mascotSkin(),skin=MASCOT_SKINS[id],art=mascotArt(id);
@@ -965,6 +1052,7 @@ INJECTION_SCRIPT = r"""
     mascot.dataset.skinLabel=`${uiLanguage()==='zh'?skin.zh:skin.en} · ${uiLanguage()==='zh'?'上下拖动调整位置，点击保持展开':'Drag vertically to move; click to pin'}`;
     applyMascotGauge(root);
     applyMascotContext(root, root.__ctiContext);
+    applyCompanionExpression(mascot);
     positionContextHint(root);
   }
   function gaugeColor(tone) {
@@ -1058,7 +1146,8 @@ INJECTION_SCRIPT = r"""
     const mascot=ensureMascot(root),topMin=dockSafeTop(),rect=root.getBoundingClientRect();
     root.dataset.docked='true';root.dataset.dockEdge=edge;
     if(!root.dataset.revealed)root.dataset.revealed='false';
-    mascot.dataset.visible='true';mascot.dataset.edge=edge;applyMascotSkin(root);
+    mascot.dataset.visible='true';mascot.dataset.edge=edge;
+    if(mascot.dataset.skin!==mascotSkin())applyMascotSkin(root);
     const revealed=root.dataset.revealed==='true',scale=mascotScale();
     mascot.style.setProperty('--cti-mascot-scale',String(scale));
     // The companion is pinned with left/right instead of a computed offset, so
@@ -1664,6 +1753,8 @@ INJECTION_SCRIPT = r"""
           </details>
           <div class="cti-setting"><span>${zh?'数字单位':'Number format'}</span><div data-units></div></div>
           <label class="cti-setting"><span>${zh?'配额 ≤20% 时通知':'Notify at ≤20% remaining'}</span><input type="checkbox" data-alerts></label>
+          <label class="cti-setting"><span>${zh?'伴宠动作与触碰':'Companion motion & touch'}</span><input type="checkbox" data-companion-motion></label>
+          <label class="cti-setting"><span>${zh?'伴宠状态提醒':'Companion status hints'}</span><input type="checkbox" data-companion-reminders></label>
           <label class="cti-setting"><span>${zh?'上下文轻提醒':'Context hints'}</span><input type="checkbox" data-context-alerts></label>
           <label class="cti-setting"><span>${zh?'语言':'Language'}</span><select data-language><option value="auto">Auto</option><option value="zh">中文</option><option value="en">English</option></select></label>
           <div class="cti-muted">${zh?'每个配额窗口仅提醒一次。系统需允许通知。':'Once per quota window. System notifications must be allowed.'}</div>
@@ -1697,6 +1788,10 @@ INJECTION_SCRIPT = r"""
         localStorage.setItem(SKIN_KEY,button.dataset.skinChoice);applyMascotSkin(root);updateSkinButtons(root);
       }));
       updateSkinButtons(root);
+      for(const setting of ['motion','reminders']){
+        const control=body.querySelector(`[data-companion-${setting}]`);control.checked=localStorage.getItem(`cti-companion-${setting}`)!=='false';
+        control.addEventListener('change',()=>{localStorage.setItem(`cti-companion-${setting}`,String(control.checked));if(!control.checked)root.__ctiClearHint?.();applyAll(window.__codexContextTokenInspectorPayload);});
+      }
       const tips=body.querySelector('[data-context-alerts]');tips.checked=localStorage.getItem('cti-context-reminders')!=='false';
       tips.addEventListener('change',()=>localStorage.setItem('cti-context-reminders',String(tips.checked)));
       const details = body.querySelector('[data-details]');
@@ -1796,15 +1891,16 @@ INJECTION_SCRIPT = r"""
     if(usageParts.length)quotaHtml+=`<div class="cti-account-quota">${usageParts.join(' · ')}</div>`;
     quotaHtml=`<div class="cti-source-row"><span class="cti-trust" data-kind="official">${zh?'官方账户':'Official account'}</span></div>`+quotaHtml;
     put('[data-quota]', quotaHtml);
-    const id = currentDetail?.thread_id || activeThreadId() || payload.activeThreadId;
-    const selected = (payload.summaries || []).find(item =>
-      threadKeys(id).some(key => String(item.thread_id) === key || (item.thread_keys || []).includes(key)));
+    const id = activeThreadId();
+    const snapshotFresh=typeof payload.observedAt!=='number'||Date.now()/1000-payload.observedAt<120;
+    const selected = snapshotFresh ? (payload.summaries || []).find(item =>
+      threadKeys(id).some(key => String(item.thread_id) === key || (item.thread_keys || []).includes(key))) : null;
     root.__ctiSessionTotalTokens = selected?.session_total_tokens;
     root.__ctiContext = selected?.latest_context_percent;
     applyMascotContext(root, root.__ctiContext);
-    const health = payload.health;
+    const health = snapshotFresh ? companionHealth(payload,id) : null;
     root.__ctiHealth = health;
-    maybeContextHint(root, selected, health, id);
+    applyCompanionFeedback(root, payload, selected, health, id);
     body.querySelector('[data-health]').setAttribute('data-warning', String(health?.recommendHandoff === true));
     body.querySelector('[data-health]').title = health?.recommendHandoff ? (health.reason==='baseline' ? '建议依据：压缩后首请求仍占上下文窗口至少 40%。这是经验阈值，不是官方上限。' : '建议依据：最近两次压缩间隔均不超过 5 个不同请求。这是经验阈值。') : '压缩次数和压后首请求来自本地日志；上下文变化不等于会话累计 Token。';
     const baseline = health?.after == null ? (zh?'等待后续请求':'Awaiting next request') : `${token(health.after)} (${pct(health.afterPercent)})`;
@@ -1812,7 +1908,7 @@ INJECTION_SCRIPT = r"""
     if (selected) {
       const contextValue=contextMeterValue(selected.latest_context_percent);
       body.querySelector('[data-context]').setAttribute('data-tone', contextTone(contextValue));
-      put('[data-context]', `<div class="cti-line"><span><span class="cti-trust" data-kind="local">${zh?'本地会话':'Local session'}</span> ${zh?'上下文已用':'Context used'}</span><span class="cti-value">${pct(contextValue)}</span></div>
+      put('[data-context]', `<div class="cti-line"><span><span class="cti-trust" data-kind="local">${zh?'本地会话':'Local session'}</span> ${zh?'上下文最近观测':'Last observed context'}</span><span class="cti-value">${pct(contextValue)}</span></div>
         ${contextValue == null?`<div class="cti-muted">${zh?'上下文占用暂不可用':'Context usage unavailable'}</div>`:`<div class="cti-meter" role="meter" aria-label="${zh?'上下文占用':'Context used'}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${contextValue}"><span style="width:${contextValue}%"></span></div>
         <div class="cti-muted">${token(selected.latest_context_tokens)} / ${token(selected.context_window)} · Token</div>`}`);
       put('[data-metrics]', `<div class="cti-metric"><span class="cti-muted">${tr('turn')}</span><span class="cti-value">${token(selected.latest_turn_total_tokens)}</span></div>
@@ -1906,26 +2002,6 @@ INJECTION_SCRIPT = r"""
     const anchor=(edge?mascot:root).getBoundingClientRect();
     const placed=contextHintGeometry(anchor,{width:toast.offsetWidth,height:toast.offsetHeight},{width:innerWidth,height:innerHeight},edge);
     toast.style.left=`${placed.left}px`;toast.style.top=`${placed.top}px`;
-  }
-  function maybeContextHint(root, selected, health, id) {
-    if(!id || !selected || localStorage.getItem('cti-context-reminders')==='false')return;
-    const used=selected.latest_context_percent;
-    const level=health?.recommendHandoff?'compression':used>=85?'85':used>=75?'75':null;
-    if(!level)return;
-    let seen={};try{seen=JSON.parse(localStorage.getItem('cti-context-hints')||'{}')}catch{}
-    const key=String(id)+':'+level;
-    if(seen[key] || Date.now()-(seen[String(id)+':last']||0)<1800000)return;
-    seen[key]=Date.now();seen[String(id)+':last']=Date.now();
-    const recent=Object.fromEntries(Object.entries(seen).sort((a,b)=>b[1]-a[1]).slice(0,200));
-    localStorage.setItem('cti-context-hints',JSON.stringify(recent));
-    document.getElementById('cti-context-hint')?.remove();
-    const toast=document.createElement('aside');toast.id='cti-context-hint';toast.setAttribute('role','status');
-    toast.style.cssText='position:fixed;z-index:2147483647;max-width:280px;padding:12px 16px;border-radius:12px;background:Canvas;color:CanvasText;border:1px solid #8885;box-shadow:0 6px 24px #0002;font:12px/1.6 system-ui;-webkit-app-region:no-drag';
-    const zh=uiLanguage()==='zh';
-    toast.textContent=level==='compression'?(zh?'压缩负担较高，可在当前步骤完成后整理交接，换新对话继续。':'Compression overhead is high. Consider a handoff after this step.'):(zh?`上下文已用 ${Math.round(used)}%。可在阶段完成后整理交接；这不是费用上限。`:`Context ${Math.round(used)}% used. Consider a handoff at a task boundary; this is not a pricing limit.`);
-    document.body.appendChild(toast);
-    positionContextHint(root,toast);
-    const timer=setTimeout(()=>toast.remove(),7000);root.__ctiClearHint=()=>{clearTimeout(timer);toast.remove();};
   }
   function updateHudTitle(root) {
     const title = root.querySelector('[data-cti-title]');
@@ -2029,6 +2105,9 @@ INJECTION_SCRIPT = r"""
   }
   function installObserver(payload) {
     window.__codexContextTokenInspectorPayload = payload;
+    clearTimeout(window.__ctiFreshnessTimer);
+    const remaining=typeof payload.observedAt==='number'?Math.max(0,120000-(Date.now()-payload.observedAt*1000)):120000;
+    window.__ctiFreshnessTimer=setTimeout(()=>applyAll(window.__codexContextTokenInspectorPayload),remaining+100);
     if (window.__codexContextTokenInspectorObserver) return;
     let timer = null;
     const observer = new MutationObserver(records => {
@@ -2108,6 +2187,8 @@ INJECTION_SCRIPT = r"""
 # scripts directory, so referencing files under assets/ would break every
 # installed copy, and the overlay renders in the Codex window, where a file://
 # image would be blocked anyway.
+INJECTION_SCRIPT = INJECTION_SCRIPT.replace("__COMPANION_FEEDBACK__", COMPANION_FEEDBACK_JS)
+INJECTION_SCRIPT = INJECTION_SCRIPT.replace("__COMPANION_EXPRESSIONS__", json.dumps(COMPANION_EXPRESSIONS, separators=(",", ":")))
 INJECTION_SCRIPT = INJECTION_SCRIPT.replace(
     "__COMPANION_ART__",
     json.dumps(COMPANION_ART, ensure_ascii=False, separators=(",", ":")),
@@ -2177,6 +2258,8 @@ def inject_once(client: CDPClient, roots: list[str], limit: int, detail_limit: i
         active = normalize_thread_id(selected.get('thread_id') or '')
     path = session_file_for_thread(roots, active) if active else None
     payload['health'] = context_health.scan(path) if path else None
+    payload['healthThreadId'] = active if path else None
+    payload['observedAt'] = time.time()
     context = {key:selected.get(key) for key in ('latest_context_percent','latest_context_tokens','context_window','latest_turn_input_tokens','latest_turn_cached_input_tokens','model','reasoning_effort')} if selected else None
     try:
         HISTORY.update(payload['quota'], context, payload['health'], recent_breakdown(payload['summaries']))

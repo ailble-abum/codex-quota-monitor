@@ -6,6 +6,7 @@ with the plugin's supported systems.
 from __future__ import annotations
 
 import base64
+import io
 import unittest
 
 from companion_art import (
@@ -14,6 +15,7 @@ from companion_art import (
     RUNTIME_HEIGHT,
     SOURCE_FRAMES,
     SOURCE_REPAIRS,
+    WEBP_QUALITY,
 )
 
 # The repair itself can only be exercised with the build-time stack, and the
@@ -36,6 +38,8 @@ HAVE_BUILD_STACK = build is not None
 # rendered body has to reach that edge. Measured as the rightmost column that
 # still carries a solid part of the body, over the image width.
 MIN_CUT_EDGE_FILL = 0.97
+MIN_RETINA_HEIGHT = 48 * 2 * 3
+MIN_WEBP_QUALITY = 90
 
 
 def reach(alpha, row: int) -> int:
@@ -83,6 +87,23 @@ class CompanionArtTests(unittest.TestCase):
                 self.assertEqual(height, RUNTIME_HEIGHT, skin)
                 # Cropped flush against a vertical cut edge, so never square-wide.
                 self.assertLess(width, height, skin)
+
+    def test_artwork_has_retina_headroom_and_high_quality_encoding(self):
+        """The largest 2x companion stays native on a 3x display."""
+        self.assertGreaterEqual(RUNTIME_HEIGHT, MIN_RETINA_HEIGHT)
+        self.assertGreaterEqual(WEBP_QUALITY, MIN_WEBP_QUALITY)
+
+    @unittest.skipUnless(HAVE_BUILD_STACK, "needs the build-time pillow stack")
+    def test_every_companion_webp_keeps_real_alpha(self):
+        """The inlined WebP payloads must retain transparent keyed backdrops."""
+        for skin, uri in COMPANION_ART.items():
+            with self.subTest(skin=skin):
+                payload = base64.b64decode(uri.split(",", 1)[1])
+                with Image.open(io.BytesIO(payload)) as decoded:
+                    self.assertEqual(decoded.mode, "RGBA", skin)
+                    alpha_min, alpha_max = decoded.getchannel("A").getextrema()
+                self.assertEqual(alpha_min, 0, skin)
+                self.assertEqual(alpha_max, 255, skin)
 
     def test_frames_cover_exactly_the_bundled_skins(self):
         self.assertEqual(sorted(SOURCE_FRAMES), sorted(COMPANION_ART))

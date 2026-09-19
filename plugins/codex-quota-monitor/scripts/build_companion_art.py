@@ -64,8 +64,12 @@ SOURCES = {
     "tea": ["tea-lady.png", "tea.png"],
 }
 
-RUNTIME_HEIGHT = 256
-WEBP_QUALITY = 82
+# The docked image is 48 CSS px tall and the size control allows 2x. Three
+# device pixels per CSS px therefore need 288 source pixels; 320 leaves a
+# small rounding/filtering margin without needlessly enlarging the 328x362
+# source used by the studio cat.
+RUNTIME_HEIGHT = 320
+WEBP_QUALITY = 90
 SPECKLE_ALPHA_LIMIT = 40
 SPECKLE_NEIGHBOUR_LIMIT = 24
 
