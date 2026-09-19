@@ -16,7 +16,7 @@
 <p align="center">
   <a href="#安装"><img alt="Install" src="https://img.shields.io/badge/Install-Codex_Plugin-70d4a6?style=for-the-badge&labelColor=101915"></a>
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/License-MIT-8ab5ff?style=for-the-badge&labelColor=101915"></a>
-  <img alt="macOS verified" src="https://img.shields.io/badge/macOS-Verified-f4f4f5?style=for-the-badge&labelColor=101915">
+  <img alt="macOS primary platform" src="https://img.shields.io/badge/macOS-Primary-f4f4f5?style=for-the-badge&labelColor=101915">
 </p>
 
 <p align="center">
@@ -47,6 +47,8 @@ Codex Quota Monitor 是一个面向 Codex 桌面端的本地只读监视器。�
     <td width="25%"><strong>可验证数据源</strong><br><sub>用微标明确区分官方账户、本地会话与线性估算。</sub></td>
   </tr>
 </table>
+
+> 本页所有界面数字均为合成演示数据；展示图不包含真实账户、会话或其他私密信息。
 
 ## 工作区的轻量级伴生层
 
@@ -144,6 +146,7 @@ Codex app-server ── 账户配额 / 官方 Token 活动 ─┐
 - 官方 Token 活动来自 `account/usage/read`。
 - 当前会话统计来自 `~/.codex/sessions` 和 `~/.codex/archived_sessions` 中的本地 JSONL。
 - 配额和 Token 是两套不同的数字；本项目不会把本地 Token 估算成账户剩余额度。
+- 每天最多一次读取 GitHub 上公开的 `plugin.json` 以检查新版本；请求不携带本地版本、账户、会话或项目数据，失败时保持离线功能。
 
 历史数据保存在 `~/Library/Application Support/CodexQuotaMonitor/`。其中只有数值摘要、简短项目文件夹名和生成的离线图表，不包含聊天正文、密钥或完整项目路径。
 
@@ -218,6 +221,6 @@ python3 scripts/monitorctl.py install
 
 Start a new Codex task and ask it to start Codex Quota Monitor. Run `python3 scripts/monitorctl.py doctor` from the installed plugin directory for diagnostics.
 
-macOS is the verified platform. The repository includes a Windows adapter and tray component, but full real-machine acceptance is still pending.
+macOS is the primary platform. The repository includes a Windows adapter and tray component, but full real-machine acceptance is still pending.
 
 Maintained and substantially extended by **Ailble**. MIT licensed. This project includes code derived from [KevinKE93/Codex-Monitor](https://github.com/KevinKE93/Codex-Monitor); required attribution is preserved in [LICENSE](LICENSE) and [NOTICE](NOTICE).

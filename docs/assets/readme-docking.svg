@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="640" viewBox="0 0 1600 640" role="img" aria-labelledby="title desc">
   <title id="title">Codex Quota Monitor edge docking interaction</title>
-  <desc id="desc">A synthetic three-step view showing the panel, soft edge docking, and a companion that reveals the panel on hover.</desc>
+  <desc id="desc">A synthetic three-step view showing the panel, soft edge docking, and a companion that reveals the panel on hover. No real account, conversation, or private data is shown.</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#08120f"/><stop offset="1" stop-color="#0c151d"/></linearGradient>
     <linearGradient id="card" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#192620"/><stop offset="1" stop-color="#101915"/></linearGradient>
@@ -36,7 +36,7 @@
       <text x="290" y="443" fill="#f0fff8" font-size="18" font-weight="700">148K</text>
     </g>
     <text x="267" y="548" text-anchor="middle" fill="#effff7" font-size="16" font-weight="650">Drag anywhere</text>
-    <text x="267" y="575" text-anchor="middle" fill="#effff7" fill-opacity="0.40" font-size="12">Move and resize without leaving the task.</text>
+    <text x="267" y="575" text-anchor="middle" fill="#effff7" fill-opacity="0.62" font-size="13">Move and resize without leaving the task.</text>
 
     <g transform="translate(700 170)" filter="url(#shadow)">
       <path d="M45 78c0-37 27-65 62-65 36 0 63 29 63 66v94c0 42-25 68-63 68-38 0-62-26-62-68z" fill="#15211d" stroke="#76e6b2" stroke-opacity="0.34"/>
@@ -52,7 +52,7 @@
     </g>
     <rect x="1007" y="116" width="8" height="390" rx="4" fill="#effff7" fill-opacity="0.08"/>
     <text x="800" y="548" text-anchor="middle" fill="#effff7" font-size="16" font-weight="650">Release near either side</text>
-    <text x="800" y="575" text-anchor="middle" fill="#effff7" fill-opacity="0.40" font-size="12">The panel tucks away and leaves a live companion.</text>
+    <text x="800" y="575" text-anchor="middle" fill="#effff7" fill-opacity="0.62" font-size="13">The panel tucks away and leaves a live companion.</text>
 
     <rect x="1520" y="116" width="8" height="390" rx="4" fill="#effff7" fill-opacity="0.08"/>
     <g transform="translate(1438 222)" filter="url(#shadow)">
@@ -80,6 +80,6 @@
       <text x="1175" y="430" text-anchor="middle" fill="#7ce8b5" font-size="9" font-weight="700">LOCAL</text>
     </g>
     <text x="1333" y="548" text-anchor="middle" fill="#effff7" font-size="16" font-weight="650">Hover to reveal, click to pin</text>
-    <text x="1333" y="575" text-anchor="middle" fill="#effff7" fill-opacity="0.40" font-size="12">Quota stays visible without occupying the workspace.</text>
+    <text x="1333" y="575" text-anchor="middle" fill="#effff7" fill-opacity="0.62" font-size="13">Quota stays visible without occupying the workspace.</text>
   </g>
 </svg>
