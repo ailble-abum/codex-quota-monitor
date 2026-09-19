@@ -68,6 +68,19 @@ class InspectorTests(unittest.TestCase):
             with self.subTest(skin=skin):
                 self.assertIn(uri[:80], INJECTION_SCRIPT)
 
+    def test_the_bitmap_companion_floats_free_of_its_plate(self):
+        # A baked bitmap already carries its own shading and silhouette, so a
+        # plate behind it only shows up as a frame drawn around the character.
+        # The vector fallback still needs the card for contrast on a light
+        # canvas, so the plate has to be scoped to that branch alone.
+        art = block('.cti-edge-mascot[data-art="true"] {', '.cti-edge-mascot[data-art="true"] img')
+        self.assertIn("border:0", art)
+        self.assertIn("background:none", art)
+        self.assertIn("box-shadow:none", art)
+        self.assertIn('.cti-edge-mascot:not([data-art="true"]) {', INJECTION_SCRIPT)
+        # No plate means no rounded plate corners either.
+        self.assertNotIn('.cti-edge-mascot[data-edge="left"] { border-radius', INJECTION_SCRIPT)
+
     def test_latest_model_and_effort_are_reported(self):
         rows = [
             {'type':'session_meta','payload':{'id':'thread','cwd':'/tmp'}},

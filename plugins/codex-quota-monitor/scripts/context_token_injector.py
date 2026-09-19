@@ -475,7 +475,7 @@ INJECTION_SCRIPT = r"""
   // new script: stacked observers and timers are torn down, and the companion
   // bitmap is rebuilt from the new data URIs. A renderer may still contain an
   // observer from an older plugin release.
-  const RUNTIME_VERSION = 17;
+  const RUNTIME_VERSION = 18;
   const ROOT_ID = 'codex-context-token-inspector-root';
   const STYLE_ID = 'codex-context-token-inspector-style';
   const FOOTER_ATTR = 'data-context-token-footer';
@@ -765,31 +765,39 @@ INJECTION_SCRIPT = r"""
         width:44px;
         height:48px;
         padding:0;
-        border:1px solid color-mix(in srgb,var(--cti-mascot-accent) 42%,transparent);
-        border-radius:16px 0 0 16px;
-        background:color-mix(in srgb,Canvas 91%,var(--cti-mascot-accent) 9%);
         color:CanvasText;
-        box-shadow:0 8px 24px #0004,inset 0 0 16px color-mix(in srgb,var(--cti-mascot-accent) 10%,transparent);
         cursor:pointer;
         user-select:none;
         -webkit-app-region:no-drag !important;
-        transition:transform .16s ease,box-shadow .16s ease;
+        transition:transform .16s ease,box-shadow .16s ease,filter .16s ease;
       }
       .cti-edge-mascot[data-visible="true"] { display:grid; }
       .cti-edge-mascot svg { width:42px; height:46px; overflow:visible; filter:drop-shadow(0 2px 2px #0005); }
-      /* The card hugs the artwork instead of holding a floor width: every
-         sprite is cropped flush to its own cut edge, so the only thing a
-         floor would add is padding beside the companions narrower than it
-         -- 6px either side of the cat, which reads as an unfilled frame. */
-      .cti-edge-mascot[data-art="true"] { width:auto; min-width:0; height:auto; padding:0; }
+      /* A bitmap companion already has its own shading and silhouette, so it
+         floats free: no plate, no border, nothing drawn around the character.
+         The glass card survives only for the vector fallback, whose flat fills
+         would lose their outline against a light canvas. */
+      .cti-edge-mascot[data-art="true"] { width:auto; min-width:0; height:auto; padding:0; border:0; border-radius:0; background:none; box-shadow:none; }
+      .cti-edge-mascot:not([data-art="true"]) {
+        border:1px solid color-mix(in srgb,var(--cti-mascot-accent) 42%,transparent);
+        border-radius:16px 0 0 16px;
+        background:color-mix(in srgb,Canvas 91%,var(--cti-mascot-accent) 9%);
+        box-shadow:0 8px 24px #0004,inset 0 0 16px color-mix(in srgb,var(--cti-mascot-accent) 10%,transparent);
+      }
       .cti-edge-mascot[data-art="true"] img { display:block; height:48px; width:auto; }
       .cti-edge-mascot[data-art="true"][data-edge="left"] img { transform:scaleX(-1); }
-      .cti-edge-mascot:hover,.cti-edge-mascot:focus-visible { transform:translateX(-3px) scale(1.04); box-shadow:0 8px 26px #0005,0 0 0 2px color-mix(in srgb,var(--cti-mascot-accent) 45%,transparent); outline:none; }
-      .cti-edge-mascot[data-edge="left"] { border-radius:0 16px 16px 0; }
+      .cti-edge-mascot:hover,.cti-edge-mascot:focus-visible { transform:translateX(-3px) scale(1.04); outline:none; }
+      .cti-edge-mascot:not([data-art="true"]):hover,.cti-edge-mascot:not([data-art="true"]):focus-visible { box-shadow:0 8px 26px #0005,0 0 0 2px color-mix(in srgb,var(--cti-mascot-accent) 45%,transparent); }
+      .cti-edge-mascot[data-art="true"]:hover,.cti-edge-mascot[data-art="true"]:focus-visible { filter:drop-shadow(0 6px 16px #0004) drop-shadow(0 0 12px color-mix(in srgb,var(--cti-mascot-accent) 60%,transparent)); }
+      .cti-edge-mascot[data-edge="left"]:not([data-art="true"]) { border-radius:0 16px 16px 0; }
       .cti-edge-mascot[data-edge="left"]:hover,.cti-edge-mascot[data-edge="left"]:focus-visible { transform:translateX(3px) scale(1.04); }
       .cti-edge-mascot::after { content:''; position:absolute; width:22px; height:7px; bottom:-3px; border-radius:6px; background:var(--cti-mascot-accent); opacity:.8; }
       .cti-edge-mascot[data-edge="left"]::after { right:-3px; top:13px; width:7px; height:22px; }
       .cti-edge-mascot[data-edge="right"]::after { left:-3px; top:13px; width:7px; height:22px; }
+      /* With the plate gone the pill has to clear the artwork itself rather
+         than the plate's padding, or it lands on top of the character. */
+      .cti-edge-mascot[data-art="true"][data-edge="right"]::after { left:-10px; }
+      .cti-edge-mascot[data-art="true"][data-edge="left"]::after { right:-10px; }
       .cti-hud, .cti-hud * { -webkit-app-region:no-drag !important; }
       .cti-hud-head, .cti-hud-body { zoom:var(--cti-scale,1); }
       .cti-hud [data-resize] { position:absolute;right:2px;bottom:2px;width:16px;height:16px;cursor:nwse-resize;touch-action:none;z-index:5;opacity:.4;background:linear-gradient(135deg,transparent 60%,CanvasText 60%,CanvasText 65%,transparent 65%,transparent 78%,CanvasText 78%,CanvasText 83%,transparent 83%);border-radius:4px; }
