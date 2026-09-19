@@ -88,11 +88,15 @@ def build(directory):
             ('  function cleanOriginalTitle(', '  function hudMode('),
             ('  function applySidebar(', '  function applyHud(')):
         script = cut(script, start, end)
+    # Remove these after the intervening old mount/sidebar spans are gone.
+    script = cut(script, '  function updateUnitButtons(', '  function applyHud(')
     tail = '  function clearFooters('
     if script.count(tail) != 1:
         raise ValueError('unexpected lifecycle boundary')
     assets = Path(__file__).parents[1] / 'quota_monitor'
-    script = (script[:script.index(tail)] + (assets / 'panel_format.js').read_text() + visual + (assets / 'panel_mount.js').read_text()
+    script = (script[:script.index(tail)] + (assets / 'panel_format.js').read_text()
+              + (assets / 'panel_controls.js').read_text() + visual
+              + (assets / 'panel_mount.js').read_text()
               + (assets / 'panel_adapter.js').read_text())
     guard = """(payload => {
   if (document.getElementById('codex-context-token-inspector-root') ||
@@ -125,7 +129,7 @@ def main():
     manifest = {'sourceCommit': BASE, 'sourceSHA256': HASHES,
                 'consumer': {'path': 'consumer.js', 'sha256': hashlib.sha256(script.encode()).hexdigest()},
                 'status': 'derived-isolated-candidate',
-                'changes': 'Removed host/sidebar/message scans and observer lifecycle; V2 snapshot-only adapter, owned DOM lifecycle, pruned and attribute-scoped retained CSS, V2 finite-number formatting.'}
+                'changes': 'Removed host/sidebar/message scans and observer lifecycle; V2 snapshot-only adapter, owned DOM lifecycle, pruned and attribute-scoped retained CSS, V2 finite-number formatting and control state/language projection.'}
     (args.output_dir / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     print(json.dumps(manifest['consumer']))
 

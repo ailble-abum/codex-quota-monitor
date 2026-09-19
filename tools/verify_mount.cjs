@@ -40,12 +40,25 @@ const {chromium, webkit} = require('playwright');
       for (let i = 0; i < 4; i++) assert.equal(await publish(), true);
       assert.equal(await page.locator('[data-refresh]').isDisabled(), true);
       assert.equal(await page.locator('.cti-hud').count(), 1);
+      for (const [language, htmlLang, autoLabel, rawLabel, groupLabel] of [
+        ['en', 'en', 'Auto', 'raw', 'Token unit'], ['zh', 'zh-CN', '自动', '原值', 'Token 单位']
+      ]) {
+        await page.evaluate(language => localStorage.setItem('cti-language', language), language);
+        await publish();
+        assert.equal(await page.locator('.cti-hud').getAttribute('lang'), htmlLang);
+        assert.equal(await page.locator('[data-cti-unit="auto"]').textContent(), autoLabel);
+        assert.equal(await page.locator('[data-cti-unit="raw"]').textContent(), rawLabel);
+        assert.equal(await page.locator('.cti-unit-group').getAttribute('aria-label'), groupLabel);
+      }
+
       const toggle = page.locator('[data-cti-toggle]');
       await toggle.click();
       assert.equal(await page.locator('.cti-hud').getAttribute('data-collapsed'), 'true');
+      assert.equal(await toggle.getAttribute('aria-label'), '展开监控');
       await page.locator('[data-cti-title]').focus();
       await page.keyboard.press('Enter');
       assert.equal(await page.locator('.cti-hud').getAttribute('data-collapsed'), 'false');
+      assert.equal(await toggle.getAttribute('aria-label'), '收起监控');
       await page.locator('[data-settings-toggle]').click();
       assert.equal(await page.locator('[data-settings-toggle]').getAttribute('aria-expanded'), 'true');
       await page.locator('[data-cti-unit="raw"]').click();
@@ -54,6 +67,8 @@ const {chromium, webkit} = require('playwright');
       for (const [unit, expected] of [['k', '0.50K / 1.00K'], ['m', '0.00M / 0.00M'], ['auto', '500 / 1K'], ['raw', '500 / 1,000']]) {
         await page.locator(`[data-cti-unit="${unit}"]`).click();
         assert.ok((await page.locator('[data-context]').textContent()).includes(expected), unit);
+        assert.deepEqual(await page.locator('[data-cti-unit]').evaluateAll(buttons => buttons.map(button => [button.dataset.ctiUnit, button.dataset.active, button.getAttribute('aria-pressed')])),
+          ['auto', 'raw', 'k', 'm'].map(value => [value, String(value === unit), String(value === unit)]));
       }
 
       await page.locator('[data-settings-toggle]').click();

@@ -32,3 +32,5 @@ python3 -m unittest discover -s tests -v
 [保留样式范围清理](docs/panel-css-contract.md) 移除无调用样式，限制裸属性规则在面板内，避免修改宿主同名属性元素；其余保留样式继续归因。
 
 [V2 数值显示替换](docs/panel-format-contract.md) 替换 token/pct 并移除旧 n，保留四种单位显示，拒绝非有限数值；完整 renderer 替换仍在推进。
+
+[V2 控件状态和语言同步](docs/panel-controls-contract.md) 替换单位选中态和语言同步，补齐读屏选中状态，并修复自动单位文字无法随语言更新。
