@@ -9,7 +9,10 @@
 实现及证据见 [读取器契约](docs/reader-contract.md)、[会话归约器契约](docs/session-contract.md)、[数值兼容桥](docs/compat-contract.md)、[身份核对](docs/identity-contract.md) 和 [受限查找](docs/discovery-contract.md)。运行合成测试：
 
 ```sh
+python3 -m pip install -r requirements-cdp.txt
 python3 -m unittest discover -s tests -v
 ```
+
+全套测试现在包含可选 CDP 通信层，推荐在虚拟环境中安装上述依赖。日志读取与离线预览本身仍不要求第三方包。[连接层契约](docs/cdp-contract.md) 记录了回环地址限制、超时/取消行为及临时 Chromium 验收。
 
 新数据已通过 [隔离面板兼容验证](docs/panel-probe.md)：Chromium/WebKit 深浅主题、任务切换、缺失与过期清空。该验证使用外部现有面板，尚未独立替换其注入实现或接入现用安装。

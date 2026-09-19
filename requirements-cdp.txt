@@ -1,0 +1,2 @@
+# Optional local CDP transport; parser and offline preview remain stdlib-only.
+websockets==15.0.1
