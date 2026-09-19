@@ -1,0 +1,15 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python tests
+        run: python3 -m unittest discover -s plugins/codex-quota-monitor/scripts -p 'test_*.py' -v
+      - name: Swift typecheck
+        run: swiftc -typecheck plugins/codex-quota-monitor/scripts/QuotaMenu.swift
