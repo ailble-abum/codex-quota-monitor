@@ -19,6 +19,58 @@ def run(*args):
     return subprocess.run(args, capture_output=True, text=True)
 
 
+def read_plist(path):
+    try:
+        with path.open('rb') as handle:
+            return plistlib.load(handle)
+    except (OSError, ValueError):
+        return None
+
+
+def describe(result, action):
+    return result.stderr.strip() or result.stdout.strip() or f'{action} failed'
+
+
+def load_agent(service, plist, previous=None):
+    """Bring a LaunchAgent up, preferring an in-place restart over a rebuild.
+
+    When the on-disk definition is unchanged an already-loaded agent is simply
+    kickstarted, so a replaced program takes effect without a bootout/bootstrap
+    round trip. That round trip is what strands the agent dead whenever the
+    bootstrap is refused - a restricted session, or launchd still disposing the
+    previous incarnation. When the definition did change the agent is rebuilt,
+    and a refused rebuild puts the previous definition back so the machine is
+    never left worse off than before the call.
+
+    Returns (ok, detail) describing the path that was taken.
+    """
+    loaded = run('launchctl', 'print', service).returncode == 0
+    if loaded and (previous is None or previous == read_plist(plist)):
+        result = run('launchctl', 'kickstart', '-k', service)
+        if result.returncode == 0:
+            return True, 'restarted'
+        return False, describe(result, 'kickstart')
+    domain = f'gui/{os.getuid()}'
+    if loaded:
+        run('launchctl', 'bootout', service)
+    result = None
+    # launchd may still be disposing the previous incarnation of the label.
+    for _ in range(5):
+        result = run('launchctl', 'bootstrap', domain, str(plist))
+        if result.returncode == 0:
+            return True, 'loaded'
+        time.sleep(.5)
+    if previous is not None and loaded:
+        # Put the definition that was working back, so a refused rebuild leaves
+        # the machine no worse off than before the call.
+        with plist.open('wb') as handle:
+            plistlib.dump(previous, handle)
+        restored = run('launchctl', 'bootstrap', domain, str(plist)).returncode == 0
+        note = 'previous definition restored' if restored else 'previous definition kept on disk'
+        return False, f'{describe(result, "bootstrap")} ({note})'
+    return False, describe(result, 'bootstrap')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=['install', 'start', 'stop', 'status', 'doctor', 'reset-position', 'show'])
@@ -41,17 +93,12 @@ def main():
         if result.returncode:
             raise SystemExit(result.stderr)
         built.replace(binary)
-        run('launchctl', 'bootout', f'gui/{os.getuid()}/local.codex-quota-menu')
         menu_plist = PLIST.with_name('local.codex-quota-menu.plist')
+        previous_menu = read_plist(menu_plist)
+        previous_service = read_plist(PLIST)
         with menu_plist.open('wb') as handle:
             plistlib.dump({'Label':'local.codex-quota-menu','ProgramArguments':[str(binary)],
                           'RunAtLoad':True,'KeepAlive':True,'ThrottleInterval':30},handle)
-        for _ in range(5):
-            result=run('launchctl','bootstrap',f'gui/{os.getuid()}',str(menu_plist))
-            if result.returncode==0:break
-            time.sleep(.5)
-        if result.returncode:raise SystemExit(result.stderr)
-        run('launchctl', 'bootout', SERVICE)
         if runtime.resolve() != SCRIPTS:
             shutil.copytree(SCRIPTS, runtime, dirs_exist_ok=True, ignore=shutil.ignore_patterns('__pycache__'))
         config = {'Label': LABEL, 'ProgramArguments': ['/bin/bash', str(runtime/'start_codex_monitor.sh'),
@@ -62,28 +109,31 @@ def main():
         PLIST.parent.mkdir(parents=True, exist_ok=True)
         with PLIST.open('wb') as handle:
             plistlib.dump(config, handle)
-        # launchd may still be disposing the old service after bootout returns.
-        for attempt in range(5):
-            result = run('launchctl', 'bootstrap', f'gui/{os.getuid()}', str(PLIST))
-            if result.returncode == 0:
-                break
-            time.sleep(.5)
-        if result.returncode:
-            raise SystemExit(result.stderr)
+        # Every file is in place before launchd is touched, so a refused load can
+        # never leave the machine with stale scripts and a torn-down agent.
+        problems = []
+        for service, plist, previous, name in (
+                (f'gui/{os.getuid()}/local.codex-quota-menu', menu_plist, previous_menu, 'menu bar'),
+                (SERVICE, PLIST, previous_service, 'monitor')):
+            ok, detail = load_agent(service, plist, previous)
+            if not ok:
+                problems.append(f'{name} agent: {detail}')
         print('Installed service: '+str(runtime))
+        if problems:
+            for problem in problems:
+                print('Warning: could not load the '+problem, file=sys.stderr)
+            print('Run this command again from a normal terminal to load it.', file=sys.stderr)
+            raise SystemExit(1)
         return
     if args.action == 'start':
         if not PLIST.exists():
             raise SystemExit('LaunchAgent not installed')
-        if run('launchctl', 'print', SERVICE).returncode:
-            result = run('launchctl', 'bootstrap', f'gui/{os.getuid()}', str(PLIST))
-        else:
-            result = run('launchctl', 'kickstart', '-k', SERVICE)
-        if result.returncode:
-            raise SystemExit(result.stderr)
+        ok, detail = load_agent(SERVICE, PLIST)
+        if not ok:
+            raise SystemExit(detail)
         menu_plist=PLIST.with_name('local.codex-quota-menu.plist')
-        if menu_plist.exists() and run('launchctl','print',f'gui/{os.getuid()}/local.codex-quota-menu').returncode:
-            run('launchctl','bootstrap',f'gui/{os.getuid()}',str(menu_plist))
+        if menu_plist.exists():
+            load_agent(f'gui/{os.getuid()}/local.codex-quota-menu', menu_plist)
         print('Monitor service started')
         return
     if args.action == 'stop':
