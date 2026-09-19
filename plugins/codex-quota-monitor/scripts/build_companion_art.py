@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
 """Build the runtime companion artwork used by the injected overlay.
 
-The source renders in ``assets/companions`` are square images whose
-"transparency" was baked in as a checkerboard instead of a real alpha
-channel. This script
+The source renders in ``assets/companions`` are images whose "transparency"
+was baked in rather than carried as a real alpha channel, in one of two
+styles:
 
-1. keys that checkerboard out into a real alpha channel,
+* checkerboard -- the square full-figure renders, where the backdrop is
+  neutral grey squares painted in behind the character, and
+* studio -- the mint cat, shot on a flat near-black backdrop with a lit wall
+  rim down the right edge, which is the edge the cat hides behind.
+
+This script
+
+1. keys one of those backdrops out into a real alpha channel,
 2. crops to a shared content frame so every companion keeps the same
    relative scale,
 3. resizes with premultiplied alpha (avoids light fringes), and
@@ -88,6 +95,41 @@ FRAME_COVERAGE = 0.02
 # shows up as the mascot hovering away from the window border.
 CUT_EDGE_FILL_MIN = 0.97
 
+# --- studio renders, keyed on a flat dark backdrop ------------------------
+#
+# The mint cat did not arrive on a checkerboard. It is a small studio render:
+# a near-black backdrop with the character only a few levels above it, and a
+# lit wall rim running the full frame height down its right edge, which the
+# cat's right ear and paw are cropped by.
+#
+# The rim's glow dies out by x=239 (rows above and below the cat read a flat
+# 19-20 there), so the frame is clipped just to its left and the cat is cut
+# exactly where the wall hides it.
+STUDIO_CLIP_RIGHT = {"cat": 239}
+
+# Brightness window that separates cat from backdrop. The backdrop drifts from
+# 17 in the bottom corner to 24 on the left, so the floor sits at 25 -- below
+# it every backdrop pixel is fully clear, which is what stops the whole frame
+# from picking up a grey wash. The ceiling is where the soft rim of the key
+# light has climbed to full opacity.
+STUDIO_BG_LUM = 25.5
+STUDIO_FG_LUM = 33.0
+
+# The ramp alone is not enough: the shaded underside of the head sits at 27-29,
+# barely above the backdrop, and would render as a washed-out fade. So the
+# body is also taken as the largest connected blob at this brightness, with
+# its interior filled, and the ramp only supplies the soft edge around it.
+STUDIO_CORE_LUM = 30.0
+STUDIO_EDGE_BLUR = 1.1
+
+# The cat is a head study, where the five checkerboard renders are busts that
+# spend roughly half their frame on head and half on shoulders. Letting its
+# head fill the sprite would make it read about twice the size of every other
+# companion's head, so its frame is padded out to this multiple of the content
+# before it is scaled down. Calibrated against the corgi, whose head is the
+# closest match in the set. Cannot exceed the source height / content height.
+STUDIO_FRAME_SCALE = {"cat": 1.35}
+
 def previous_frames() -> dict[str, tuple[int, int, int, int]]:
     """Frames recorded by the last build, used to report reframing."""
     module = SCRIPT_DIR / GENERATED_MODULE
@@ -121,12 +163,94 @@ def background_mask(rgb: np.ndarray) -> np.ndarray:
     return (spread <= NEUTRAL_SPREAD) & (lum >= NEUTRAL_LUM_MIN)
 
 
-def key_alpha(rgb: np.ndarray) -> np.ndarray:
-    """Foreground coverage in 0..1, slightly blurred to keep the silhouette smooth."""
+def checkerboard_alpha(rgb: np.ndarray) -> np.ndarray:
+    """Foreground coverage for a render with a baked-in checkerboard."""
     mask = background_mask(rgb)
     image = Image.fromarray((mask * 255).astype(np.uint8), "L")
     blurred = image.filter(ImageFilter.GaussianBlur(KEY_BLUR))
     return 1.0 - np.asarray(blurred, dtype=np.float32) / 255.0
+
+
+def largest_blob(mask: np.ndarray) -> np.ndarray:
+    """The single biggest four-connected run of True, as a boolean mask."""
+    height, width = mask.shape
+    labels = np.zeros(mask.shape, dtype=np.int32)
+    best = np.zeros(mask.shape, dtype=bool)
+    best_size = 0
+    count = 0
+    for y, x in zip(*np.nonzero(mask)):
+        if labels[y, x]:
+            continue
+        count += 1
+        stack = [(int(y), int(x))]
+        labels[y, x] = count
+        size = 0
+        while stack:
+            cy, cx = stack.pop()
+            size += 1
+            for ny, nx in ((cy - 1, cx), (cy + 1, cx), (cy, cx - 1), (cy, cx + 1)):
+                if 0 <= ny < height and 0 <= nx < width and mask[ny, nx] and not labels[ny, nx]:
+                    labels[ny, nx] = count
+                    stack.append((ny, nx))
+        if size > best_size:
+            best_size = size
+            best = labels == count
+    return best
+
+
+def fill_holes(mask: np.ndarray) -> np.ndarray:
+    """Everything the mask encloses, so shaded interior detail stays opaque."""
+    height, width = mask.shape
+    free = ~mask
+    outside = np.zeros(mask.shape, dtype=bool)
+    stack: list[tuple[int, int]] = []
+    for y in range(height):
+        for x in (0, width - 1):
+            if free[y, x] and not outside[y, x]:
+                outside[y, x] = True
+                stack.append((y, x))
+    for x in range(width):
+        for y in (0, height - 1):
+            if free[y, x] and not outside[y, x]:
+                outside[y, x] = True
+                stack.append((y, x))
+    while stack:
+        cy, cx = stack.pop()
+        for ny, nx in ((cy - 1, cx), (cy + 1, cx), (cy, cx - 1), (cy, cx + 1)):
+            if 0 <= ny < height and 0 <= nx < width and free[ny, nx] and not outside[ny, nx]:
+                outside[ny, nx] = True
+                stack.append((ny, nx))
+    return mask | (free & ~outside)
+
+
+def studio_alpha(rgb: np.ndarray, clip_right: int) -> np.ndarray:
+    """Foreground coverage for a render shot on a flat dark backdrop.
+
+    Columns at and past ``clip_right`` are forced transparent: that is the lit
+    wall rim the cat hides behind, and keeping any of it would both widen the
+    frame to the full image height and leave a lit stripe on the mascot.
+    """
+    lum = rgb[:, :clip_right].mean(axis=2)
+    ramp = np.clip((lum - STUDIO_BG_LUM) / (STUDIO_FG_LUM - STUDIO_BG_LUM), 0.0, 1.0)
+
+    body = fill_holes(largest_blob(lum > STUDIO_CORE_LUM)).astype(np.float32)
+    # The body is pinned opaque and the ramp only paints the soft rim around
+    # it, so the shaded underside of the head cannot fade into the backdrop.
+    alpha = np.maximum(ramp, body)
+    softened = Image.fromarray((alpha * 255.0).round().astype(np.uint8), "L")
+    alpha = np.asarray(softened.filter(ImageFilter.GaussianBlur(STUDIO_EDGE_BLUR)), dtype=np.float32)
+
+    padded = np.zeros(rgb.shape[:2], dtype=np.float32)
+    padded[:, :clip_right] = alpha / 255.0
+    return padded
+
+
+def key_alpha(rgb: np.ndarray, skin: str) -> np.ndarray:
+    """Foreground coverage in 0..1 for the backdrop style this skin shipped on."""
+    clip = STUDIO_CLIP_RIGHT.get(skin)
+    if clip is None:
+        return checkerboard_alpha(rgb)
+    return studio_alpha(rgb, clip)
 
 
 def content_box(alpha: np.ndarray) -> tuple[int, int, int, int]:
@@ -151,31 +275,58 @@ def resolve_frames(verbose: bool = False) -> dict[str, tuple[int, int, int, int]
     gutter on the right of the narrower ones, and a docked companion would
     visibly float away from the screen edge it is supposed to peek in from.
 
-    So the frames share one vertical extent -- keeping the vertical scale
-    identical across the set -- while the horizontal extent is trimmed to
-    each companion's own cut edge. The overlay then only has to pin the
-    image to the docked edge, with no per-skin offset table.
+    So the horizontal extent is trimmed to each companion's own cut edge. For
+    the vertical extent, renders shot at the same size share one span -- that
+    preserves the headroom each artist left around their character, which is
+    what keeps the set at one relative scale. A render shot at a different
+    size cannot share a span with them, because no pixel unit relates a
+    1254px figure study to a 362px cat; it falls back to its own content box,
+    which is the same "the character fills the sprite" convention the shared
+    span already approximates for the other five.
+
+    The overlay then only has to pin the image to the docked edge, with no
+    per-skin offset table.
     """
     boxes: dict[str, tuple[int, int, int, int]] = {}
+    sizes: dict[str, tuple[int, int]] = {}
     for skin in SOURCES:
         path = resolve_source(skin)
         if path is None:
             continue
-        rgb = np.asarray(Image.open(path).convert("RGB"), dtype=np.float32)
-        boxes[skin] = content_box(key_alpha(rgb))
+        with Image.open(path) as source:
+            sizes[skin] = source.size
+            rgb = np.asarray(source.convert("RGB"), dtype=np.float32)
+        boxes[skin] = content_box(key_alpha(rgb, skin))
     if not boxes:
         raise SystemExit("no companion sources found in " + str(SOURCE_DIR))
 
-    top = min(box[1] for box in boxes.values())
-    bottom = max(box[3] for box in boxes.values())
+    spans: dict[tuple[int, int], tuple[int, int]] = {}
+    for skin, (_, top, _, bottom) in boxes.items():
+        low, high = spans.get(sizes[skin], (top, bottom))
+        spans[sizes[skin]] = (min(low, top), max(high, bottom))
+
     frames: dict[str, tuple[int, int, int, int]] = {}
-    for skin, (left, _, right, _) in sorted(boxes.items()):
-        frames[skin] = (
-            max(0, left - SOURCE_MARGIN),
-            top,
-            right + SOURCE_MARGIN,
-            bottom,
-        )
+    for skin, (left, content_top, right, content_bottom) in sorted(boxes.items()):
+        top, bottom = spans[sizes[skin]]
+        scale = STUDIO_FRAME_SCALE.get(skin)
+        if scale is not None:
+            # Padded symmetrically about the character instead, since a head
+            # study has no pixel scale in common with the busts it shares a
+            # span with. Clamped to the source, so the requested framing can
+            # only be missed by padding less, never by running off the image.
+            source_height = sizes[skin][1]
+            height = min(source_height, round((content_bottom - content_top) * scale))
+            centre = (content_top + content_bottom) / 2
+            top = max(0, min(int(round(centre - height / 2)), source_height - height))
+            bottom = top + height
+        # Breathing room on the cut edge, except where the character is cut by
+        # something the key removed -- padding past the clip would put a
+        # transparent gutter back on the edge the overlay pins to.
+        cut = right + SOURCE_MARGIN
+        clip = STUDIO_CLIP_RIGHT.get(skin)
+        if clip is not None:
+            cut = min(cut, clip)
+        frames[skin] = (max(0, left - SOURCE_MARGIN), top, cut, bottom)
         if verbose:
             print(f"  {skin:6s} content={boxes[skin]} frame={frames[skin]}")
     return frames
@@ -193,14 +344,14 @@ def clean_speckles(image: Image.Image) -> Image.Image:
     return out
 
 
-def render(path: Path, frame: tuple[int, int, int, int], height: int) -> Image.Image:
+def render(path: Path, skin: str, frame: tuple[int, int, int, int], height: int) -> Image.Image:
     """Key, crop and resize one render into straight-alpha RGBA.
 
     The crop is scaled to a fixed height and a proportional width, so every
     companion shares one vertical scale and stays flush on its cut edge.
     """
     rgb = np.asarray(Image.open(path).convert("RGB"), dtype=np.float32)
-    alpha = key_alpha(rgb)
+    alpha = key_alpha(rgb, skin)
     left, top, right, bottom = frame
     width = max(1, round(height * (right - left) / (bottom - top)))
     size = (width, height)
@@ -340,7 +491,7 @@ def main() -> int:
     fills: dict[str, float] = {}
     print(f"height: {args.height}px, webp q{WEBP_QUALITY}")
     for skin, path in sorted(available.items()):
-        image = render(path, frames[skin], args.height)
+        image = render(path, skin, frames[skin], args.height)
         fill = cut_edge_fill(image)
         fills[skin] = fill
         data = encode(image)
