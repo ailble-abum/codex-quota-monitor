@@ -1206,11 +1206,21 @@ INJECTION_SCRIPT = r"""
       root.__ctiLayout[mode]={...previous,x,y,...(width?{width}:{})};
       saveLayout(root);
     }
+    // A pointerdown on the scrollbar gutter belongs to the scroll container.
+    // Once the whole panel is a grab surface the two would otherwise fight
+    // over the same gesture and the panel would move instead of scrolling.
+    function isOverScrollbar(node,event) {
+      if(node.scrollHeight<=node.clientHeight)return false;
+      return event.clientX>=node.getBoundingClientRect().left+node.clientWidth;
+    }
     root.addEventListener('pointerdown',event=>{
       if(event.button!==0)return;
       const resize=!!event.target.closest('[data-resize]');
-      const head=event.target.closest('.cti-hud-head');
-      if(!resize && (!head || (event.target.closest('button,input,summary') && !event.target.closest('[data-cti-title]'))))return;
+      // The panel body drags the panel too, not just the title row, so the
+      // gesture has to skip every control that owns the pointer itself.
+      const control=event.target.closest('button,input,select,textarea,summary,a,label');
+      if(!resize && control && !event.target.closest('[data-cti-title]'))return;
+      if(!resize && isOverScrollbar(root,event))return;
       if(!resize && root.dataset.docked==='true')undockHud(root);
       const rect=root.getBoundingClientRect();
       root.__ctiGesture={resize,x:event.clientX,y:event.clientY,left:rect.left,top:rect.top,width:rect.width,moved:false};

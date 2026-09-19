@@ -81,6 +81,17 @@ class InspectorTests(unittest.TestCase):
         # No plate means no rounded plate corners either.
         self.assertNotIn('.cti-edge-mascot[data-edge="left"] { border-radius', INJECTION_SCRIPT)
 
+    def test_the_whole_panel_is_a_grab_surface(self):
+        # Dragging used to require the pointer to land on the title row, so the
+        # panel could not be moved by its body.
+        handler = block("root.addEventListener('pointerdown',event=>{", "},true);")
+        self.assertNotIn(".cti-hud-head", handler)
+        self.assertIn("button,input,select,textarea,summary,a,label", handler)
+        # A pointerdown on the scrollbar gutter is the scroll container's, not
+        # the panel drag's, now that the body is draggable too.
+        self.assertIn("isOverScrollbar(root,event)", handler)
+        self.assertIn("function isOverScrollbar(node,event)", INJECTION_SCRIPT)
+
     def test_latest_model_and_effort_are_reported(self):
         rows = [
             {'type':'session_meta','payload':{'id':'thread','cwd':'/tmp'}},
