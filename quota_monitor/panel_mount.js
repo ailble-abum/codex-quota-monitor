@@ -59,13 +59,18 @@
     panel.classList.add('cti-hud');
     panel.dataset.collapsed = String(localStorage.getItem(COLLAPSE_KEY) === 'true');
     panel.innerHTML = panelHeader();
-    const toggle = () => keepTogglePosition(panel, () => {
-      panel.dataset.collapsed = String(panel.dataset.collapsed !== 'true');
-      localStorage.setItem(COLLAPSE_KEY, panel.dataset.collapsed);
-      panel.querySelector('[data-cti-toggle]').textContent = panel.dataset.collapsed === 'true' ? '+' : '−';
-      updateHudTitle(panel);
-      clampHud(panel);
-    });
+    const toggle = () => {
+      keepTogglePosition(panel, () => {
+        panel.dataset.collapsed = String(panel.dataset.collapsed !== 'true');
+        localStorage.setItem(COLLAPSE_KEY, panel.dataset.collapsed);
+        panel.querySelector('[data-cti-toggle]').textContent = panel.dataset.collapsed === 'true' ? '+' : '−';
+        updateHudTitle(panel);
+        clampHud(panel);
+      });
+      // Restoring a docked layout after a floating compact mode resets visibility.
+      // A user-pinned panel must remain accessible after that mode transition.
+      if (panel.dataset.docked === 'true' && panel.dataset.dockPinned === 'true') revealDock(panel, true);
+    };
     panel.addEventListener('pointerdown', event => {
       if (event.target.closest('[data-cti-unit],[data-cti-title],[data-cti-toggle]')) event.stopPropagation();
     });

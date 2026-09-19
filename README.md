@@ -50,3 +50,5 @@ python3 -m unittest discover -s tests -v
 [账户窗口整组校验](docs/account-windows-contract.md) 拒绝缺失、异常窗口及越界数值，统一降级账户显示并保持本地上下文更新。
 
 [V2 账户窗口正文](docs/account-window-view-contract.md) 以文本 DOM 构建逐窗口内容，保留倒计时与预测；初始停靠组合的视口问题另列为待处理边界。
+
+[固定停靠折叠往返修复](docs/docking-toggle-contract.md) 区分正常初始隐藏与固定状态丢失，修复折叠后重新展开时面板意外隐藏；左右停靠真实控件回归通过。
