@@ -75,7 +75,7 @@
       if (button.hasAttribute('data-cti-unit')) {
         event.preventDefault();
         event.stopPropagation();
-        localStorage.setItem(UNIT_KEY, button.dataset.ctiUnit);
+        setUnitMode(button.dataset.ctiUnit);
         applyAll(window.__codexContextTokenInspectorPayload);
       } else if (button.hasAttribute('data-settings-toggle')) {
         const settings = panel.querySelector('[data-settings]');

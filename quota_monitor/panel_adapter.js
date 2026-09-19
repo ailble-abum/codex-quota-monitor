@@ -18,7 +18,6 @@
     window.__codexContextTokenInspectorPayload = data;
     applyHud(data);
   }
-  ensureDefaultUnit();
   ensureStyle();
   applyAll(null);
   window.__codexContextTokenInspectorUpdate = applyAll;

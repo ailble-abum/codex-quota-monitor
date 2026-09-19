@@ -34,3 +34,5 @@ python3 -m unittest discover -s tests -v
 [V2 数值显示替换](docs/panel-format-contract.md) 替换 token/pct 并移除旧 n，保留四种单位显示，拒绝非有限数值；完整 renderer 替换仍在推进。
 
 [V2 控件状态和语言同步](docs/panel-controls-contract.md) 替换单位选中态和语言同步，补齐读屏选中状态，并修复自动单位文字无法随语言更新。
+
+[V2 单位偏好](docs/unit-preference-contract.md) 初始化保留有效选择；单位写入失败时使用本次挂载的临时选择，恢复后可再次持久化。

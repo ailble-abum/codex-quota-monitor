@@ -1,3 +1,23 @@
+  // A failed write affects only this mounted instance, never claims persistence.
+  let transientUnit = null;
+  const unitChoices = ['auto', 'raw', 'k', 'm'];
+  function unitMode() {
+    if (transientUnit !== null) return transientUnit;
+    try {
+      const saved = localStorage.getItem(UNIT_KEY);
+      return unitChoices.includes(saved) ? saved : 'auto';
+    } catch (_) { return 'auto'; }
+  }
+  function setUnitMode(unit) {
+    if (!unitChoices.includes(unit)) return false;
+    transientUnit = unit;
+    try {
+      localStorage.setItem(UNIT_KEY, unit);
+      transientUnit = null;
+      return true;
+    } catch (_) { return false; }
+  }
+
   // V2 control projection; retained preset/skin helpers remain separate.
   function updateUnitButtons(root) {
     const selected = unitMode();

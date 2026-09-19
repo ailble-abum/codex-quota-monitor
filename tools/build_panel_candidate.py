@@ -80,8 +80,7 @@ def build(directory):
               + '  const panelHeader = () => ' + template('ensureHud', 'root.innerHTML') + ';\n')
     # Exact source digests make these bounded spans safe; unknown revisions stop.
     for start, end in (
-            ('  function n(', '  function ensureDefaultUnit('),
-            ('  function token(', '  function quotaTone('),
+            ('  function n(', '  function quotaTone('),
             ('  function summaryHover(', '  function ensureStyle('),
             ('  function ensureStyle(', '  function cleanOriginalTitle('),
             ('  function ensureHud(', '  function applySidebar('),
@@ -129,7 +128,7 @@ def main():
     manifest = {'sourceCommit': BASE, 'sourceSHA256': HASHES,
                 'consumer': {'path': 'consumer.js', 'sha256': hashlib.sha256(script.encode()).hexdigest()},
                 'status': 'derived-isolated-candidate',
-                'changes': 'Removed host/sidebar/message scans and observer lifecycle; V2 snapshot-only adapter, owned DOM lifecycle, pruned and attribute-scoped retained CSS, V2 finite-number formatting and control state/language projection.'}
+                'changes': 'Removed host/sidebar/message scans and observer lifecycle; V2 snapshot-only adapter, owned DOM lifecycle, pruned and attribute-scoped retained CSS, V2 finite-number formatting and control state/language projection with lazy unit preferences.'}
     (args.output_dir / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     print(json.dumps(manifest['consumer']))
 

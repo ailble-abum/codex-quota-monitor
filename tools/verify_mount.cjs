@@ -12,7 +12,7 @@ const {chromium, webkit} = require('playwright');
       const page = await browser.newPage();
       await page.route('**/*', route => route.fulfill({body: '<html><head></head><body></body></html>', contentType: 'text/html'}));
       await page.goto('http://mount.invalid/');
-      await page.evaluate(() => { window.__quotaMonitorV2Thread = 'one'; localStorage.setItem('cti-language', 'zh'); });
+      await page.evaluate(() => { window.__quotaMonitorV2Thread = 'one'; localStorage.setItem('cti-language', 'zh'); localStorage.setItem('codex-context-token-inspector-unit', 'k'); });
       const call = options => page.evaluate(({bridge, options}) => (0, eval)(bridge)(options), {bridge, options});
       const base = {expected: 'http://mount.invalid/', key: 'one'};
       // Host attributes are deliberately identical to retained panel attributes.
@@ -34,6 +34,8 @@ const {chromium, webkit} = require('playwright');
       assert.equal(await call({...base, action: 'initialize', consumer: {source: script}}), 'ready');
       assert.deepEqual(await hostStyle(), before, 'panel CSS must not style host attributes');
       await page.locator('#host-probe').evaluate(node => node.remove());
+      assert.equal(await page.evaluate(() => localStorage.getItem('codex-context-token-inspector-unit')), 'k');
+      assert.equal(await page.evaluate(() => localStorage.getItem('codex-context-token-inspector-unit-defaulted')), null);
       const payload = {activeThreadId: 'one', selectedThreadId: 'one', observedAt: Date.now()/1000,
         summaries: [{thread_id: 'one', latest_context_tokens: 500, context_window: 1000, latest_context_percent: 50}], detailsByThread: {}};
       const publish = () => call({...base, action: 'publish', payload, panel: true});
@@ -71,6 +73,20 @@ const {chromium, webkit} = require('playwright');
           ['auto', 'raw', 'k', 'm'].map(value => [value, String(value === unit), String(value === unit)]));
       }
 
+      await page.evaluate(() => {
+        window.originalSetItem = Storage.prototype.setItem;
+        Storage.prototype.setItem = function(key, value) {
+          if (key === 'codex-context-token-inspector-unit') throw new DOMException('Full', 'QuotaExceededError');
+          return window.originalSetItem.call(this, key, value);
+        };
+      });
+      await page.locator('[data-cti-unit="k"]').click();
+      assert.ok((await page.locator('[data-context]').textContent()).includes('0.50K / 1.00K'));
+      assert.equal(await page.locator('[data-cti-unit="k"]').getAttribute('aria-pressed'), 'true');
+      assert.equal(await page.evaluate(() => localStorage.getItem('codex-context-token-inspector-unit')), 'raw');
+      await page.evaluate(() => { Storage.prototype.setItem = window.originalSetItem; delete window.originalSetItem; });
+      await page.locator('[data-cti-unit="auto"]').click();
+      assert.equal(await page.evaluate(() => localStorage.getItem('codex-context-token-inspector-unit')), 'auto');
       await page.locator('[data-settings-toggle]').click();
       assert.equal(await page.locator('[data-settings-toggle]').getAttribute('aria-expanded'), 'false');
       // Drag suppression is an existing layout contract, not a second click.
