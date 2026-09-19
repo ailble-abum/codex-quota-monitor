@@ -1,3 +1,10 @@
+"""Checks on the generated companion artwork module.
+
+The annotations are lazy so this file imports under the Python 3.9 that ships
+with the plugin's supported systems.
+"""
+from __future__ import annotations
+
 import base64
 import unittest
 

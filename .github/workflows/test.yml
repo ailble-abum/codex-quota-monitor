@@ -9,6 +9,13 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v5
+      - name: Use the Python the plugin actually runs on
+        # The overlay runs under the system python3, which is still 3.9 on the
+        # systems this plugin supports. Testing on the runner default let an
+        # evaluated 3.10-only annotation reach a commit, so pin the floor.
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
       - name: Python tests
         run: python3 -m unittest discover -s plugins/codex-quota-monitor/scripts -p 'test_*.py' -v
       - name: Swift typecheck
