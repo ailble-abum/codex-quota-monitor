@@ -10,6 +10,11 @@ from quota_monitor import runtime
 
 
 class SelectionTests(unittest.TestCase):
+    def test_runtime_requires_explicit_supported_adapter_and_boolean_panel(self):
+        for options in ({'host': 'guessed-dom'}, {'host': None}, {'panel': 'yes'}):
+            with self.assertRaises(ValueError):
+                runtime.UpdateLoop('http://127.0.0.1:9222', 'about:blank', {}, **options)
+
     def test_selection_is_exact_unique_and_local(self):
         page = {'type': 'page', 'id': 'one', 'url': 'http://fixture.invalid/',
                 'webSocketDebuggerUrl': 'ws://127.0.0.1:9222/devtools/page/one'}

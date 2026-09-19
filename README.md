@@ -17,4 +17,4 @@ python3 -m unittest discover -s tests -v
 
 新数据已通过 [隔离面板兼容验证](docs/panel-probe.md)：Chromium/WebKit 深浅主题、任务切换、缺失与过期清空。该验证使用外部现有面板，尚未独立替换其注入实现或接入现用安装。
 
-[页面选择与更新循环](docs/runtime-contract.md) 已提供显式回环目标、增量日志更新与可过期的页面数值桥，通过临时 Chromium 恢复/切换测试。真实宿主任务识别与现有面板接入仍未完成。
+[页面选择与更新循环](docs/runtime-contract.md) 已提供显式回环目标、增量日志更新与可过期的页面数值桥，通过临时 Chromium 恢复/切换测试。后续 [宿主活动任务与面板更新桥](docs/host-panel-contract.md) 已基于当前宿主资源核对属性，并在隔离 Chromium/WebKit 与外部面板中验证；真实原生窗口与安装接入仍未完成。

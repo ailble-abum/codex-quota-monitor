@@ -7,11 +7,19 @@ import math
 import socket
 import threading
 from urllib.parse import urlsplit
+from pathlib import Path
 
 from .cdp import CDPClient, CDPError
 from .compat import panel_payload, thread_key
 from .journal import SessionJournal
 from .reader import finite_float, reject_constant
+
+
+_PAGE_BRIDGE = Path(__file__).with_name('page_bridge.js').read_text(encoding='utf-8')
+
+
+def page_expression(**options):
+    return _PAGE_BRIDGE + '(' + json.dumps(options, allow_nan=False) + ')'
 
 
 def local_origin(value):
@@ -94,13 +102,18 @@ class JournalSource:
 
 
 class UpdateLoop:
-    """Single owner. The selected page must opt in via __quotaMonitorV2Thread.
+    """Single owner, explicit target and task files, optional local sidebar adapter.
 
-    __quotaMonitorV2Snapshot is a read-only expiring numeric bridge, not a UI.
-    Host task/DOM integration is deliberately outside this contract.
+    panel=True forwards to an already installed consumer; it never installs UI.
     """
-    def __init__(self, origin, page_url, paths):
+    def __init__(self, origin, page_url, paths, *, panel=False, host='explicit'):
         local_origin(origin)
+        if host not in ('explicit', 'codex-sidebar'):
+            raise ValueError('invalid host adapter')
+        self.host = host
+        if type(panel) is not bool:
+            raise ValueError('invalid panel mode')
+        self.panel = panel
         if not isinstance(page_url, str) or not page_url:
             raise ValueError('explicit page URL required')
         self.origin, self.page_url = origin, page_url
@@ -121,31 +134,19 @@ class UpdateLoop:
                 await self.close()
                 self.client = CDPClient(endpoint)
                 await self.client.__aenter__()
-            expected = json.dumps(self.page_url)
-            key = await self.client.evaluate(
-                'location.href === ' + expected + ' ? window.__quotaMonitorV2Thread : null')
+            key = await self.client.evaluate(page_expression(
+                action='read', expected=self.page_url, host=self.host))
             key = thread_key(key)
             if key is None:
+                if self.panel:
+                    await self.client.evaluate(page_expression(
+                        action='invalidate', expected=self.page_url))
                 self.status = 'unselected'
                 return self.status
             payload = self.source.read(key)
-            # JSON is data only. Recheck page/task in the same JS turn as assignment.
-            expression = '''(() => {
-                const expected = %s, key = %s, data = %s;
-                const current = () => {
-                    const t = window.__quotaMonitorV2Thread;
-                    return typeof t === 'string' ? t.replace(/^local:/, '') : null;
-                };
-                if (location.href !== expected || current() !== key) return false;
-                const deadline = performance.now() + 120000;
-                Object.defineProperty(window, '__quotaMonitorV2Snapshot', {
-                    configurable: true,
-                    get: () => location.href === expected && current() === key &&
-                        performance.now() < deadline ? data : null
-                });
-                return true;
-            })()''' % (expected, json.dumps(key), json.dumps(payload, allow_nan=False))
-            applied = await self.client.evaluate(expression)
+            applied = await self.client.evaluate(page_expression(
+                action='publish', expected=self.page_url, key=key,
+                payload=payload, panel=self.panel, host=self.host))
             self.status = 'updated' if applied is True else 'changed'
         except (CDPError, asyncio.TimeoutError) as error:
             await self.close()

@@ -1,0 +1,29 @@
+"""Drive the real update loop against explicit synthetic test inputs over stdin."""
+import asyncio
+import json
+from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from quota_monitor.runtime import UpdateLoop
+
+
+async def main():
+    origin, url, directory = sys.argv[1:4]
+    root = Path(directory)
+    loop = UpdateLoop(origin, url, {key: root / (key + '.jsonl') for key in ('one', 'two')},
+                      panel=True, host='codex-sidebar')
+    try:
+        while True:
+            command = await asyncio.to_thread(sys.stdin.readline)
+            if not command or command.strip() == 'stop':
+                break
+            if command.strip() != 'step':
+                raise ValueError('invalid probe command')
+            print(json.dumps({'status': await loop.step()}), flush=True)
+    finally:
+        await loop.close()
+
+
+if __name__ == '__main__':
+    asyncio.run(main())

@@ -7,7 +7,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from quota_monitor.cdp import CDPClient
-from quota_monitor.runtime import UpdateLoop, list_pages, select_page
+from quota_monitor.runtime import UpdateLoop, list_pages, select_page, page_expression
 
 
 async def probe(origin):
@@ -57,6 +57,11 @@ async def probe(origin):
                 connection = loop.client
                 assert await loop.step() == 'updated'
                 assert loop.client is connection
+                model = '" ); globalThis.untrustedWasExecuted = true; //'
+                assert await page.evaluate(page_expression(action='publish', expected=url, key='one',
+                    payload={'summaries': [{'model': model}]})) is True
+                assert await page.evaluate('window.__quotaMonitorV2Snapshot.summaries[0].model') == model
+                assert await page.evaluate('globalThis.untrustedWasExecuted') is None
                 with paths['one'].open('a') as stream:
                     stream.write(json.dumps({'type': 'event_msg', 'payload': {
                         'type': 'token_count', 'info': {'last_token_usage': {'input_tokens': 300},
