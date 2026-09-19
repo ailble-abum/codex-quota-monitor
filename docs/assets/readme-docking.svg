@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="640" viewBox="0 0 1600 640" role="img" aria-labelledby="title desc">
+  <title id="title">Codex Quota Monitor edge docking interaction</title>
+  <desc id="desc">A synthetic three-step view showing the panel, soft edge docking, and a companion that reveals the panel on hover.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#08120f"/><stop offset="1" stop-color="#0c151d"/></linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#192620"/><stop offset="1" stop-color="#101915"/></linearGradient>
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#000" flood-opacity="0.42"/></filter>
+  </defs>
+  <rect width="1600" height="640" rx="30" fill="url(#bg)"/>
+  <path d="M533 72v496M1066 72v496" stroke="#dfffee" stroke-opacity="0.07"/>
+  <g font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif">
+    <text x="267" y="82" text-anchor="middle" fill="#78e5b3" font-size="12" font-weight="800" letter-spacing="2">01 · MONITOR</text>
+    <text x="800" y="82" text-anchor="middle" fill="#78e5b3" font-size="12" font-weight="800" letter-spacing="2">02 · DOCK</text>
+    <text x="1333" y="82" text-anchor="middle" fill="#78e5b3" font-size="12" font-weight="800" letter-spacing="2">03 · REVEAL</text>
+
+    <g filter="url(#shadow)">
+      <rect x="125" y="122" width="284" height="376" rx="22" fill="url(#card)" stroke="#b9ffe0" stroke-opacity="0.15"/>
+      <rect x="125" y="122" width="284" height="58" rx="22" fill="#1b2b24"/>
+      <path d="M125 158v22h284v-22" fill="#1b2b24"/>
+      <circle cx="151" cy="151" r="5" fill="#75e2ae"/>
+      <text x="167" y="156" fill="#f0fff8" font-size="13" font-weight="700">Quota Monitor</text>
+      <text x="151" y="220" fill="#7ce8b5" font-size="12" font-weight="700">AT LEAST 4H LEFT</text>
+      <text x="151" y="269" fill="#f0fff8" fill-opacity="0.52" font-size="11">Account quota</text>
+      <text x="383" y="271" text-anchor="end" fill="#7ce8b5" font-size="22" font-weight="700">72%</text>
+      <rect x="151" y="286" width="232" height="6" rx="3" fill="#7ce8b5" fill-opacity="0.12"/>
+      <rect x="151" y="286" width="167" height="6" rx="3" fill="#7ce8b5"/>
+      <text x="151" y="334" fill="#f0fff8" fill-opacity="0.52" font-size="11">Context</text>
+      <text x="383" y="334" text-anchor="end" fill="#f0fff8" font-size="12" font-weight="650">29%</text>
+      <rect x="151" y="351" width="232" height="6" rx="3" fill="#8bb6ff" fill-opacity="0.12"/>
+      <rect x="151" y="351" width="67" height="6" rx="3" fill="#8bb6ff"/>
+      <rect x="151" y="390" width="108" height="72" rx="12" fill="#f0fff8" fill-opacity="0.045"/>
+      <rect x="275" y="390" width="108" height="72" rx="12" fill="#f0fff8" fill-opacity="0.045"/>
+      <text x="166" y="416" fill="#f0fff8" fill-opacity="0.43" font-size="9">THIS TURN</text>
+      <text x="166" y="443" fill="#f0fff8" font-size="18" font-weight="700">12.8K</text>
+      <text x="290" y="416" fill="#f0fff8" fill-opacity="0.43" font-size="9">SESSION</text>
+      <text x="290" y="443" fill="#f0fff8" font-size="18" font-weight="700">148K</text>
+    </g>
+    <text x="267" y="548" text-anchor="middle" fill="#effff7" font-size="16" font-weight="650">Drag anywhere</text>
+    <text x="267" y="575" text-anchor="middle" fill="#effff7" fill-opacity="0.40" font-size="12">Move and resize without leaving the task.</text>
+
+    <g transform="translate(700 170)" filter="url(#shadow)">
+      <path d="M45 78c0-37 27-65 62-65 36 0 63 29 63 66v94c0 42-25 68-63 68-38 0-62-26-62-68z" fill="#15211d" stroke="#76e6b2" stroke-opacity="0.34"/>
+      <path d="M62 48L70 9l31 25M152 48l-8-39-31 25" fill="#15211d" stroke="#76e6b2" stroke-width="5" stroke-linejoin="round"/>
+      <ellipse cx="107" cy="84" rx="44" ry="38" fill="#1f3029"/>
+      <path d="M83 78l8 5-8 5M131 78l-8 5 8 5" fill="none" stroke="#83edba" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M100 99c5 5 10 5 15 0" fill="none" stroke="#83edba" stroke-width="3" stroke-linecap="round"/>
+      <path d="M74 120c17 10 49 10 66 0" fill="none" stroke="#76e6b2" stroke-opacity="0.28" stroke-width="3"/>
+      <rect x="176" y="80" width="9" height="94" rx="4.5" fill="#eefef6" fill-opacity="0.12"/>
+      <rect x="176" y="119" width="9" height="55" rx="4.5" fill="#76e6b2"/>
+      <path d="M190 127h42" stroke="#76e6b2" stroke-width="2" stroke-linecap="round"/>
+      <path d="M220 117l12 10-12 10" fill="none" stroke="#76e6b2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <rect x="1007" y="116" width="8" height="390" rx="4" fill="#effff7" fill-opacity="0.08"/>
+    <text x="800" y="548" text-anchor="middle" fill="#effff7" font-size="16" font-weight="650">Release near either side</text>
+    <text x="800" y="575" text-anchor="middle" fill="#effff7" fill-opacity="0.40" font-size="12">The panel tucks away and leaves a live companion.</text>
+
+    <rect x="1520" y="116" width="8" height="390" rx="4" fill="#effff7" fill-opacity="0.08"/>
+    <g transform="translate(1438 222)" filter="url(#shadow)">
+      <path d="M8 48c0-29 21-50 49-50 28 0 49 22 49 51v73c0 33-19 53-49 53-30 0-49-20-49-53z" fill="#17251f" stroke="#76e6b2" stroke-opacity="0.32"/>
+      <path d="M22 27L28-4l24 20M92 27L86-4 62 16" fill="#17251f" stroke="#76e6b2" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M38 53l7 4-7 4M76 53l-7 4 7 4" fill="none" stroke="#83edba" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M52 70c4 4 8 4 12 0" fill="none" stroke="#83edba" stroke-width="2" stroke-linecap="round"/>
+      <rect x="-8" y="57" width="7" height="76" rx="3.5" fill="#effff7" fill-opacity="0.12"/>
+      <rect x="-8" y="86" width="7" height="47" rx="3.5" fill="#76e6b2"/>
+    </g>
+    <g filter="url(#shadow)">
+      <rect x="1106" y="156" width="286" height="310" rx="22" fill="url(#card)" stroke="#b9ffe0" stroke-opacity="0.15"/>
+      <circle cx="1134" cy="188" r="5" fill="#75e2ae"/>
+      <text x="1150" y="193" fill="#f0fff8" font-size="13" font-weight="700">Quota Monitor</text>
+      <text x="1134" y="244" fill="#7ce8b5" font-size="12" font-weight="700">AT LEAST 4H LEFT</text>
+      <text x="1134" y="292" fill="#f0fff8" fill-opacity="0.52" font-size="11">5 hour window</text>
+      <text x="1364" y="295" text-anchor="end" fill="#7ce8b5" font-size="22" font-weight="700">72%</text>
+      <rect x="1134" y="311" width="230" height="6" rx="3" fill="#7ce8b5" fill-opacity="0.12"/>
+      <rect x="1134" y="311" width="166" height="6" rx="3" fill="#7ce8b5"/>
+      <text x="1134" y="358" fill="#f0fff8" fill-opacity="0.52" font-size="11">Weekly window</text>
+      <text x="1364" y="361" text-anchor="end" fill="#7ce8b5" font-size="22" font-weight="700">61%</text>
+      <rect x="1134" y="377" width="230" height="6" rx="3" fill="#7ce8b5" fill-opacity="0.12"/>
+      <rect x="1134" y="377" width="140" height="6" rx="3" fill="#7ce8b5"/>
+      <rect x="1134" y="416" width="82" height="20" rx="10" fill="#60dfa7" fill-opacity="0.12"/>
+      <text x="1175" y="430" text-anchor="middle" fill="#7ce8b5" font-size="9" font-weight="700">LOCAL</text>
+    </g>
+    <text x="1333" y="548" text-anchor="middle" fill="#effff7" font-size="16" font-weight="650">Hover to reveal, click to pin</text>
+    <text x="1333" y="575" text-anchor="middle" fill="#effff7" fill-opacity="0.40" font-size="12">Quota stays visible without occupying the workspace.</text>
+  </g>
+</svg>

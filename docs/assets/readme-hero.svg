@@ -1,0 +1,145 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Codex Quota Monitor product overview</title>
+  <desc id="desc">A synthetic Codex workspace with a local quota and context monitor overlay. No real account or conversation data is shown.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#07110f"/>
+      <stop offset="0.48" stop-color="#0a1218"/>
+      <stop offset="1" stop-color="#07100f"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#17231f" stop-opacity="0.98"/>
+      <stop offset="1" stop-color="#101915" stop-opacity="0.98"/>
+    </linearGradient>
+    <linearGradient id="mint" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#5ee1a4"/>
+      <stop offset="1" stop-color="#91f1c4"/>
+    </linearGradient>
+    <radialGradient id="glow">
+      <stop offset="0" stop-color="#4ce2a1" stop-opacity="0.26"/>
+      <stop offset="1" stop-color="#4ce2a1" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="28" stdDeviation="30" flood-color="#000" flood-opacity="0.48"/>
+    </filter>
+    <filter id="smallShadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#000" flood-opacity="0.34"/>
+    </filter>
+    <clipPath id="windowClip"><rect x="120" y="92" width="1360" height="716" rx="24"/></clipPath>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <circle cx="1290" cy="118" r="430" fill="url(#glow)"/>
+  <circle cx="250" cy="820" r="360" fill="url(#glow)" opacity="0.42"/>
+  <g opacity="0.25" stroke="#7ce8b5" stroke-width="1">
+    <path d="M0 146H1600M0 754H1600"/>
+    <path d="M188 0V900M1412 0V900"/>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="120" y="92" width="1360" height="716" rx="24" fill="#0e151b" stroke="#b9ffe0" stroke-opacity="0.14"/>
+    <g clip-path="url(#windowClip)">
+      <rect x="120" y="92" width="1360" height="60" fill="#141d24"/>
+      <circle cx="156" cy="122" r="6" fill="#ff6b68"/>
+      <circle cx="177" cy="122" r="6" fill="#ffc85a"/>
+      <circle cx="198" cy="122" r="6" fill="#56d784"/>
+      <text x="800" y="129" text-anchor="middle" fill="#dbe8e2" fill-opacity="0.72" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="600">CODEX</text>
+
+      <rect x="120" y="152" width="268" height="656" fill="#10181e"/>
+      <path d="M388 152V808" stroke="#dfffee" stroke-opacity="0.08"/>
+      <rect x="146" y="180" width="216" height="38" rx="10" fill="#d8ffec" fill-opacity="0.055"/>
+      <circle cx="169" cy="199" r="8" fill="#75dfad" fill-opacity="0.8"/>
+      <rect x="188" y="193" width="100" height="7" rx="3.5" fill="#ebfff5" fill-opacity="0.68"/>
+      <rect x="188" y="206" width="64" height="5" rx="2.5" fill="#ebfff5" fill-opacity="0.22"/>
+      <text x="146" y="260" fill="#ebfff5" fill-opacity="0.32" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="700" letter-spacing="1.4">RECENT TASKS</text>
+      <g fill="#ebfff5" fill-opacity="0.38">
+        <rect x="146" y="286" width="150" height="7" rx="3.5"/>
+        <rect x="146" y="326" width="185" height="7" rx="3.5"/>
+        <rect x="146" y="366" width="124" height="7" rx="3.5"/>
+        <rect x="146" y="406" width="174" height="7" rx="3.5"/>
+      </g>
+      <g fill="#ebfff5" fill-opacity="0.13">
+        <rect x="146" y="300" width="92" height="5" rx="2.5"/>
+        <rect x="146" y="340" width="120" height="5" rx="2.5"/>
+        <rect x="146" y="380" width="78" height="5" rx="2.5"/>
+        <rect x="146" y="420" width="106" height="5" rx="2.5"/>
+      </g>
+
+      <rect x="388" y="152" width="1092" height="656" fill="#0d1419"/>
+      <text x="450" y="210" fill="#ebfff5" fill-opacity="0.92" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="24" font-weight="650">Ship with confidence</text>
+      <text x="450" y="241" fill="#ebfff5" fill-opacity="0.42" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14">Know the quota, context pressure and token cost before the next long task.</text>
+      <rect x="450" y="280" width="668" height="116" rx="18" fill="#dfffee" fill-opacity="0.045" stroke="#dfffee" stroke-opacity="0.07"/>
+      <circle cx="488" cy="319" r="14" fill="#78e5b3" fill-opacity="0.14"/>
+      <path d="M482 319l4 4 8-10" fill="none" stroke="#78e5b3" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="520" y="307" width="184" height="8" rx="4" fill="#eafff5" fill-opacity="0.67"/>
+      <rect x="520" y="325" width="450" height="6" rx="3" fill="#eafff5" fill-opacity="0.18"/>
+      <rect x="520" y="344" width="390" height="6" rx="3" fill="#eafff5" fill-opacity="0.12"/>
+      <rect x="482" y="370" width="96" height="19" rx="9.5" fill="#67e6ac" fill-opacity="0.11"/>
+      <text x="530" y="383" text-anchor="middle" fill="#79e6b3" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="10" font-weight="700">LOCAL ONLY</text>
+
+      <rect x="450" y="422" width="520" height="82" rx="16" fill="#dfffee" fill-opacity="0.03"/>
+      <rect x="476" y="445" width="292" height="7" rx="3.5" fill="#eafff5" fill-opacity="0.30"/>
+      <rect x="476" y="463" width="370" height="6" rx="3" fill="#eafff5" fill-opacity="0.10"/>
+      <rect x="476" y="480" width="238" height="6" rx="3" fill="#eafff5" fill-opacity="0.10"/>
+      <rect x="450" y="526" width="520" height="82" rx="16" fill="#dfffee" fill-opacity="0.03"/>
+      <rect x="476" y="549" width="216" height="7" rx="3.5" fill="#eafff5" fill-opacity="0.30"/>
+      <rect x="476" y="567" width="402" height="6" rx="3" fill="#eafff5" fill-opacity="0.10"/>
+      <rect x="476" y="584" width="314" height="6" rx="3" fill="#eafff5" fill-opacity="0.10"/>
+
+      <g filter="url(#smallShadow)">
+        <rect x="1064" y="188" width="352" height="532" rx="24" fill="url(#panel)" stroke="#abffda" stroke-opacity="0.18"/>
+        <rect x="1064" y="188" width="352" height="64" rx="24" fill="#1a2823"/>
+        <path d="M1064 228v24h352v-24" fill="#1a2823"/>
+        <circle cx="1092" cy="220" r="5" fill="#72dfa9"/>
+        <text x="1108" y="226" fill="#effff7" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="15" font-weight="700">Codex Quota Monitor</text>
+        <text x="1383" y="225" text-anchor="end" fill="#effff7" fill-opacity="0.45" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="18">⋯</text>
+
+        <text x="1092" y="286" fill="#83e8b8" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="700">AT LEAST 4H 18M LEFT</text>
+        <rect x="1092" y="304" width="98" height="20" rx="10" fill="#6de3ad" fill-opacity="0.12"/>
+        <text x="1141" y="318" text-anchor="middle" fill="#7ce8b5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="9" font-weight="700">ESTIMATE</text>
+
+        <text x="1092" y="358" fill="#effff7" fill-opacity="0.54" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12">5 hour window</text>
+        <text x="1386" y="362" text-anchor="end" fill="#83e8b8" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="26" font-weight="700">72<tspan font-size="13" font-weight="500">%</tspan></text>
+        <rect x="1092" y="376" width="294" height="7" rx="3.5" fill="#7ce8b5" fill-opacity="0.12"/>
+        <rect x="1092" y="376" width="212" height="7" rx="3.5" fill="url(#mint)"/>
+        <text x="1092" y="412" fill="#effff7" fill-opacity="0.54" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12">Weekly window</text>
+        <text x="1386" y="416" text-anchor="end" fill="#83e8b8" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="26" font-weight="700">61<tspan font-size="13" font-weight="500">%</tspan></text>
+        <rect x="1092" y="430" width="294" height="7" rx="3.5" fill="#7ce8b5" fill-opacity="0.12"/>
+        <rect x="1092" y="430" width="179" height="7" rx="3.5" fill="url(#mint)"/>
+
+        <path d="M1092 468h294" stroke="#eafff5" stroke-opacity="0.08"/>
+        <text x="1092" y="497" fill="#effff7" fill-opacity="0.55" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12">Context</text>
+        <text x="1386" y="497" text-anchor="end" fill="#effff7" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="650">74K / 258K</text>
+        <rect x="1092" y="513" width="294" height="7" rx="3.5" fill="#8bb6ff" fill-opacity="0.12"/>
+        <rect x="1092" y="513" width="84" height="7" rx="3.5" fill="#8bb6ff"/>
+
+        <rect x="1092" y="548" width="140" height="86" rx="13" fill="#effff7" fill-opacity="0.045"/>
+        <text x="1107" y="572" fill="#effff7" fill-opacity="0.46" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="10">THIS TURN</text>
+        <text x="1107" y="602" fill="#effff7" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="22" font-weight="700">12.8K</text>
+        <text x="1107" y="620" fill="#effff7" fill-opacity="0.38" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="9">INPUT · CACHE · OUTPUT</text>
+        <rect x="1246" y="548" width="140" height="86" rx="13" fill="#effff7" fill-opacity="0.045"/>
+        <text x="1261" y="572" fill="#effff7" fill-opacity="0.46" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="10">SESSION</text>
+        <text x="1261" y="602" fill="#effff7" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="22" font-weight="700">148K</text>
+        <text x="1261" y="620" fill="#effff7" fill-opacity="0.38" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="9">LOCAL OBSERVATION</text>
+
+        <rect x="1092" y="658" width="80" height="20" rx="10" fill="#3b82f6" fill-opacity="0.15"/>
+        <text x="1132" y="672" text-anchor="middle" fill="#8bb6ff" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="9" font-weight="700">OFFICIAL</text>
+        <rect x="1180" y="658" width="76" height="20" rx="10" fill="#60dfa7" fill-opacity="0.12"/>
+        <text x="1218" y="672" text-anchor="middle" fill="#7ce8b5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="9" font-weight="700">LOCAL</text>
+      </g>
+    </g>
+  </g>
+
+  <g font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif">
+    <rect x="121" y="834" width="146" height="34" rx="17" fill="#76e6b2" fill-opacity="0.10" stroke="#76e6b2" stroke-opacity="0.18"/>
+    <circle cx="145" cy="851" r="5" fill="#76e6b2"/>
+    <text x="160" y="856" fill="#bdf8dc" font-size="12" font-weight="700">LOCAL FIRST</text>
+    <rect x="281" y="834" width="158" height="34" rx="17" fill="#76e6b2" fill-opacity="0.10" stroke="#76e6b2" stroke-opacity="0.18"/>
+    <circle cx="305" cy="851" r="5" fill="#76e6b2"/>
+    <text x="320" y="856" fill="#bdf8dc" font-size="12" font-weight="700">READ ONLY</text>
+    <rect x="453" y="834" width="170" height="34" rx="17" fill="#76e6b2" fill-opacity="0.10" stroke="#76e6b2" stroke-opacity="0.18"/>
+    <circle cx="477" cy="851" r="5" fill="#76e6b2"/>
+    <text x="492" y="856" fill="#bdf8dc" font-size="12" font-weight="700">ZERO TELEMETRY</text>
+    <text x="1480" y="856" text-anchor="end" fill="#dfffee" fill-opacity="0.35" font-size="12">Synthetic preview · no private data</text>
+  </g>
+</svg>
