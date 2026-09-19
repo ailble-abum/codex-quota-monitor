@@ -48,3 +48,5 @@ python3 -m unittest discover -s tests -v
 [统一账户时效判断](docs/account-freshness-contract.md) 正文、标题和伴宠共用严格的 120 秒规则，拒绝缺失、未来及非数值时间。
 
 [账户窗口整组校验](docs/account-windows-contract.md) 拒绝缺失、异常窗口及越界数值，统一降级账户显示并保持本地上下文更新。
+
+[V2 账户窗口正文](docs/account-window-view-contract.md) 以文本 DOM 构建逐窗口内容，保留倒计时与预测；初始停靠组合的视口问题另列为待处理边界。

@@ -115,6 +115,10 @@ def build(directory):
     script = cut(script, "    const live = q?.status === 'live'", '    const windows = live ?')
     script = script.replace('    const windows = live ?',
                             '    const {live} = accountFreshness(q);\n    const windows = live ?', 1)
+    script = cut(script, "    let quotaHtml = '';", "    // The panel's own headline,")
+    script = script.replace("    // The panel's own headline,",
+                            '    let quotaHtml = accountWindowHTML(live ? quota.windows : [], stoppedAccount);\n'
+                            + "    // The panel's own headline,", 1)
     tail = '  function clearFooters('
     if script.count(tail) != 1:
         raise ValueError('unexpected lifecycle boundary')
@@ -124,7 +128,8 @@ def build(directory):
               + (assets / 'panel_details.js').read_text()
               + (assets / 'panel_context.js').read_text()
               + (assets / 'panel_health.js').read_text()
-              + (assets / 'panel_account_status.js').read_text() + visual
+              + (assets / 'panel_account_status.js').read_text()
+              + (assets / 'panel_account_windows.js').read_text() + visual
               + (assets / 'panel_mount.js').read_text()
               + (assets / 'panel_adapter.js').read_text())
     guard = """(payload => {

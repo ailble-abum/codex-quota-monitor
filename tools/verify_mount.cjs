@@ -104,6 +104,25 @@ const {chromium, webkit} = require('playwright');
       await publish();
       assert.equal(await page.locator('[data-quota] [role=meter]').count(), 2);
       assert.equal(await page.locator('[data-gauge]').getAttribute('data-state'), 'live');
+      await page.evaluate(() => { window.quotaNode = document.querySelector('.cti-quota-window'); });
+      await publish();
+      assert.equal(await page.evaluate(() => window.quotaNode === document.querySelector('.cti-quota-window')), true);
+      payload.quota.ordinaryUsageAllowed = false;
+      await publish();
+      assert.deepEqual(await page.locator('.cti-quota-window').evaluateAll(nodes => nodes.map(node => node.dataset.tone)), ['low', 'low']);
+      if (process.argv[3]) {
+        fs.mkdirSync(process.argv[3], {recursive: true});
+        // Inspect card styling separately from the retained auto-docking layout.
+        const visual = await browser.newPage({viewport: {width: 600, height: 900}});
+        const markup = await page.evaluate(() => ({css: document.getElementById('codex-context-token-inspector-style').textContent,
+          quota: document.querySelector('[data-quota]').outerHTML}));
+        await visual.setContent(`<style>:root{color-scheme:light dark}body{background:Canvas}${markup.css}</style><section id="codex-context-token-inspector-root" class="cti-hud" style="position:absolute;left:32px;top:32px;bottom:auto;max-height:none;padding:16px">${markup.quota}</section>`);
+        for (const colorScheme of ['light', 'dark']) {
+          await visual.emulateMedia({colorScheme});
+          await visual.screenshot({path: path.join(process.argv[3], engine.name() + '-' + colorScheme + '.png')});
+        }
+        await visual.close();
+      }
       await page.evaluate(() => { Date.now = window.savedNow; delete window.savedNow; });
       delete payload.quota; payload.observedAt = Date.now()/1000;
       await publish();
