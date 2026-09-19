@@ -56,6 +56,35 @@ class QuotaTests(unittest.TestCase):
         self.assertEqual(value['resetCredits'],{'availableCount':2,'nextExpiresAt':20})
         self.assertNotIn('secret-id',str(value))
 
+    def test_plan_and_reached_flags_travel_with_the_windows(self):
+        # Both windows have to have headroom, so "five-hour window is fine" is
+        # not permission to keep working. The percentages alone cannot say
+        # that, and the flags are reported next to the windows.
+        value=normalize({'ordinaryUsageAllowed':False,'rateLimitsByLimitId':{'codex':{
+            'planType':'plus','rateLimitReachedType':'rate_limit_reached',
+            'primary':{'usedPercent':100,'windowDurationMins':300},
+            'secondary':{'usedPercent':34,'windowDurationMins':10080}}}})
+        self.assertEqual(value['planType'],'plus')
+        self.assertIs(value['ordinaryUsageAllowed'],False)
+        self.assertEqual(value['rateLimitReachedType'],'rate_limit_reached')
+        self.assertEqual([x['remaining'] for x in value['windows']],[0,66])
+
+    def test_absent_plan_flags_are_not_invented(self):
+        value=normalize({'rateLimits':{'primary':{'usedPercent':10}}})
+        self.assertIsNone(value['planType'])
+        self.assertIsNone(value['ordinaryUsageAllowed'])
+        self.assertIsNone(value['rateLimitReachedType'])
+
+    def test_non_scalar_plan_flags_are_dropped(self):
+        # A truthy string would read as a reached limit, and a nested object
+        # would print as [object Object] in the panel.
+        value=normalize({'ordinaryUsageAllowed':'yes','rateLimits':{
+            'planType':{'name':'plus'},'rateLimitReachedType':'  ',
+            'primary':{'usedPercent':10}}})
+        self.assertIsNone(value['planType'])
+        self.assertIsNone(value['ordinaryUsageAllowed'])
+        self.assertIsNone(value['rateLimitReachedType'])
+
 
 if __name__ == '__main__':
     unittest.main()

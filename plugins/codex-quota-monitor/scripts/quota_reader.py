@@ -25,6 +25,16 @@ def _window_metrics(used, duration, resets_at, now):
     return metrics
 
 
+def _text(value):
+    """A non-empty string, or None. Absent protocol fields are never invented."""
+    return value.strip() if isinstance(value, str) and value.strip() else None
+
+
+def _flag(value):
+    """A real boolean, or None. A truthy string is not a reached limit."""
+    return value if isinstance(value, bool) else None
+
+
 def normalize(result, now=None):
     now = time.time() if now is None else now
     buckets = result.get('rateLimitsByLimitId') or {}
@@ -46,6 +56,15 @@ def normalize(result, now=None):
     if not windows and (not any(k in limits for k in ('limitId','planType','credits','limitName')) or any(isinstance(limits.get(k),dict) for k in ('primary','secondary'))):
         raise ValueError('No quota windows')
     identity = result.get('accountId')
+    # Plan and reach flags travel with the windows because a limit is an AND
+    # gate: every reported window needs headroom, and a reached one stops the
+    # account even while the other still has some left. Neither is derivable
+    # from the percentages alone.
+    plan_type = _text(limits.get('planType')) or _text(result.get('planType'))
+    reached = _text(limits.get('rateLimitReachedType')) or _text(result.get('rateLimitReachedType'))
+    allowed = _flag(limits.get('ordinaryUsageAllowed'))
+    if allowed is None:
+        allowed = _flag(result.get('ordinaryUsageAllowed'))
     reset = result.get('rateLimitResetCredits') or {}
     credits = (reset.get('credits') or []) if isinstance(reset, dict) else []
     expiries = [item.get('expiresAt') for item in credits if isinstance(item, dict)
@@ -56,6 +75,7 @@ def normalize(result, now=None):
         if isinstance(available, (int, float)) and not isinstance(available, bool) and math.isfinite(available) else None
     return {'status': 'live', 'source': 'Codex app-server', 'updatedAt': time.time(), 'windows': windows,
             'windowStatus':'reported' if windows else 'not_reported', 'resetCredits': reset_credits,
+            'planType': plan_type, 'ordinaryUsageAllowed': allowed, 'rateLimitReachedType': reached,
             'accountKey': hashlib.sha256(str(identity).encode()).hexdigest() if identity else None}
 
 
