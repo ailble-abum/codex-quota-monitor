@@ -8,7 +8,12 @@ from __future__ import annotations
 import base64
 import unittest
 
-from companion_art import COMPANION_ART, RUNTIME_HEIGHT, SOURCE_FRAMES
+from companion_art import COMPANION_ART, CUT_EDGE_FILL, RUNTIME_HEIGHT, SOURCE_FRAMES
+
+# The overlay pins a docked companion's right edge to the side wall, so the
+# rendered body has to reach that edge. Measured as the rightmost column that
+# still carries a solid part of the body, over the image width.
+MIN_CUT_EDGE_FILL = 0.97
 
 
 def webp_size(data: bytes) -> tuple[int, int] | None:
@@ -53,6 +58,22 @@ class CompanionArtTests(unittest.TestCase):
 
     def test_frames_cover_exactly_the_bundled_skins(self):
         self.assertEqual(sorted(SOURCE_FRAMES), sorted(COMPANION_ART))
+
+    def test_every_companion_reaches_its_cut_edge(self):
+        """A gutter between the body and its cut edge floats the mascot.
+
+        The key can leave isolated specks far from the character. When those
+        decided the frame, the corgi shipped ~90px of empty frame to the
+        right of its body and the docked companion sat visibly off the screen
+        edge. The build now fails below MIN_CUT_EDGE_FILL; this checks what
+        actually got bundled.
+        """
+        self.assertEqual(sorted(CUT_EDGE_FILL), sorted(COMPANION_ART))
+        for skin, fill in CUT_EDGE_FILL.items():
+            with self.subTest(skin=skin):
+                self.assertGreaterEqual(
+                    fill, MIN_CUT_EDGE_FILL, f"{skin} does not reach its cut edge"
+                )
 
 
 if __name__ == "__main__":

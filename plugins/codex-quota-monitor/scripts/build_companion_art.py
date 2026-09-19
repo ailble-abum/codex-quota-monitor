@@ -72,7 +72,21 @@ SPECKLE_BLUR = 1.2
 
 # A row or column only counts towards the content frame once this share of
 # it is foreground, which keeps border speckles from inflating the frame.
-FRAME_COVERAGE = 0.005
+#
+# The threshold has to be high enough that isolated keying artefacts lose to
+# the character. The corgi render carries a few specks out around x=1190 of
+# its 1254px frame, ten rows tall at most, while the body's own columns are
+# covered tens of percent deep. At the original 0.5% those specks decided
+# where the cut edge was, so the frame kept ~90px of empty space beyond the
+# body and the docked companion visibly floated off the screen edge it is
+# supposed to peek in from. At 2% the specks fall below the line and every
+# companion's cut edge lands within a couple of pixels of its body.
+FRAME_COVERAGE = 0.02
+
+# The rendered companion has to reach its own right edge -- that edge is the
+# cut edge the overlay pins to the side wall, so a transparent gutter there
+# shows up as the mascot hovering away from the window border.
+CUT_EDGE_FILL_MIN = 0.97
 
 def previous_frames() -> dict[str, tuple[int, int, int, int]]:
     """Frames recorded by the last build, used to report reframing."""
@@ -207,6 +221,21 @@ def render(path: Path, frame: tuple[int, int, int, int], height: int) -> Image.I
     return clean_speckles(Image.fromarray(stacked, "RGBA"))
 
 
+def cut_edge_fill(image: Image.Image) -> float:
+    """How far the rendered silhouette reaches towards its own right edge.
+
+    Returns the rightmost column that still carries a solid part of the body,
+    as a share of the image width. A frame that swallowed keying noise
+    instead of the cut edge scores clearly lower here, which is what turns
+    "the companion floated off the screen edge" into a build failure.
+    """
+    alpha = np.asarray(image.getchannel("A"), dtype=np.float32) / 255.0
+    covered = np.nonzero((alpha > 0.35).mean(axis=0) >= 0.05)[0]
+    if not len(covered):
+        return 0.0
+    return float(covered.max() + 1) / image.width
+
+
 def encode(image: Image.Image) -> bytes:
     buffer = io.BytesIO()
     image.save(buffer, "WEBP", quality=WEBP_QUALITY, method=6)
@@ -216,6 +245,7 @@ def encode(image: Image.Image) -> bytes:
 def write_module(
     payloads: dict[str, str],
     frames: dict[str, tuple[int, int, int, int]],
+    fills: dict[str, float],
     height: int,
 ) -> None:
     lines = [
@@ -231,6 +261,9 @@ def write_module(
         "",
         "SOURCE_FRAMES records what this build cropped to, so a future rebuild",
         "that silently reframes the artwork shows up as a reviewable diff.",
+        "CUT_EDGE_FILL records how far each rendered body reaches towards the",
+        "right edge of its own image; anything below CUT_EDGE_FILL_MIN in the",
+        "build script means the companion would float off the docked edge.",
         '"""',
         "",
         "from __future__ import annotations",
@@ -242,6 +275,13 @@ def write_module(
     ]
     for skin in sorted(frames):
         lines.append(f'    "{skin}": {frames[skin]},')
+    lines += [
+        "}",
+        "",
+        "CUT_EDGE_FILL: dict[str, float] = {",
+    ]
+    for skin in sorted(fills):
+        lines.append(f'    "{skin}": {fills[skin]:.4f},')
     lines += [
         "}",
         "",
@@ -297,15 +337,32 @@ def main() -> int:
 
     WEB_DIR.mkdir(parents=True, exist_ok=True)
     payloads: dict[str, str] = {}
+    fills: dict[str, float] = {}
     print(f"height: {args.height}px, webp q{WEBP_QUALITY}")
     for skin, path in sorted(available.items()):
         image = render(path, frames[skin], args.height)
+        fill = cut_edge_fill(image)
+        fills[skin] = fill
         data = encode(image)
         (WEB_DIR / f"{skin}.webp").write_bytes(data)
         payloads[skin] = "data:image/webp;base64," + base64.b64encode(data).decode("ascii")
-        print(f"  {skin:6s} {image.width}x{image.height} {len(data) / 1024:6.1f} KB -> assets/companions/web/{skin}.webp")
+        print(
+            f"  {skin:6s} {image.width}x{image.height} {len(data) / 1024:6.1f} KB"
+            f"  贴边率 {fill:.3f} -> assets/companions/web/{skin}.webp"
+        )
 
-    write_module(payloads, frames, args.height)
+    proud = {skin: fill for skin, fill in fills.items() if fill < CUT_EDGE_FILL_MIN}
+    if proud:
+        for skin, fill in sorted(proud.items()):
+            print(
+                f"error: {skin} reaches only {fill:.3f} of its own right edge"
+                f" (need {CUT_EDGE_FILL_MIN}); the frame is picking up keying noise"
+                " instead of the cut edge, so it would float off the docked edge",
+                file=sys.stderr,
+            )
+        return 1
+
+    write_module(payloads, frames, fills, args.height)
     total = sum(len(value) for value in payloads.values())
     print(f"wrote scripts/{GENERATED_MODULE} ({total / 1024:.1f} KB of data URIs)")
     if missing:
