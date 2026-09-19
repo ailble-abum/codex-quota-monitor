@@ -25,6 +25,13 @@ async function main() {
     const { stdout } = await promisify(execFile)(process.env.PYTHON || 'python3',
       [path.join(__dirname, 'cdp_probe.py'), matches[0].webSocketDebuggerUrl], { timeout: 15000 });
     process.stdout.write(stdout);
+    const runtime = await promisify(execFile)(process.env.PYTHON || 'python3',
+      [path.join(__dirname, 'runtime_probe.py'), `http://127.0.0.1:${port}`], { timeout: 20000 });
+    process.stdout.write(runtime.stdout);
+    await context.newPage();
+    const ambiguous = await promisify(execFile)(process.env.PYTHON || 'python3',
+      [path.join(__dirname, 'runtime_probe.py'), `http://127.0.0.1:${port}`, 'ambiguous'], { timeout: 10000 });
+    process.stdout.write(ambiguous.stdout);
   } finally {
     if (context) await context.close();
     // Only the exact profile allocated by this invocation is removed.

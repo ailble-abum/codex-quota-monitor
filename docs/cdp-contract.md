@@ -49,4 +49,4 @@ PYTHON=/absolute/path/to/test-venv/bin/python node tools/verify_cdp.cjs
 
 临时 Chromium 实际通过：返回对象、页面计数连续更新、JavaScript 异常、显式重新连接后读取同一计数、undefined。不是 macOS Codex 原生验收、Windows 真机或安装包验收。
 
-下一步实现明确的页面目标选择与连接生命周期，再接入增量数据更新；不能直接将当前全目录发现器用于高频生产轮询。原启动器、派生注入胶水与完整消息级数据仍待替换，旧归因继续保留。
+后续已实现 [页面目标选择与独立更新循环](runtime-contract.md)，真实宿主与面板接入仍待完成；不能直接将当前全目录发现器用于高频生产轮询。原启动器、派生注入胶水与完整消息级数据仍待替换，旧归因继续保留。
