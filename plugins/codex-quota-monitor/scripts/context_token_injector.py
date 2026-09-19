@@ -1054,6 +1054,7 @@ INJECTION_SCRIPT = r"""
         handle.tabIndex=0;handle.setAttribute('role','slider');
         handle.setAttribute('aria-label',uiLanguage()==='zh'?'调整面板大小':'Resize panel');
         handle.setAttribute('aria-valuemin','180');handle.setAttribute('aria-valuemax','600');
+        handle.setAttribute('aria-valuenow',String(Math.round(root.getBoundingClientRect().width)));
       }
       root.appendChild(handle);return handle;
     });

@@ -31,6 +31,10 @@ class InspectorTests(unittest.TestCase):
         self.assertIn("['nw','ne','sw','se'].map", INJECTION_SCRIPT)
         self.assertIn("opacity:0;background:none;border:0", INJECTION_SCRIPT)
         self.assertNotIn("linear-gradient(135deg,transparent 60%", INJECTION_SCRIPT)
+        self.assertIn(
+            "aria-valuenow',String(Math.round(root.getBoundingClientRect().width))",
+            INJECTION_SCRIPT,
+        )
         geometry = block("function resizeGeometry", "function installHudDrag")
         start = "{x:100,y:100,left:80,top:60,right:380,width:300}"
         cases = run_js(
