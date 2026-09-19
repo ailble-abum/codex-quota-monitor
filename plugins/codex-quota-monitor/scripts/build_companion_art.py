@@ -13,10 +13,13 @@ styles:
 This script
 
 1. keys one of those backdrops out into a real alpha channel,
-2. crops to a shared content frame so every companion keeps the same
+2. rebuilds the three regions where the generator drew a stray second hand
+   (see REPAIRS), so the companion does not ship with a spare fist floating
+   beside its cheek,
+3. crops to a shared content frame so every companion keeps the same
    relative scale,
-3. resizes with premultiplied alpha (avoids light fringes), and
-4. writes ``assets/companions/web/<skin>.webp`` plus the generated module
+4. resizes with premultiplied alpha (avoids light fringes), and
+5. writes ``assets/companions/web/<skin>.webp`` plus the generated module
    ``scripts/companion_art.py`` that inlines the same bytes as data URIs.
 
 The overlay falls back to its bundled vector mascot whenever an entry is
@@ -253,6 +256,261 @@ def key_alpha(rgb: np.ndarray, skin: str) -> np.ndarray:
     return studio_alpha(rgb, clip)
 
 
+# --- stray-appendage repair ------------------------------------------------
+#
+# Three of the checkerboard renders came back from the generator with a second,
+# bare hand floating beside the character's cheek: the model drew the figure
+# gripping its cut edge twice, once with the sleeved arm that reads as theirs
+# and once as a detached fist with no arm attached to it. The companions are
+# displayed 48px tall, where that reads as a spare hand hovering next to the
+# face, and it was reported as such.
+#
+# The regions are declared here instead of being painted into the PNGs, so the
+# renders the generator produced stay in the repository untouched and the edit
+# stays reviewable and repeatable. Each region is rebuilt in two passes.
+#
+# Silhouette: every render ends in a straight vertical cut edge, which is the
+# edge the overlay pins to the side wall. That profile is measured just above
+# and just below the region and interpolated across it, then clamped to the cut
+# edge the whole render shares -- without the clamp the far side of a region
+# that ends on a hand reaching past the edge (frost, tea) would drag the
+# rebuilt body out past the edge the render itself was cut at.
+#
+# Colour: the fabric behind the hand is solved as a Laplace problem whose
+# Dirichlet data is the surviving body around the region. Two kinds of boundary
+# pixel are refused as sources. Skin, because the hand is not fully inside its
+# own box -- its wrist carries on below it -- so the fill would otherwise be
+# pulling colour out of the very hand it is replacing. And background-ish
+# neutrals, because the soft cast shadow these renders leave on the wall is
+# only partly transparent, so it clears the body threshold and would tint the
+# fill grey from the right-hand side.
+#
+# The boxes are source pixels, generous enough to hold the whole fist plus its
+# wrist, and are not expected to grow: a companion with no entry here is used
+# exactly as it shipped.
+#
+# Each one has to stop above SURVIVING_HANDS below -- frost in particular has
+# only 9px of room, which is why its box ends at 812 rather than sharing mint's
+# larger value. repair_region refuses a box that overshoots.
+REPAIRS: dict[str, tuple[int, int, int, int]] = {
+    "mint": (866, 606, 1024, 812),
+    "frost": (896, 606, 1082, 812),
+    "tea": (975, 438, 1140, 700),
+}
+
+# How far past its own box a repair is allowed to reach. The rebuilt alpha is
+# blurred across a window this wide to soften the seam, so the pixels just
+# outside the box can still move -- and only those. Everything further out is
+# untouched, which is what keeps the surviving hand safe.
+REPAIR_PAD = 3
+
+# The arm that stays: the one actually gripping the wall, in each render that
+# was repaired. Everything right of the cut edge inside a repair box is
+# cleared, so a box that reaches down into one of these slices the top off the
+# hand the render is meant to keep. That is not hypothetical -- frost's box was
+# once stretched down to 828 for a smudge, which cut 158px off this glove.
+# Declared here so repair_region can refuse a box that does it again.
+SURVIVING_HANDS: dict[str, tuple[int, int, int, int]] = {
+    "mint": (977, 833, 1020, 991),
+    "frost": (988, 821, 1038, 982),
+    "tea": (1049, 707, 1082, 827),
+}
+
+# Rows of this image, at the top and bottom of a region, are averaged into one
+# silhouette value each. A single row would be decided by whatever speckle sits
+# on it; a band is stable to the hand's own edge bleeding into the sample.
+REPAIR_PROFILE_THRESHOLD = 0.90
+REPAIR_BAND = 26
+
+# The render is cut at the same straight edge all the way down, so the cut can
+# be read off the bottom of the character, well clear of any repair.
+REPAIR_WALL_FROM = 0.80
+
+# Red-black over-relaxation. Plain Jacobi would need on the order of rows^2
+# sweeps to pull the top and bottom anchors into the middle of a region this
+# tall -- about 40k passes -- and simultaneous over-relaxation at the same
+# factor diverges outright, because the spectral radius sits at ~0.9999. The
+# checkerboard ordering converges in a few hundred sweeps.
+REPAIR_SWEEPS = 600
+REPAIR_OMEGA = 1.93
+
+
+def _shift(mask: np.ndarray, axis: int, step: int) -> np.ndarray:
+    """Neighbour lookup that does not wrap around the array edges."""
+    out = np.zeros_like(mask)
+    if axis == 0:
+        if step > 0:
+            out[1:] = mask[:-1]
+        else:
+            out[:-1] = mask[1:]
+    elif step > 0:
+        out[:, 1:] = mask[:, :-1]
+    else:
+        out[:, :-1] = mask[:, 1:]
+    return out
+
+
+def right_profile(alpha: np.ndarray, threshold: float = REPAIR_PROFILE_THRESHOLD) -> np.ndarray:
+    """Rightmost solidly opaque column per row, -1 where the row is empty."""
+    ys, xs = np.nonzero(alpha > threshold)
+    profile = np.full(alpha.shape[0], -1.0, dtype=np.float64)
+    if len(xs):
+        np.maximum.at(profile, ys, xs.astype(np.float64))
+    return profile
+
+
+def band_median(profile: np.ndarray, low: int, high: int) -> float:
+    low, high = max(0, low), min(len(profile), high)
+    values = profile[low:high]
+    values = values[values >= 0]
+    return float(np.median(values)) if len(values) else float("nan")
+
+
+def skin_like(rgb: np.ndarray) -> np.ndarray:
+    """Warm mid-bright pixels with a skin-like hue, i.e. the hand itself.
+
+    Discriminating on the R-G spread rather than on a red-blue gap matters:
+    the skin in these renders runs a high blue channel (B/G up to ~0.98), so a
+    tight blue test misses it, and the hand's lit rim runs as wide as R-G ~75.
+    The gold jewellery and the burgundy clothing fall outside the window on
+    either side -- the gold has a blue channel well under the green, the
+    clothing a far larger R-G spread -- so neither is mistaken for skin.
+    """
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    return (
+        (r > 90) & (g > 45)
+        & (b > 0.65 * g) & (b < 1.1 * g)
+        & (r - g > 10) & (r - g < 100)
+    )
+
+
+def background_like(rgb: np.ndarray) -> np.ndarray:
+    """Checkerboard, and the render's soft cast shadow on the wall.
+
+    Looser than the key's own neutrality test on purpose: this only ever
+    removes candidate colour sources, so over-eager is harmless, while a
+    shadow pixel left in would drag the fill towards grey.
+    """
+    spread = rgb.max(axis=2) - rgb.min(axis=2)
+    lum = rgb.mean(axis=2)
+    return (spread <= 20) & (lum >= 140)
+
+
+def neighbour_average(work: np.ndarray, active: np.ndarray):
+    total = np.zeros_like(work)
+    weight = np.zeros_like(active)
+    for axis, step in ((0, 1), (0, -1), (1, 1), (1, -1)):
+        neighbour = _shift(active, axis, step)
+        total += _shift(work, axis, step) * neighbour[..., None]
+        weight += neighbour
+    return total / np.maximum(weight, 1e-6)[..., None], weight
+
+
+def harmonise(seed: np.ndarray, region: np.ndarray, fixed: np.ndarray) -> np.ndarray:
+    """Solve Laplace inside ``region`` with ``fixed`` as the Dirichlet set."""
+    work = seed.astype(np.float32).copy()
+    active = (region | fixed).astype(np.float32)
+    ys, xs = np.mgrid[0:region.shape[0], 0:region.shape[1]]
+    parity = (ys + xs) & 1
+    for _ in range(REPAIR_SWEEPS):
+        for colour in (0, 1):
+            average, weight = neighbour_average(work, active)
+            relaxable = region & (parity == colour) & (weight > 0)
+            work = np.where(relaxable[..., None], work + REPAIR_OMEGA * (average - work), work)
+    return work
+
+
+def repair_region(
+    rgb: np.ndarray, skin: str, box: tuple[int, int, int, int], verbose: bool = False
+) -> tuple[np.ndarray, np.ndarray]:
+    """Replace one stray appendage with the clothing it was drawn over."""
+    survivor = SURVIVING_HANDS.get(skin)
+    if survivor is not None and box[3] + REPAIR_PAD >= survivor[1]:
+        raise SystemExit(
+            f"{skin}: the repair box ends at y{box[3]}, which reaches into the hand "
+            f"that grips the wall (top y{survivor[1]}, {box[3] + REPAIR_PAD - survivor[1] + 1}px "
+            f"too low). Everything right of the cut edge inside the box is cleared, so "
+            f"this would slice the top off the surviving hand. Raise the bottom to at "
+            f"most y{survivor[1] - REPAIR_PAD - 1}."
+        )
+    alpha = key_alpha(rgb, skin)
+    x0, y0, x1, y1 = box
+    height, width = alpha.shape
+    profile = right_profile(alpha)
+    above = band_median(profile, y0 - REPAIR_BAND, y0)
+    below = band_median(profile, y1 + 1, y1 + 1 + REPAIR_BAND)
+    tail = profile[int(height * REPAIR_WALL_FROM):]
+    tail = tail[tail >= 0]
+    wall = float(np.median(tail)) if len(tail) else max(above, below)
+    edge_top, edge_bottom = min(above, wall), min(below, wall)
+    edge = np.interp(
+        np.arange(y0, y1 + 1, dtype=np.float64), [y0, y1], [edge_top, edge_bottom]
+    )
+    if verbose:
+        print(
+            f"    {skin}: profile {above:.0f}/{below:.0f} cut edge {wall:.0f}"
+            f" -> rebuilt edge {edge_top:.0f}..{edge_bottom:.0f}"
+        )
+
+    yy, xx = np.mgrid[y0:y1 + 1, x0:x1 + 1]
+    inside = xx <= edge[:, None]
+
+    new_alpha = alpha.copy()
+    patch = np.where(inside, 1.0, 0.0).astype(np.float32)
+    ax0, ay0 = max(0, x0 - REPAIR_PAD), max(0, y0 - REPAIR_PAD)
+    ax1, ay1 = min(width, x1 + 1 + REPAIR_PAD), min(height, y1 + 1 + REPAIR_PAD)
+    window = new_alpha[ay0:ay1, ax0:ax1]
+    window[y0 - ay0:y1 + 1 - ay0, x0 - ax0:x1 + 1 - ax0] = patch
+    softened = Image.fromarray((np.clip(window, 0, 1) * 255).astype(np.uint8), "L")
+    new_alpha[ay0:ay1, ax0:ax1] = np.asarray(
+        softened.filter(ImageFilter.GaussianBlur(KEY_BLUR)), dtype=np.float32
+    ) / 255.0
+
+    # Work one pixel proud of the box so the pixels just outside it are the
+    # problem's boundary conditions rather than something to solve for.
+    sx0, sy0 = max(0, x0 - 1), max(0, y0 - 1)
+    sx1, sy1 = min(width, x1 + 2), min(height, y1 + 2)
+    sub = rgb[sy0:sy1, sx0:sx1].astype(np.float32).copy()
+    solid = (alpha[sy0:sy1, sx0:sx1] > 0.5) & ~skin_like(sub) & ~background_like(sub)
+    region = np.zeros(sub.shape[:2], dtype=bool)
+    oy, ox = y0 - sy0, x0 - sx0
+    region[oy:oy + inside.shape[0], ox:ox + inside.shape[1]] = inside
+    fixed = (~region) & solid
+
+    # Seed each row with the last surviving pixel to its left, so the solve
+    # continues the fabric sideways instead of averaging the whole
+    # neighbourhood -- which drags skin and hair into the fill.
+    seed_column = 0
+    for x in range(ox - 1, -1, -1):
+        if solid[:, x].all():
+            seed_column = x
+            break
+    sub[region] = np.repeat(sub[:, seed_column:seed_column + 1], sub.shape[1], axis=1)[region]
+    solved = harmonise(sub, region, fixed)
+
+    new_rgb = rgb.copy()
+    new_rgb[y0:y1 + 1, x0:x1 + 1] = np.where(
+        inside[..., None],
+        solved[oy:oy + inside.shape[0], ox:ox + inside.shape[1]],
+        rgb[y0:y1 + 1, x0:x1 + 1],
+    )
+    if verbose:
+        print(f"    {skin}: rebuilt {int(region.sum())}px from {int(fixed.sum())}px of boundary")
+    return new_rgb, new_alpha
+
+
+def prepare_source(rgb: np.ndarray, skin: str, verbose: bool = False):
+    """Repair generator artefacts, then key the backdrop out.
+
+    Both the frame solve and the render go through here, so a repaired region
+    cannot frame the sprite one way and paint it another.
+    """
+    box = REPAIRS.get(skin)
+    if box is None:
+        return rgb, key_alpha(rgb, skin)
+    return repair_region(rgb, skin, box, verbose=verbose)
+
+
 def content_box(alpha: np.ndarray) -> tuple[int, int, int, int]:
     """Bounding box of the character, ignoring stray keyed noise.
 
@@ -296,7 +554,7 @@ def resolve_frames(verbose: bool = False) -> dict[str, tuple[int, int, int, int]
         with Image.open(path) as source:
             sizes[skin] = source.size
             rgb = np.asarray(source.convert("RGB"), dtype=np.float32)
-        boxes[skin] = content_box(key_alpha(rgb, skin))
+        boxes[skin] = content_box(prepare_source(rgb, skin, verbose=verbose)[1])
     if not boxes:
         raise SystemExit("no companion sources found in " + str(SOURCE_DIR))
 
@@ -345,13 +603,13 @@ def clean_speckles(image: Image.Image) -> Image.Image:
 
 
 def render(path: Path, skin: str, frame: tuple[int, int, int, int], height: int) -> Image.Image:
-    """Key, crop and resize one render into straight-alpha RGBA.
+    """Key, repair, crop and resize one render into straight-alpha RGBA.
 
     The crop is scaled to a fixed height and a proportional width, so every
     companion shares one vertical scale and stays flush on its cut edge.
     """
     rgb = np.asarray(Image.open(path).convert("RGB"), dtype=np.float32)
-    alpha = key_alpha(rgb, skin)
+    rgb, alpha = prepare_source(rgb, skin)
     left, top, right, bottom = frame
     width = max(1, round(height * (right - left) / (bottom - top)))
     size = (width, height)
@@ -397,6 +655,7 @@ def write_module(
     payloads: dict[str, str],
     frames: dict[str, tuple[int, int, int, int]],
     fills: dict[str, float],
+    repairs: dict[str, tuple[int, int, int, int]],
     height: int,
 ) -> None:
     lines = [
@@ -415,6 +674,8 @@ def write_module(
         "CUT_EDGE_FILL records how far each rendered body reaches towards the",
         "right edge of its own image; anything below CUT_EDGE_FILL_MIN in the",
         "build script means the companion would float off the docked edge.",
+        "SOURCE_REPAIRS records which renders the build had to rebuild because",
+        "the generator drew a stray second hand into them, and where.",
         '"""',
         "",
         "from __future__ import annotations",
@@ -433,6 +694,13 @@ def write_module(
     ]
     for skin in sorted(fills):
         lines.append(f'    "{skin}": {fills[skin]:.4f},')
+    lines += [
+        "}",
+        "",
+        "SOURCE_REPAIRS: dict[str, tuple[int, int, int, int]] = {",
+    ]
+    for skin in sorted(repairs):
+        lines.append(f'    "{skin}": {repairs[skin]},')
     lines += [
         "}",
         "",
@@ -513,7 +781,7 @@ def main() -> int:
             )
         return 1
 
-    write_module(payloads, frames, fills, args.height)
+    write_module(payloads, frames, fills, {skin: REPAIRS[skin] for skin in available if skin in REPAIRS}, args.height)
     total = sum(len(value) for value in payloads.values())
     print(f"wrote scripts/{GENERATED_MODULE} ({total / 1024:.1f} KB of data URIs)")
     if missing:
