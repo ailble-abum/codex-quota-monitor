@@ -28,3 +28,5 @@ python3 -m unittest discover -s tests -v
 [候选视图挂载替换](docs/panel-mount-contract.md) 已替换旧 ensureHud/ensureStyle，增加节点所有权保护和一次性事件绑定；HTML/CSS 视图资产继续归因。
 
 [受管消费者卸载](docs/consumer-dispose-contract.md) 支持带 owner 保护的同步 dispose，候选可清理自有节点、全局拖动监听器及伴宠定时器；断连时仍报告未确认清理。
+
+[保留样式范围清理](docs/panel-css-contract.md) 移除无调用样式，限制裸属性规则在面板内，避免修改宿主同名属性元素；其余保留样式继续归因。

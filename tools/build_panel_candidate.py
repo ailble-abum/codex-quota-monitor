@@ -7,6 +7,7 @@ import argparse
 import ast
 import hashlib
 import json
+import re
 from pathlib import Path
 
 BASE = '2705f32a6f080ee1bdbecdc5b43f5fe0f9045eed'
@@ -38,6 +39,24 @@ def cut(source, start, end):
     return source[:a] + source[b:]
 
 
+def panel_css(template):
+    """Bounded cleanup for the hash-pinned template, not a general CSS parser."""
+    start, end = '      .cti-hud {\n', '      .cti-reply-footer {'
+    if template.count(start) != 1 or template.count(end) != 1:
+        raise ValueError('unexpected CSS boundary')
+    if template.index(start) >= template.index(end):
+        raise ValueError('reversed CSS boundary')
+    css = template[template.index(start):template.index(end)]
+    # Only bare attribute selectors at a line/comma boundary; :where keeps
+    # existing specificity, including the title pseudo-element rule.
+    css, count = re.subn(r'(^[ \t]*|,[ \t]*)(\[data-[^\]]+\])',
+                        r'\1:where(#codex-context-token-inspector-root) \2',
+                        css, flags=re.MULTILINE)
+    if count != 13:
+        raise ValueError('unexpected CSS selector count')
+    return '`' + css + '`'
+
+
 def build(directory):
     texts = {}
     for name, digest in HASHES.items():
@@ -57,7 +76,7 @@ def build(directory):
         section = script.split('  function ' + function + '(', 1)[1]
         value = section.split(declaration + ' = `', 1)[1].split('`;', 1)[0]
         return '`' + value + '`'
-    visual = ('  const panelCSS = () => ' + template('ensureStyle', 'const css') + ';\n'
+    visual = ('  const panelCSS = () => ' + panel_css(template('ensureStyle', 'const css')) + ';\n'
               + '  const panelHeader = () => ' + template('ensureHud', 'root.innerHTML') + ';\n')
     # Exact source digests make these bounded spans safe; unknown revisions stop.
     for start, end in (
@@ -104,7 +123,7 @@ def main():
     manifest = {'sourceCommit': BASE, 'sourceSHA256': HASHES,
                 'consumer': {'path': 'consumer.js', 'sha256': hashlib.sha256(script.encode()).hexdigest()},
                 'status': 'derived-isolated-candidate',
-                'changes': 'Removed host/sidebar/message scans and observer lifecycle; V2 snapshot-only adapter and owned DOM mounting.'}
+                'changes': 'Removed host/sidebar/message scans and observer lifecycle; V2 snapshot-only adapter, owned DOM lifecycle, pruned and attribute-scoped retained CSS.'}
     (args.output_dir / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     print(json.dumps(manifest['consumer']))
 

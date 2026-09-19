@@ -20,3 +20,18 @@ class CandidateTests(unittest.TestCase):
         for source in ('no markers', 'begin one end begin two end'):
             with self.assertRaises(ValueError):
                 candidate.cut(source, 'begin', 'end')
+
+    def test_css_cleanup_scopes_attributes_without_changing_specificity(self):
+        css = '`unused badge\n      .cti-hud {\n color:CanvasText; }\n'
+        css += '\n'.join('      [data-probe%d] { display:block; }' % i for i in range(11))
+        css += '\n      [data-details] summary, [data-skins] summary { cursor:pointer; }\n'
+        css += '      .cti-reply-footer { unused footer }`'
+        result = candidate.panel_css(css)
+        self.assertNotIn('unused', result)
+        self.assertEqual(result.count(':where(#codex-context-token-inspector-root)'), 13)
+        self.assertIn('color:CanvasText', result)
+        self.assertIn(', :where(#codex-context-token-inspector-root) [data-skins]', result)
+        with self.assertRaises(ValueError):
+            candidate.panel_css(css.replace('[data-probe0]', '.other'))
+        with self.assertRaises(ValueError):
+            candidate.panel_css('unknown template')

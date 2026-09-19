@@ -15,7 +15,25 @@ const {chromium, webkit} = require('playwright');
       await page.evaluate(() => { window.__quotaMonitorV2Thread = 'one'; localStorage.setItem('cti-language', 'zh'); });
       const call = options => page.evaluate(({bridge, options}) => (0, eval)(bridge)(options), {bridge, options});
       const base = {expected: 'http://mount.invalid/', key: 'one'};
+      // Host attributes are deliberately identical to retained panel attributes.
+      const hostStyle = () => page.evaluate(() => [...document.querySelectorAll('#host-probe *')].map(node => {
+        const style = getComputedStyle(node);
+        return [style.display, style.fontSize, style.padding, style.margin, style.color, style.cursor,
+          getComputedStyle(node, '::before').content];
+      }));
+      await page.evaluate(() => {
+        const host = document.createElement('article'); host.id = 'host-probe';
+        host.innerHTML = '<span data-cti-title>Host</span><span data-update>Update</span>' +
+          '<div data-context>Context</div><div data-health data-warning="true">Health</div>' +
+          '<div data-explanation>Explanation</div><span data-mascot-scale-value>Scale</span>' +
+          '<details data-details open><summary>Details</summary><div>Body</div></details>' +
+          '<details data-skins open><summary>Skin<em>Label</em></summary><div>Body</div></details>';
+        document.body.append(host);
+      });
+      const before = await hostStyle();
       assert.equal(await call({...base, action: 'initialize', consumer: {source: script}}), 'ready');
+      assert.deepEqual(await hostStyle(), before, 'panel CSS must not style host attributes');
+      await page.locator('#host-probe').evaluate(node => node.remove());
       const payload = {activeThreadId: 'one', selectedThreadId: 'one', observedAt: Date.now()/1000,
         summaries: [{thread_id: 'one', latest_context_tokens: 500, context_window: 1000, latest_context_percent: 50}], detailsByThread: {}};
       const publish = () => call({...base, action: 'publish', payload, panel: true});
