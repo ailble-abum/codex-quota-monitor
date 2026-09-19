@@ -4,6 +4,7 @@ These cover the decision that stranded the menu bar agent: rebuilding a healthy
 loaded agent with bootout+bootstrap, and losing it when the bootstrap is
 refused. launchctl itself is faked so the tests run anywhere.
 """
+import json
 import plistlib
 import tempfile
 import unittest
@@ -120,6 +121,83 @@ class LoadAgentTest(unittest.TestCase):
             ok, detail = monitorctl.load_agent(SERVICE, self.plist, self.previous)
         self.assertFalse(ok)
         self.assertEqual(detail, 'refused')
+
+
+class BuildRecordTest(unittest.TestCase):
+    """The stamp that makes "I installed it and nothing changed" answerable.
+
+    The declared version, the cachebuster Codex keys its cache directory on,
+    and the injected runtime version move independently, and a plugin cache
+    does not refresh on its own, so all three have to be recorded together.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        root = Path(self.tmp.name)
+        plugin = root / 'plugin'
+        (plugin / '.codex-plugin').mkdir(parents=True)
+        (plugin / 'scripts').mkdir()
+        self.write_manifest('0.1.0+codex.20260920002813', plugin)
+        self.write_runtime(20, plugin)
+        self.root = root / 'CodexQuotaMonitor'
+        for name, value in (('PLUGIN', plugin), ('SCRIPTS', plugin / 'scripts'), ('RUNTIME_ROOT', self.root)):
+            patched = mock.patch.object(monitorctl, name, value)
+            patched.start()
+            self.addCleanup(patched.stop)
+
+    def write_manifest(self, version, plugin=None):
+        plugin = plugin or monitorctl.PLUGIN
+        (plugin / '.codex-plugin/plugin.json').write_text(json.dumps({'version': version}), encoding='utf-8')
+
+    def write_runtime(self, version, plugin=None):
+        plugin = plugin or monitorctl.PLUGIN
+        (plugin / 'scripts/context_token_injector.py').write_text(
+            f'INJECTION_SCRIPT = """\n  const RUNTIME_VERSION = {version};\n"""\n', encoding='utf-8')
+
+    def test_the_record_splits_the_cachebuster_from_the_declared_version(self):
+        info = monitorctl.record_build(self.root)
+        self.assertEqual(info['pluginVersion'], '0.1.0')
+        self.assertEqual(info['cachebuster'], 'codex.20260920002813')
+        self.assertEqual(info['runtimeVersion'], 20)
+        self.assertIsInstance(info['installedAt'], float)
+
+    def test_the_record_is_read_back_from_disk(self):
+        monitorctl.record_build(self.root)
+        summary = monitorctl.describe_build()
+        self.assertIn('plugin 0.1.0', summary)
+        self.assertIn('build codex.20260920002813', summary)
+        self.assertIn('runtime 20', summary)
+
+    def test_a_version_without_build_metadata_still_records(self):
+        # The cachebuster is build metadata, not a required field: a plain
+        # version must not be dropped or split into a stray empty part.
+        self.write_manifest('1.2.3')
+        info = monitorctl.record_build(self.root)
+        self.assertEqual(info['pluginVersion'], '1.2.3')
+        self.assertIsNone(info['cachebuster'])
+
+    def test_a_missing_manifest_or_runtime_line_records_nothing_invented(self):
+        (monitorctl.PLUGIN / '.codex-plugin/plugin.json').write_text('{', encoding='utf-8')
+        (monitorctl.SCRIPTS / 'context_token_injector.py').write_text('RUNTIME_VERSION = 4\n', encoding='utf-8')
+        info = monitorctl.record_build(self.root)
+        self.assertIsNone(info['pluginVersion'])
+        self.assertIsNone(info['runtimeVersion'])
+        self.assertTrue(monitorctl.describe_build().startswith('installed '))
+
+    def test_an_absent_record_is_named_rather_than_guessed(self):
+        self.assertEqual(monitorctl.describe_build(), 'not recorded')
+
+    def test_a_corrupt_record_is_named_rather_than_guessed(self):
+        self.root.mkdir(parents=True, exist_ok=True)
+        (self.root / monitorctl.BUILD_INFO).write_text('{ not json', encoding='utf-8')
+        self.assertEqual(monitorctl.describe_build(), 'not recorded')
+
+    def test_the_stamp_never_carries_a_credential(self):
+        # The record is written into the runtime directory, so it has to stay a
+        # description of the build and nothing else.
+        info = monitorctl.record_build(self.root)
+        self.assertEqual(sorted(info), ['cachebuster', 'installedAt', 'pluginVersion', 'runtimeVersion'])
 
 
 if __name__ == '__main__':
