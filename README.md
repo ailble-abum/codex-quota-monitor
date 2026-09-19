@@ -34,7 +34,7 @@ Codex Quota Monitor 把这些信息放回工作现场。它在 Codex 桌面窗�
 
 ```bash
 codex plugin marketplace add https://github.com/ailble-abum/codex-quota-monitor --ref main
-codex plugin add codex-quota-monitor@personal
+codex plugin add codex-quota-monitor@codex-quota-monitor
 ```
 
 安装本地服务：
@@ -131,7 +131,7 @@ Install:
 
 ```bash
 codex plugin marketplace add https://github.com/ailble-abum/codex-quota-monitor --ref main
-codex plugin add codex-quota-monitor@personal
+codex plugin add codex-quota-monitor@codex-quota-monitor
 # Change into the "Installed plugin root" printed by the previous command.
 python3 scripts/monitorctl.py install
 ```

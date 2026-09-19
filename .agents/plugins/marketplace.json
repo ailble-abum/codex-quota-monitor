@@ -1,7 +1,7 @@
 {
-  "name": "personal",
+  "name": "codex-quota-monitor",
   "interface": {
-    "displayName": "Personal"
+    "displayName": "Codex Quota Monitor"
   },
   "plugins": [
     {
