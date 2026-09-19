@@ -54,3 +54,5 @@ python3 -m unittest discover -s tests -v
 [固定停靠折叠往返修复](docs/docking-toggle-contract.md) 区分正常初始隐藏与固定状态丢失，修复折叠后重新展开时面板意外隐藏；左右停靠真实控件回归通过。
 
 [V2 账户聚合正文](docs/account-overview-contract.md) 替换总预算、状态说明与附加用量，校验预算/用量/额度，过期数据不继续展示附加值。
+
+[V2 版本、更新与界面诊断正文](docs/panel-diagnostics-contract.md) 改为文本 DOM，更新入口随当前 HTTPS URL 同步，缺失诊断不再误报失败。

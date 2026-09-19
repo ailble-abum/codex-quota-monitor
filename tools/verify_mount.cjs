@@ -150,6 +150,23 @@ const {chromium, webkit} = require('playwright');
       assert.equal(await toggle.getAttribute('aria-label'), '收起监控');
       await page.locator('[data-settings-toggle]').click();
       assert.equal(await page.locator('[data-settings-toggle]').getAttribute('aria-expanded'), 'true');
+      payload.build = {pluginVersion: '<b>test</b>'};
+      payload.update = {status:'update_available',latestSemver:'2.0.0',url:'https://example.test/release'};
+      await publish();
+      assert.equal(await page.locator('[data-build] b').count(), 0);
+      assert.ok((await page.locator('[data-build]').textContent()).includes('<b>test</b>'));
+      assert.ok((await page.locator('[data-dom]').textContent()).includes('未提供'));
+      assert.equal(await page.locator('[data-update] a').getAttribute('href'), 'https://example.test/release');
+      if(process.argv[3]) {
+        await page.addStyleTag({content: ':root{color-scheme:light dark}body{background:Canvas}'});
+        for(const colorScheme of ['light','dark']) {
+          await page.emulateMedia({colorScheme});
+          await page.locator('[data-update]').screenshot({path:path.join(process.argv[3],`${engine.name()}-update-${colorScheme}.png`)});
+        }
+      }
+      delete payload.build; delete payload.update;
+      await publish();
+      assert.equal(await page.locator('[data-update]').textContent(), '');
       await page.locator('[data-cti-unit="raw"]').click();
       assert.equal(await page.evaluate(() => localStorage.getItem('codex-context-token-inspector-unit')), 'raw');
       assert.equal(await page.locator('[data-context] [role="meter"]').getAttribute('aria-valuenow'), '50');

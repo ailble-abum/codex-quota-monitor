@@ -119,6 +119,10 @@ def build(directory):
     script = script.replace('    const id = activeThreadId();',
                             '    renderAccountOverview(body, quota, live, stoppedAccount);\n    const id = activeThreadId();', 1)
     script = cut(script, '  function accountBudgetText(', '  function nearestResetText(')
+    script = cut(script, '    const stamp = payload.build', '    updateHudTitle(root);\n    updateUnitButtons(root);')
+    script = script.replace('    updateHudTitle(root);\n    updateUnitButtons(root);',
+                            '    renderDiagnostics(body, payload);\n    updateHudTitle(root);\n    updateUnitButtons(root);', 1)
+    script = cut(script, '    const put = (selector, html) => {', '    const quota = payload.quota')
     tail = '  function clearFooters('
     if script.count(tail) != 1:
         raise ValueError('unexpected lifecycle boundary')
@@ -130,7 +134,8 @@ def build(directory):
               + (assets / 'panel_health.js').read_text()
               + (assets / 'panel_account_status.js').read_text()
               + (assets / 'panel_account_windows.js').read_text()
-              + (assets / 'panel_account_overview.js').read_text() + visual
+              + (assets / 'panel_account_overview.js').read_text()
+              + (assets / 'panel_diagnostics.js').read_text() + visual
               + (assets / 'panel_mount.js').read_text()
               + (assets / 'panel_adapter.js').read_text())
     guard = """(payload => {
