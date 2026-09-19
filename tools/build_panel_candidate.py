@@ -77,7 +77,8 @@ def build(directory):
         value = section.split(declaration + ' = `', 1)[1].split('`;', 1)[0]
         return '`' + value + '`'
     visual = ('  const panelCSS = () => ' + panel_css(template('ensureStyle', 'const css')) + ';\n'
-              + '  const panelHeader = () => ' + template('ensureHud', 'root.innerHTML') + ';\n')
+              + '  const panelHeader = () => ' + template('ensureHud', 'root.innerHTML') + ';\n'
+              + '  const panelBodyTemplate = zh => ' + template('applyHud', 'body.innerHTML') + ';\n')
     # Exact source digests make these bounded spans safe; unknown revisions stop.
     for start, end in (
             ('  function n(', '  function quotaTone('),
@@ -87,6 +88,9 @@ def build(directory):
             ('  function cleanOriginalTitle(', '  function hudMode('),
             ('  function applySidebar(', '  function applyHud(')):
         script = cut(script, start, end)
+    script = cut(script, "    if (!body.querySelector('[data-quota]')", "      const language=body.querySelector('[data-language]');")
+    script = script.replace("      const language=body.querySelector('[data-language]');",
+                            "    if (preparePanelBody(root)) {\n      const language=body.querySelector('[data-language]');", 1)
     # Remove these after the intervening old mount/sidebar spans are gone.
     script = cut(script, '  function updateUnitButtons(', '  function applyHud(')
     start, end = '    if (selected) {', '    const errorLabels='
@@ -136,6 +140,7 @@ def build(directory):
               + (assets / 'panel_account_windows.js').read_text()
               + (assets / 'panel_account_overview.js').read_text()
               + (assets / 'panel_diagnostics.js').read_text() + visual
+              + (assets / 'panel_body.js').read_text()
               + (assets / 'panel_mount.js').read_text()
               + (assets / 'panel_adapter.js').read_text())
     guard = """(payload => {

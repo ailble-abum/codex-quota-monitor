@@ -150,6 +150,21 @@ const {chromium, webkit} = require('playwright');
       assert.equal(await toggle.getAttribute('aria-label'), '收起监控');
       await page.locator('[data-settings-toggle]').click();
       assert.equal(await page.locator('[data-settings-toggle]').getAttribute('aria-expanded'), 'true');
+      await page.evaluate(() => { window.originalUnits = document.querySelector('.cti-unit-group'); });
+      for (const language of ['en', 'zh']) {
+        await page.locator('[data-language]').selectOption(language);
+        assert.equal(await page.locator('[data-settings]').evaluate(node => node.hidden), false, 'language switch must preserve open settings');
+        assert.equal(await page.locator('[data-settings-toggle]').getAttribute('aria-expanded'), 'true');
+        assert.equal(await page.evaluate(() => document.querySelector('.cti-unit-group') === window.originalUnits), true);
+        assert.equal(await page.locator('.cti-unit-group').count(), 1);
+      }
+      if (process.argv[3]) {
+        await page.addStyleTag({content: ':root{color-scheme:light dark}body{background:Canvas}'});
+        for (const colorScheme of ['light', 'dark']) {
+          await page.emulateMedia({colorScheme});
+          await page.locator('.cti-hud').screenshot({path:path.join(process.argv[3],`${engine.name()}-settings-${colorScheme}.png`)});
+        }
+      }
       payload.build = {pluginVersion: '<b>test</b>'};
       payload.update = {status:'update_available',latestSemver:'2.0.0',url:'https://example.test/release'};
       await publish();
