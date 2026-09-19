@@ -4,7 +4,8 @@ from quota_monitor.compat import panel_payload, panel_summary
 
 
 def reading(status='ok', more=False):
-    return {'status': status, 'more': more, 'session': {
+    return {'status': status, 'more': more, 'identity_status': 'verified',
+            'thread_id': 'one', 'session': {
         'model': 'demo', 'effort': 'high', 'window': 1000,
         'context_percent': 10.0,
         'last': {'input_tokens': 100, 'cached_input_tokens': 80,
@@ -14,6 +15,14 @@ def reading(status='ok', more=False):
 
 
 class CompatibilityTests(unittest.TestCase):
+    def test_identity_cannot_be_bypassed_by_mapping_key(self):
+        for changes in ({'thread_id': 'two'}, {'identity_status': 'missing'},
+                        {'identity_status': 'conflict'}, {'identity_status': None}):
+            result = reading()
+            result.update(changes)
+            with self.subTest(changes=changes):
+                self.assertEqual(panel_payload({'one': result}, 'one')['summaries'], [])
+
     def test_projection_preserves_metric_meanings(self):
         summary = panel_summary('local:one', reading())
         self.assertEqual(summary['thread_id'], 'one')

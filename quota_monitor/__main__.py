@@ -9,7 +9,7 @@ from .journal import SessionJournal
 def main():
     parser = argparse.ArgumentParser(description='Preview one explicitly selected session journal')
     parser.add_argument('path')
-    parser.add_argument('--thread', required=True, help='Verified owner of this file; no discovery is performed')
+    parser.add_argument('--thread', required=True, help='Expected task ID, checked against session_meta.id')
     parser.add_argument('--max-polls', type=int, default=64)
     args = parser.parse_args()
     key = thread_key(args.thread)
@@ -24,6 +24,12 @@ def main():
         if reading['status'] != 'ok' or not reading['more']:
             break
     status = reading['status'] if not reading['more'] else 'incomplete'
+    if status == 'ok':
+        if reading['identity_status'] != 'verified':
+            status = 'identity_' + reading['identity_status']
+        elif reading['thread_id'] != key:
+            status = 'identity_mismatch'
+    reading['status'] = status
     output = {'status': status, 'bytes_read': bytes_read, 'invalid_lines': invalid,
               'payload': panel_payload({key: reading}, key)}
     print(json.dumps(output, ensure_ascii=False, allow_nan=False))

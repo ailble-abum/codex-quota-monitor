@@ -1,6 +1,6 @@
 """Project completed SessionJournal readings to the existing panel's fields.
 
-Callers own the verified thread-to-file mapping. This adapter is not a file
+Journal metadata must agree with the selected task. This adapter is not a file
 discovery service or a replacement for the complete legacy payload builder.
 """
 from .session import FIELDS
@@ -18,6 +18,8 @@ def thread_key(value):
 def panel_summary(thread_id, reading):
     key = thread_key(thread_id)
     if key is None or reading['status'] != 'ok' or reading['more']:
+        return None
+    if reading.get('identity_status') != 'verified' or reading.get('thread_id') != key:
         return None
     state = reading['session']
     result = {'thread_id': key, 'thread_keys': [key, 'local:' + key],

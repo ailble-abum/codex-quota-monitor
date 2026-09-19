@@ -19,7 +19,8 @@ class PreviewTests(unittest.TestCase):
                               cwd=Path(__file__).resolve().parents[1])
 
     def test_complete_file_reaches_legacy_numeric_field(self):
-        rows = [{'type': 'response_item', 'payload': {'text': 'SECRET'}},
+        rows = [{'type': 'session_meta', 'payload': {'id': 'demo'}},
+                {'type': 'response_item', 'payload': {'text': 'SECRET'}},
                 {'type': 'event_msg', 'payload': {'type': 'token_count', 'info': {
                     'total_token_usage': {'total_tokens': 90},
                     'last_token_usage': {'input_tokens': 20}, 'model_context_window': 100}}}]
@@ -47,6 +48,21 @@ class PreviewTests(unittest.TestCase):
 
     def test_invalid_budget_rejected(self):
         self.assertEqual(self.run_preview('--max-polls', '0').returncode, 2)
+
+    def test_unverified_identity_never_publishes(self):
+        for expected, rows in (
+                ('identity_missing', []),
+                ('identity_mismatch', [{'type': 'session_meta', 'payload': {'id': 'other'}}]),
+                ('identity_conflict', [{'type': 'session_meta', 'payload': {'id': 'demo'}},
+                                      {'type': 'session_meta', 'payload': {'id': 'other'}}])):
+            with self.subTest(rows=rows):
+                self.path.write_text(''.join(json.dumps(row) + '\n' for row in rows))
+                result = self.run_preview()
+                self.assertEqual(result.returncode, 2)
+                value = json.loads(result.stdout)
+                self.assertEqual(value['status'], expected)
+                self.assertEqual(value['payload']['summaries'], [])
+                self.assertNotIn('other', result.stdout)
 
 
 if __name__ == '__main__':
