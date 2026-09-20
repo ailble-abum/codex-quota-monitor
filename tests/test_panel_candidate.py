@@ -48,3 +48,11 @@ class CandidateTests(unittest.TestCase):
         for name in ('hudMode', 'dockSafeTop', 'dockVerticalY', 'dockCandidate',
                      'presetWidth', 'resizeGeometry', 'contextHintGeometry'):
             self.assertIn("script = cut(script, '  function %s(" % name, source)
+
+    def test_layout_runtime_replaces_stateful_old_definitions(self):
+        source = (Path(__file__).parents[1] / 'tools/build_panel_candidate.py').read_text()
+        self.assertIn("(assets / 'panel_layout_runtime.js').read_text()", source)
+        for name in ('clearDockHide', 'scheduleDockHide', 'revealDock', 'undockHud',
+                     'applyDockPosition', 'applyStoredHudPosition', 'syncExpandedAnchor',
+                     'setLayoutPreset', 'installHudDrag', 'keepTogglePosition', 'clampHud'):
+            self.assertIn("script = cut(script, '  function %s(" % name, source)
