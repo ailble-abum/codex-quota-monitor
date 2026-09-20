@@ -4,7 +4,7 @@
 
 ## 本轮实际执行
 
-- Python 3.9：`python -m unittest discover -s tests`，147 项通过。
+- Python 3.9：`python -m unittest discover -s tests`，152 项通过。
 - `.venv/bin/python tools/build_panel.py candidate`：不读取旧仓库脚本，直接拼装仓库 V2 模块并编码 `assets/companions`；生成清单状态为 `independent-v2-candidate`，最终 `consumer.js` 通过 Node 语法检查。
 - 12 个 WebP 资源与历史归档 data URI 逐字节一致；候选携带根目录 `LICENSE`/`NOTICE`。
 - `tools/install_preview.py` 接受新候选并在仓库外临时目录生成独立运行目录；`run.py --help` 和目录摘要检查通过。目标目录已存在、摘要篡改和畸形清单仍受控失败。
