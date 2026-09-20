@@ -1,0 +1,10 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
+const context=vm.createContext({});
+vm.runInContext(fs.readFileSync(path.join(__dirname,'../quota_monitor/panel_styles.js'),'utf8'),context);
+const css=context.panelCSS();
+for(const selector of ['#codex-context-token-inspector-root','#codex-context-token-inspector-mascot','#cti-context-hint','[data-collapsed="true"]','[data-resize="se"]','[data-visible="true"]']) assert.ok(css.includes(selector),selector);
+assert.ok(css.includes('prefers-reduced-motion:reduce'));
+assert.equal(css.includes('[data-app-action-sidebar'),false);
+assert.equal(css.includes('.cti-reply'),false);
+assert.equal(css.includes('http:'),false); assert.equal(css.includes('https:'),false);
+console.log('styles: scoped panel, companion, resize, collapse, focus and reduced-motion rules passed');

@@ -76,7 +76,7 @@ def build(directory):
         section = script.split('  function ' + function + '(', 1)[1]
         value = section.split(declaration + ' = `', 1)[1].split('`;', 1)[0]
         return '`' + value + '`'
-    visual = '  const panelCSS = () => ' + panel_css(template('ensureStyle', 'const css')) + ';\n'
+    visual = ''
     # Exact source digests make these bounded spans safe; unknown revisions stop.
     for start, end in (
             ('  function n(', '  function quotaTone('),
@@ -193,6 +193,7 @@ def build(directory):
               + (assets / 'panel_geometry.js').read_text()
               + (assets / 'panel_layout_runtime.js').read_text()
               + (assets / 'panel_templates.js').read_text()
+              + (assets / 'panel_styles.js').read_text()
               + (assets / 'panel_language.js').read_text()
               + (assets / 'panel_companion_preferences.js').read_text()
               + (assets / 'panel_layout_data.js').read_text()

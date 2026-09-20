@@ -60,5 +60,7 @@ class CandidateTests(unittest.TestCase):
     def test_header_template_is_not_extracted_from_old_renderer(self):
         source = (Path(__file__).parents[1] / 'tools/build_panel_candidate.py').read_text()
         self.assertIn("(assets / 'panel_templates.js').read_text()", source)
+        self.assertIn("(assets / 'panel_styles.js').read_text()", source)
         self.assertNotIn("template('ensureHud', 'root.innerHTML')", source)
         self.assertNotIn("template('applyHud', 'body.innerHTML')", source)
+        self.assertNotIn("panel_css(template('ensureStyle', 'const css'))", source)
