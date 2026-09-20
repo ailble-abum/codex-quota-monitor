@@ -164,6 +164,7 @@ def build(directory):
     script = script.replace('    const id = activeThreadId();',
                             '    renderAccountOverview(body, quota, live, stoppedAccount);\n    const id = activeThreadId();', 1)
     script = cut(script, '  function accountBudgetText(', '  function nearestResetText(')
+    script = cut(script, '  function windowBudgetText(', '  function nearestResetText(')
     script = cut(script, '    const stamp = payload.build', '    updateHudTitle(root);\n    updateUnitButtons(root);')
     script = script.replace('    updateHudTitle(root);\n    updateUnitButtons(root);',
                             '    renderDiagnostics(body, payload);\n    updateHudTitle(root);\n    updateUnitButtons(root);', 1)

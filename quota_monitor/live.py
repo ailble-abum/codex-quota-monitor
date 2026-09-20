@@ -37,7 +37,7 @@ def load_config(path):
     if len(raw) > 65536:
         raise ValueError('config limit')
     config = json.loads(raw, object_pairs_hook=unique_object, parse_constant=reject_constant)
-    if (not isinstance(config, dict) or set(config) - {'origin', 'page_url', 'journals', 'session_root', 'host', 'panel', 'consumer', 'account_cli'}
+    if (not isinstance(config, dict) or set(config) - {'origin', 'page_url', 'journals', 'session_root', 'host', 'panel', 'consumer', 'account_cli', 'session_layout'}
             or not {'origin', 'page_url'} <= set(config)
             or ('journals' in config) == ('session_root' in config)):
         raise ValueError('invalid config fields')

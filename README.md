@@ -88,3 +88,5 @@ python3 -m unittest discover -s tests -v
 [V2 旧位置记录迁移](docs/panel-legacy-position-contract.md) 有效新布局优先，旧坐标逐项校验，仅迁移到当前内存。
 
 [账户读取与预览安装](docs/account-and-preview.md)：可选官方 App Server 后台额度读取，独立目录安装与文件摘要清单；真实账户在隔离面板验证，原生及正式发行验收仍开放。
+
+[本机 V2 切换](docs/local-switch.md)：支持按 Codex rollout 文件名定位当前任务，并继续核对内部身份；本机服务切换、原生验收和回退边界在此记录。

@@ -141,3 +141,30 @@ class IndexedTests(unittest.TestCase):
             source = indexed.DirectorySource(self.root)
             self.assertEqual(source.read('one')['summaries'], [])
             self.assertEqual(source.status, 'unavailable')
+
+class NamedDirectoryTests(unittest.TestCase):
+    def test_named_lookup_ignores_unrelated_large_or_broken_logs(self):
+        from quota_monitor.indexed import NamedDirectorySource
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for index in range(140):
+                (root / ('rollout-other-%s.jsonl' % index)).write_text('broken\n')
+            selected = root / 'rollout-date-one.jsonl'
+            selected.write_text(json.dumps({'type':'session_meta','payload':{'id':'one'}})+'\n')
+            source = NamedDirectorySource(root)
+            self.assertEqual(source.read('one')['selectedThreadId'], 'one')
+            self.assertLess(source.bytes_read, 1024)
+            self.assertIsNone(source.read('missing')['selectedThreadId'])
+            self.assertEqual(source.status, 'not_found')
+            selected.write_text(json.dumps({'type':'session_meta','payload':{'id':'wrong'}})+'\n')
+            self.assertIsNone(source.read('one')['selectedThreadId'])
+
+    def test_named_duplicate_identity_is_not_selected(self):
+        from quota_monitor.indexed import NamedDirectorySource
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for prefix in ('a', 'b'):
+                (root / ('rollout-%s-one.jsonl' % prefix)).write_text(json.dumps({'type':'session_meta','payload':{'id':'one'}})+'\n')
+            source = NamedDirectorySource(root)
+            self.assertIsNone(source.read('one')['selectedThreadId'])
+            self.assertEqual(source.status, 'ambiguous')

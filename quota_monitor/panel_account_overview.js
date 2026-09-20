@@ -1,3 +1,12 @@
+  // A reset time alone is not evidence of how long remaining quota will last.
+  function windowBudgetText(item, now = Date.now() / 1000) {
+    const estimate = item?.exhaustInSec;
+    if (!Number.isFinite(estimate) || estimate < 0) return null;
+    const untilReset = Number.isFinite(item.resetsAt) ? item.resetsAt - now : NaN;
+    if (untilReset > 0 && estimate >= untilReset) return `≥${shortDuration(untilReset)}`;
+    return shortDuration(estimate);
+  }
+
   function accountBudgetText(quota) {
     const budget = quota?.budget;
     if (!budget || !['floor', 'exhaust'].includes(budget.kind) ||

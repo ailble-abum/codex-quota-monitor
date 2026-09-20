@@ -14,7 +14,7 @@ from .cdp import CDPClient, CDPError
 from .account import AccountSource
 from .compat import panel_payload, thread_key
 from .journal import SessionJournal
-from .indexed import DirectorySource
+from .indexed import DirectorySource, NamedDirectorySource
 from .consumer import load_consumer
 from .reader import finite_float, reject_constant
 
@@ -110,7 +110,7 @@ class UpdateLoop:
 
     panel=True forwards to an existing consumer or an explicitly pinned initializer.
     """
-    def __init__(self, origin, page_url, paths=None, *, panel=False, host='explicit', session_root=None, consumer=None, account_cli=None):
+    def __init__(self, origin, page_url, paths=None, *, panel=False, host='explicit', session_root=None, consumer=None, account_cli=None, session_layout=None):
         local_origin(origin)
         if host not in ('explicit', 'codex-sidebar'):
             raise ValueError('invalid host adapter')
@@ -129,7 +129,10 @@ class UpdateLoop:
         self.origin, self.page_url = origin, page_url
         if (paths is None) == (session_root is None):
             raise ValueError('exactly one session source required')
-        self.source = DirectorySource(session_root) if session_root is not None else JournalSource(paths)
+        if session_layout not in (None, 'codex-rollout') or (session_layout is not None and session_root is None):
+            raise ValueError('invalid session layout')
+        source_type = NamedDirectorySource if session_layout == 'codex-rollout' else DirectorySource
+        self.source = source_type(session_root) if session_root is not None else JournalSource(paths)
         self.client = None
         self.status = 'idle'
         self.owner = uuid.uuid4().hex

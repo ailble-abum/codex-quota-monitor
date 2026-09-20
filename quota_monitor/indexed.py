@@ -47,6 +47,9 @@ class DirectorySource:
             return False
         return True
 
+    def _accept_name(self, name):
+        return True
+
     def _scan(self):
         if os.scandir not in os.supports_fd:
             raise OSError('descriptor scanning unavailable')
@@ -72,7 +75,7 @@ class DirectorySource:
                             visit(child, path, depth + 1)
                         finally:
                             os.close(child)
-                    elif stat.S_ISREG(info.st_mode) and entry.name.endswith('.jsonl'):
+                    elif stat.S_ISREG(info.st_mode) and entry.name.endswith('.jsonl') and self._accept_name(entry.name):
                         paths.append(path)
                         if len(paths) > self.max_files:
                             raise ValueError('file limit')
@@ -139,3 +142,23 @@ class DirectorySource:
             if self.status == 'ok':
                 return panel_payload({key: matches[0]}, key)
         return empty
+
+
+class NamedDirectorySource(DirectorySource):
+    """Opt-in Codex rollout filename selection; contents must still verify identity."""
+    def __init__(self, root):
+        super().__init__(root, read_budget=4 * 1024 * 1024)
+        self._selected_key = None
+
+    def _accept_name(self, name):
+        return name.startswith('rollout-') and name.endswith('-' + self._selected_key + '.jsonl')
+
+    def read(self, key):
+        if thread_key(key) != key or key is None:
+            self.status = 'not_found'
+            return panel_payload({}, None)
+        if key != self._selected_key:
+            self._selected_key = key
+            self._dirs, self._journals, self._tainted = None, {}, set()
+            self._next_scan = float('-inf')
+        return super().read(key)

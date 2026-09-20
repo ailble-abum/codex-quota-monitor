@@ -6,6 +6,10 @@ const source=['panel_format.js','panel_account_status.js','panel_account_overvie
   const page=await browser.newPage();await page.setContent('<main><div data-quota></div></main>');
   await page.evaluate(source=>{window.uiLanguage=()=>window.language;window.unitMode=()=> 'auto';window.durationPhrase=n=>`${n}s`;
    window.accountWindowHTML=()=>'<div class="cti-quota-window">windows</div>';window.nearestResetText=()=>'';window.quotaTone=()=> 'safe';(0,eval)(source);},source);
+  assert.equal(await page.evaluate(()=>windowBudgetText({remaining:4,resetsAt:Date.now()/1000+500000})),null);
+  assert.equal(await page.evaluate(()=>windowBudgetText({exhaustInSec:-1})),null);
+  assert.equal(await page.evaluate(()=>{window.shortDuration=n=>String(n);return windowBudgetText({exhaustInSec:60});}),'60');
+  assert.equal(await page.evaluate(()=>windowBudgetText({exhaustInSec:600,resetsAt:1100},1000)),'≥100');
   for(const language of ['zh','en']){
    const render=(quota,live=true,blocked=false)=>page.evaluate(({quota,live,blocked,language})=>{
     window.language=language;const body=document.querySelector('main');renderAccountOverview(body,quota,live,blocked);
