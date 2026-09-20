@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
+const context=vm.createContext({});
+vm.runInContext(fs.readFileSync(path.join(__dirname,'../quota_monitor/panel_companion_behavior.js'),'utf8'),context);
+for(const [reaction,mood,result] of [['pet','idle','pet'],['hello','idle','happy'],['happy','idle','happy'],['notice','idle','notice'],[null,'waiting','waiting'],[null,'concerned','concerned'],[null,'unknown','concerned'],[null,'idle','idle']]) assert.equal(context.companionExpression(reaction,mood),result);
+assert.deepEqual(JSON.parse(JSON.stringify(context.companionHealth({healthThreadId:'local:one',health:{count:1}},'one'))),{count:1});
+assert.equal(context.companionHealth({healthThreadId:'two',health:{count:1}},'one'),null);
+const gesture={x:10,y:10,at:0,head:true};
+assert.equal(context.companionGesture(gesture,11,11,100),'click'); assert.equal(context.companionGesture(gesture,11,11,400),'pet'); assert.equal(context.companionGesture(gesture,20,10,100),'drag');
+let state={},step=context.companionStep(state,{live:true,account:'a',remaining:20,windows:[],thread:'t',ctx:84},1000);
+assert.equal(step.event,'quota-watch'); state=step.state;
+step=context.companionStep(state,{live:true,account:'a',remaining:10,windows:[],thread:'t',ctx:85},2000);
+assert.equal(step.event,'quota-low+ctx-high'); state=step.state;
+step=context.companionStep(state,{live:true,account:'a',remaining:0,blocked:true,windows:[],thread:'t',ctx:95,compaction:'one'},3000);
+assert.equal(step.event,'quota-empty+ctx-critical+compacted'); state=step.state;
+step=context.companionStep(state,{live:true,account:'a',remaining:80,windows:[],thread:'t',ctx:95,compaction:'two'},4000);
+assert.equal(step.event,'quota-restored+compacted');
+assert.equal(context.companionStep({}, {live:false,thread:null}, 1).event,null);
+console.log('companion behavior: expressions, thread health, gestures and quota/context event thresholds passed');

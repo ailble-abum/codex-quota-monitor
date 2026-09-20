@@ -192,6 +192,7 @@ def build(directory):
               + (assets / 'panel_time.js').read_text()
               + (assets / 'panel_metrics.js').read_text()
               + (assets / 'panel_geometry.js').read_text()
+              + (assets / 'panel_companion_behavior.js').read_text()
               + (assets / 'panel_companion_view.js').read_text()
               + (assets / 'panel_layout_runtime.js').read_text()
               + (assets / 'panel_templates.js').read_text()
@@ -223,8 +224,10 @@ def build(directory):
       document.getElementById('codex-context-token-inspector-mascot'))
     throw new Error('consumer DOM occupied');"""
     script = script.replace('(payload => {', guard, 1)
+    if script.count('__COMPANION_FEEDBACK__') != 1:
+        raise ValueError('unexpected companion behavior marker')
+    script = script.replace('__COMPANION_FEEDBACK__', '')
     for marker, filename, name in (
-            ('__COMPANION_FEEDBACK__', 'companion_feedback.py', 'COMPANION_FEEDBACK_JS'),
             ('__COMPANION_ART__', 'companion_art.py', 'COMPANION_ART'),
             ('__COMPANION_EXPRESSIONS__', 'companion_expressions.py', 'COMPANION_EXPRESSIONS')):
         value = literal(texts[filename], name)

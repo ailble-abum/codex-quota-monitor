@@ -70,3 +70,8 @@ class CandidateTests(unittest.TestCase):
         self.assertIn("(assets / 'panel_companion_view.js').read_text()", source)
         self.assertIn("script = cut(script, '  function mascotSvg('", source)
         self.assertIn("script = cut(script, '  function applyMascotSkin('", source)
+
+    def test_companion_behavior_is_not_loaded_from_frozen_source(self):
+        source = (Path(__file__).parents[1] / 'tools/build_panel_candidate.py').read_text()
+        self.assertIn("(assets / 'panel_companion_behavior.js').read_text()", source)
+        self.assertNotIn("'COMPANION_FEEDBACK_JS'", source)
