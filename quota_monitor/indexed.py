@@ -16,15 +16,16 @@ def signature(info):
 
 class DirectorySource:
     def __init__(self, root, *, max_entries=4096, max_files=128, max_depth=8,
-                 read_budget=262144, rescan_interval=30):
+                 read_budget=262144, line_limit=1048576, rescan_interval=30):
         if (any(type(x) is not int or x < 1 for x in (max_entries, max_files, read_budget))
                 or read_budget < max_files or type(max_depth) is not int or not 0 <= max_depth <= 32
+                or type(line_limit) is not int or line_limit < 1
                 or type(rescan_interval) not in (int, float) or not math.isfinite(rescan_interval)
                 or rescan_interval <= 0):
             raise ValueError('invalid directory limits')
         self.root = Path(root).absolute()
         self.max_entries, self.max_files, self.max_depth = max_entries, max_files, max_depth
-        self.read_budget, self.rescan_interval = read_budget, rescan_interval
+        self.read_budget, self.line_limit, self.rescan_interval = read_budget, line_limit, rescan_interval
         self._dirs = None
         self._journals = {}
         self._tainted = set()
@@ -88,7 +89,8 @@ class DirectorySource:
         finally:
             os.close(descriptor)
         old = self._journals
-        self._journals = {path: old[path] if path in old else SessionJournal(path, root=self.root)
+        self._journals = {path: old[path] if path in old else SessionJournal(
+            path, root=self.root, line_limit=self.line_limit)
                           for path in paths}
         self._tainted.intersection_update(paths)
         self._dirs = directories
@@ -147,7 +149,11 @@ class DirectorySource:
 class NamedDirectorySource(DirectorySource):
     """Opt-in Codex rollout filename selection; contents must still verify identity."""
     def __init__(self, root):
-        super().__init__(root, read_budget=4 * 1024 * 1024)
+        # Codex compacted records can contain bounded replacement history just
+        # above the generic 1 MiB JSONL line limit. Keep the larger allowance
+        # scoped to the explicit rollout adapter; ordinary journals retain the
+        # stricter default.
+        super().__init__(root, read_budget=4 * 1024 * 1024, line_limit=2 * 1024 * 1024)
         self._selected_key = None
 
     def _accept_name(self, name):

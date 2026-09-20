@@ -143,6 +143,18 @@ class IndexedTests(unittest.TestCase):
             self.assertEqual(source.status, 'unavailable')
 
 class NamedDirectoryTests(unittest.TestCase):
+    def test_named_rollout_accepts_bounded_compacted_record(self):
+        from quota_monitor.indexed import NamedDirectorySource
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            selected = root / 'rollout-date-one.jsonl'
+            compacted = json.dumps({'type': 'compacted', 'payload': {'blob': 'x' * 1100000}})
+            selected.write_text(compacted + '\n' +
+                                json.dumps({'type': 'session_meta', 'payload': {'id': 'one'}}) + '\n')
+            source = NamedDirectorySource(root)
+            self.assertEqual(source.read('one')['selectedThreadId'], 'one')
+            self.assertEqual(source.status, 'ok')
+
     def test_named_lookup_ignores_unrelated_large_or_broken_logs(self):
         from quota_monitor.indexed import NamedDirectorySource
         with tempfile.TemporaryDirectory() as directory:
