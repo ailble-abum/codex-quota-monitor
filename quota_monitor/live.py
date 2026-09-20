@@ -1,4 +1,4 @@
-"""Explicit foreground runner. No installation, application launch or port scan."""
+"""Explicit foreground runner; host relaunch is opt-in through host_app."""
 import argparse
 import asyncio
 import json
@@ -37,7 +37,7 @@ def load_config(path):
     if len(raw) > 65536:
         raise ValueError('config limit')
     config = json.loads(raw, object_pairs_hook=unique_object, parse_constant=reject_constant)
-    if (not isinstance(config, dict) or set(config) - {'origin', 'page_url', 'journals', 'session_root', 'host', 'panel', 'consumer', 'account_cli', 'session_layout'}
+    if (not isinstance(config, dict) or set(config) - {'origin', 'page_url', 'journals', 'session_root', 'host', 'panel', 'consumer', 'account_cli', 'session_layout', 'host_app'}
             or not {'origin', 'page_url'} <= set(config)
             or ('journals' in config) == ('session_root' in config)):
         raise ValueError('invalid config fields')
@@ -91,6 +91,12 @@ async def supervise(loop, *, interval, max_failures, once, wait_for_host=False):
             if once:
                 reason, code = 'once', 0 if status == 'updated' else 2
                 break
+            if status == 'discovery_unavailable' and getattr(loop, 'host_follower', None) is not None:
+                action = await loop.follow_host()
+                emit('host_follow', action=action)
+                failures = 0
+                await asyncio.sleep(min(15, interval))
+                continue
             if wait_for_host and status in ('discovery_unavailable', 'not_found'):
                 failures = 0
                 await asyncio.sleep(15)
@@ -132,7 +138,7 @@ def main():
     parser.add_argument('--config', required=True, help='Explicit JSON configuration file')
     parser.add_argument('--once', action='store_true', help='Check and publish once, then release')
     parser.add_argument('--wait-for-host', action='store_true',
-                        help='Wait quietly for the explicit endpoint/page; never launch or restart an app')
+                        help='Wait quietly for the explicit endpoint/page; host_app remains opt-in')
     parser.add_argument('--interval', type=float, default=1.0)
     parser.add_argument('--max-failures', type=int, default=5)
     try:

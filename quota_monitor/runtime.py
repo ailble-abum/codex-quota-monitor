@@ -17,6 +17,7 @@ from .journal import SessionJournal
 from .indexed import DirectorySource, NamedDirectorySource
 from .consumer import load_consumer
 from .reader import finite_float, reject_constant
+from .host_follow import HostFollower
 
 
 _PAGE_BRIDGE = Path(__file__).with_name('page_bridge.js').read_text(encoding='utf-8')
@@ -110,7 +111,7 @@ class UpdateLoop:
 
     panel=True forwards to an existing consumer or an explicitly pinned initializer.
     """
-    def __init__(self, origin, page_url, paths=None, *, panel=False, host='explicit', session_root=None, consumer=None, account_cli=None, session_layout=None):
+    def __init__(self, origin, page_url, paths=None, *, panel=False, host='explicit', session_root=None, consumer=None, account_cli=None, session_layout=None, host_app=None):
         local_origin(origin)
         if host not in ('explicit', 'codex-sidebar'):
             raise ValueError('invalid host adapter')
@@ -127,6 +128,7 @@ class UpdateLoop:
         if not isinstance(page_url, str) or not page_url:
             raise ValueError('explicit page URL required')
         self.origin, self.page_url = origin, page_url
+        self.host_follower = HostFollower(host_app, local_origin(origin)[1]) if host_app is not None else None
         if (paths is None) == (session_root is None):
             raise ValueError('exactly one session source required')
         if session_layout not in (None, 'codex-rollout') or (session_layout is not None and session_root is None):
@@ -138,6 +140,9 @@ class UpdateLoop:
         self.owner = uuid.uuid4().hex
         self._published = False
         self._initialized = False
+
+    async def follow_host(self):
+        return await asyncio.to_thread(self.host_follower.ensure)
 
     async def close(self):
         client, self.client = self.client, None

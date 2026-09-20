@@ -272,3 +272,30 @@ class SupervisorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([row['status'] for row in rows if row['event'] == 'state'],
                          ['discovery_unavailable', 'not_found', 'updated', 'ambiguous'])
         self.assertEqual(rows[-1]['reason'], 'failure_limit')
+
+    async def test_opt_in_host_follow_runs_only_for_missing_debug_port(self):
+        import asyncio
+        import contextlib
+        import io
+        from unittest.mock import patch, AsyncMock
+        from quota_monitor.live import supervise
+        class Loop:
+            def __init__(self):
+                self.values = iter(['discovery_unavailable', 'ambiguous', 'ambiguous'])
+                self.host_follower = object()
+                self.followed = 0
+            async def step(self):
+                return next(self.values)
+            async def follow_host(self):
+                self.followed += 1
+                return 'launch_requested'
+            async def shutdown(self):
+                return 'closed'
+        loop = Loop()
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), patch.object(asyncio, 'sleep', new_callable=AsyncMock):
+            code = await supervise(loop, interval=.1, max_failures=2, once=False)
+        self.assertEqual(code, 2)
+        self.assertEqual(loop.followed, 1)
+        self.assertIn({'event':'host_follow', 'action':'launch_requested'},
+                      [json.loads(line) for line in out.getvalue().splitlines()])

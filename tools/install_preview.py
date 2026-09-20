@@ -45,8 +45,9 @@ def install(candidate, destination):
             '安装依赖：python -m pip install -r requirements-cdp.txt\n'
             '复制并填写 config.example.json；可添加 account_cli 指定 Codex 可执行文件绝对路径。\n'
             '运行：python run.py --config /absolute/config.json\n'
-            '不会注册服务、自启动、重启宿主或替换现用版。\n'
+            '默认不会注册服务、自启动或重启宿主；只有配置 host_app 才会请求带调试参数的宿主重开。\n'
             '同一页面只能有一个监视器；请先用隔离页面验收。\n'
+            '可选 host_app 为明确的 .app 绝对路径；配置后才会在调试端口未开启时请求退出并带参数重开宿主。\n'
             '停止：Ctrl+C；退出会释放本实例页面状态。卸载：退出后删除本目录。\n')
         hashes = {str(p.relative_to(stage)): hashlib.sha256(p.read_bytes()).hexdigest()
                   for p in sorted(stage.rglob('*')) if p.is_file()}
