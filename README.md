@@ -68,3 +68,5 @@ python3 -m unittest discover -s tests -v
 [V2 伴宠动作与提醒偏好](docs/panel-companion-preferences-contract.md) 统一三个开关和五处行为读取，写入失败时保留当前挂载的临时选择，避免界面与行为不一致。
 
 [配额通知可用性](docs/quota-notification-availability.md) 禁用尚未接通的通知开关，移除误导说明与无效偏好读写，保留原有存储值。
+
+[V2 面板尺寸预设读取与事件](docs/panel-layout-preference-contract.md) 读取失败回退标准尺寸，统一按钮选中态和根节点委托，保留现有布局计算。

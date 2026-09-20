@@ -166,6 +166,26 @@ const {chromium, webkit} = require('playwright');
       assert.equal(await toggle.getAttribute('aria-label'), '收起监控');
       await page.locator('[data-settings-toggle]').click();
       assert.equal(await page.locator('[data-settings-toggle]').getAttribute('aria-expanded'), 'true');
+      const presetWidths = [];
+      for (const preset of ['mini','standard','large']) {
+        await page.locator(`[data-layout-preset="${preset}"]`).click();
+        assert.equal(await page.evaluate(() => localStorage.getItem('cti-layout-preset')), preset);
+        assert.equal(await page.locator(`[data-layout-preset="${preset}"]`).getAttribute('aria-pressed'), 'true');
+        presetWidths.push((await page.locator('.cti-hud').boundingBox()).width);
+      }
+      assert.ok(presetWidths[0] < presetWidths[1] && presetWidths[1] < presetWidths[2]);
+      await page.locator('[data-layout-preset="standard"]').click();
+      await page.evaluate(() => {
+        window.layoutGetItem = Storage.prototype.getItem;
+        Storage.prototype.getItem = function(key) {
+          if (key === 'cti-layout-preset') throw new DOMException('Denied', 'SecurityError');
+          return window.layoutGetItem.call(this, key);
+        };
+      });
+      assert.equal(await publish(), true);
+      assert.equal(await page.locator('[data-layout-preset="standard"]').getAttribute('aria-pressed'), 'true');
+      await page.evaluate(() => { Storage.prototype.getItem = window.layoutGetItem; });
+
       await page.evaluate(() => {
         Object.defineProperty(navigator, 'clipboard', {configurable:true, value:{writeText: text => {
           window.handoffText = text;

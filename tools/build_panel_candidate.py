@@ -113,6 +113,9 @@ def build(directory):
             raise ValueError('unexpected companion preference readers')
         script = script.replace(old, new)
     script = cut(script, "      const alerts = body.querySelector('[data-alerts]');", "      body.querySelector('[data-position-reset]').addEventListener(")
+    script = cut(script, '  function layoutPreset(', '  function presetWidth(')
+    script = cut(script, '  function updatePresetButtons(', '  function setLayoutPreset(')
+    script = cut(script, "      body.querySelectorAll('[data-layout-preset]')", "      body.querySelector('[data-mascot-scale]').addEventListener(")
     # Remove these after the intervening old mount/sidebar spans are gone.
     script = cut(script, '  function updateUnitButtons(', '  function applyHud(')
     start, end = '    if (selected) {', '    const errorLabels='
@@ -156,6 +159,7 @@ def build(directory):
     script = (script[:script.index(tail)] + (assets / 'panel_format.js').read_text()
               + (assets / 'panel_language.js').read_text()
               + (assets / 'panel_companion_preferences.js').read_text()
+              + (assets / 'panel_layout_preference.js').read_text()
               + (assets / 'panel_controls.js').read_text()
               + (assets / 'panel_details.js').read_text()
               + (assets / 'panel_context.js').read_text()
