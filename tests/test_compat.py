@@ -86,6 +86,21 @@ class CompatibilityTests(unittest.TestCase):
         payload = panel_payload({'one': result}, 'one')
         self.assertEqual(payload['summaries'][0]['session_total_tokens'], 0)
 
+    def test_detail_projection_keeps_only_bounded_numeric_items(self):
+        result = reading()
+        result['detail'] = {'thread_id': 'one', 'assistantItems': [{
+            'textPrefix': 'visible', 'tokenUsage': {
+                'latest_context_tokens': 100, 'session_total_tokens': 600,
+                'private': 'drop me'}, 'roundIndex': 1,
+            'totalRounds': 1, 'assistantTurnIndex': 1,
+            'assistantTotalTurns': 1}, {'textPrefix': 'bad', 'tokenUsage': None}]}
+        payload = panel_payload({'one': result}, 'one')
+        detail = payload['detail']
+        self.assertEqual(detail['thread_id'], 'one')
+        self.assertEqual(len(detail['assistantItems']), 1)
+        self.assertNotIn('private', repr(detail))
+        self.assertEqual(payload['detailsByThread']['local:one'], detail)
+
 
 if __name__ == '__main__':
     unittest.main()

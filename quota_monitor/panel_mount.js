@@ -26,6 +26,7 @@
     const clean = action => { try { action(); } catch (_) { ok = false; } };
     clean(() => mountedPanel?.__ctiRemoveResize?.());
     clean(() => mountedPanel?.__ctiClearHint?.());
+    clean(() => disposeHostDetails());
     clearTimeout(mountedPanel?.__ctiDockHideTimer);
     clearTimeout(mountedMascot?.__ctiPetTimer);
     clearTimeout(mountedMascot?.__ctiReactionTimer);

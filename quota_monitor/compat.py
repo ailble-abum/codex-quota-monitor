@@ -46,4 +46,30 @@ def panel_payload(readings, active_thread_id):
         if summary is not None:
             result['summaries'] = [summary]
             result['selectedThreadId'] = key
+            detail = readings[key].get('detail')
+            if isinstance(detail, dict) and detail.get('thread_id') == key:
+                # The detail projection is deliberately limited to assistant
+                # prefixes and validated numeric usage; raw event rows never
+                # cross this boundary.
+                safe_items = []
+                for item in detail.get('assistantItems', []):
+                    if not isinstance(item, dict) or not isinstance(item.get('tokenUsage'), dict):
+                        continue
+                    usage = item['tokenUsage']
+                    safe_items.append({
+                        'textPrefix': item.get('textPrefix') if isinstance(item.get('textPrefix'), str) else '',
+                        'tokenUsage': {name: usage.get(name) for name in (
+                            'context_window', 'latest_context_tokens', 'latest_context_percent',
+                            'latest_turn_total_tokens', 'latest_turn_input_tokens',
+                            'latest_turn_cached_input_tokens', 'latest_turn_output_tokens',
+                            'latest_turn_reasoning_tokens', 'session_total_tokens')},
+                        'roundIndex': item.get('roundIndex'),
+                        'totalRounds': item.get('totalRounds'),
+                        'assistantTurnIndex': item.get('assistantTurnIndex'),
+                        'assistantTotalTurns': item.get('assistantTotalTurns'),
+                    })
+                projected = {'thread_id': key, 'assistantItems': safe_items}
+                result['detail'] = projected
+                result['detailsByThread'][key] = projected
+                result['detailsByThread']['local:' + key] = projected
     return result

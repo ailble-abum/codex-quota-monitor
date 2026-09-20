@@ -17,6 +17,7 @@
     appliedPayload = data;
     window.__codexContextTokenInspectorPayload = data;
     applyHud(data);
+    projectHostDetails(data);
   }
   ensureStyle();
   applyAll(null);

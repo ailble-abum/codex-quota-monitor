@@ -9,7 +9,10 @@
         border:1px solid color-mix(in srgb,CanvasText 18%,transparent);
         border-radius:14px; box-shadow:0 14px 42px color-mix(in srgb,#000 28%,transparent);
         font:13px/1.45 system-ui,-apple-system,sans-serif; backdrop-filter:blur(16px);
-        transition:left .18s ease,top .18s ease,width .18s ease;
+        transition:left .18s ease,top .18s ease,width .18s ease,box-shadow .15s ease;
+      }
+      #codex-context-token-inspector-root[data-snap-edge] {
+        box-shadow:0 0 0 2px color-mix(in srgb,#4f8cff 78%,transparent),0 12px 36px #0002;
       }
       #codex-context-token-inspector-root, #codex-context-token-inspector-root * { box-sizing:border-box; }
       #codex-context-token-inspector-root button,
@@ -167,6 +170,22 @@
       #codex-context-token-inspector-mascot[data-art="true"][data-edge="right"] [data-gauge] { left:-10px; }
       #codex-context-token-inspector-mascot[data-art="true"][data-edge="left"] [data-gauge] { right:-10px; }
       #cti-context-hint { position:fixed; z-index:2147483002; max-width:260px; padding:7px 9px; border-radius:8px; color:CanvasText; background:Canvas; box-shadow:0 8px 24px #0004; }
+      .cti-v2-sidebar-tooltip {
+        position:fixed; z-index:2147483002; max-width:min(420px,calc(100vw - 24px));
+        padding:10px 12px; border:1px solid color-mix(in srgb,CanvasText 14%,transparent);
+        border-radius:8px; background:color-mix(in srgb,Canvas 96%,transparent);
+        color:CanvasText; box-shadow:0 12px 36px color-mix(in srgb,CanvasText 18%,transparent);
+        backdrop-filter:blur(16px); white-space:pre-wrap; overflow-wrap:anywhere;
+        font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+        pointer-events:none;
+      }
+      .cti-v2-message-chip {
+        display:block; width:max-content; max-width:100%; margin-top:4px;
+        padding:2px 6px; border-radius:6px; background:color-mix(in srgb,CanvasText 9%,transparent);
+        color:color-mix(in srgb,CanvasText 72%,transparent);
+        font:11px/1.25 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+        overflow-wrap:anywhere;
+      }
       @media (prefers-reduced-motion:reduce) {
         #codex-context-token-inspector-root { transition:none; }
       }

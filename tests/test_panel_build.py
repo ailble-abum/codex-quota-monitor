@@ -26,6 +26,16 @@ class PanelBuildTests(unittest.TestCase):
             self.assertIn('function ' + name + '(', shell)
         self.assertTrue(shell.startswith('// V2-owned renderer shell.'))
 
+    def test_host_detail_projection_is_repository_owned_and_observer_free(self):
+        source = (Path(__file__).parents[1] / 'tools/build_panel.py').read_text()
+        module = (Path(__file__).parents[1] / 'quota_monitor/panel_host_details.js').read_text()
+        self.assertIn("'panel_host_details.js'", source)
+        self.assertIn('function projectHostDetails(', module)
+        self.assertIn('function disposeHostDetails(', module)
+        self.assertNotIn('MutationObserver', module)
+        for name in ('applySidebar', 'applyFooters', 'assistantNodes', 'detailForVisiblePage'):
+            self.assertNotIn('function ' + name + '(', module)
+
     def test_compact_bar_keeps_original_battery_visual(self):
         styles = (Path(__file__).parents[1] / 'quota_monitor/panel_styles.js').read_text()
         self.assertIn('width:max-content; overflow:hidden', styles)
