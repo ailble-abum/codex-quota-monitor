@@ -128,6 +128,7 @@ def build(directory):
     script = cut(script, '  function mascotSkin(', '  // Logical window dimensions')
     script = cut(script, '  function updateSkinButtons(', '  function quotaTone(')
     script = cut(script, "      body.querySelectorAll('[data-skin-choice]')", '      updateSkinButtons(root);')
+    script = cut(script, '  function readLayout(', '  function hudBase(')
     # Remove these after the intervening old mount/sidebar spans are gone.
     script = cut(script, '  function updateUnitButtons(', '  function applyHud(')
     start, end = '    if (selected) {', '    const errorLabels='
@@ -173,6 +174,7 @@ def build(directory):
     script = (script[:script.index(tail)] + (assets / 'panel_format.js').read_text()
               + (assets / 'panel_language.js').read_text()
               + (assets / 'panel_companion_preferences.js').read_text()
+              + (assets / 'panel_layout_data.js').read_text()
               + (assets / 'panel_layout_preference.js').read_text()
               + (assets / 'panel_scale_preference.js').read_text()
               + (assets / 'panel_edge_preference.js').read_text()

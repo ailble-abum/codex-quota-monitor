@@ -32,6 +32,7 @@ const {chromium, webkit} = require('playwright');
       });
       await page.evaluate(() => {
         localStorage.setItem('cti-alerts', 'true');
+        localStorage.setItem('cti-layout-v2',JSON.stringify({expanded:{width:'bad',x:'bad',y:null}}));
         window.alertPreferenceReads = 0;
         window.alertGetItem = Storage.prototype.getItem;
         Storage.prototype.getItem = function(key) {
@@ -43,6 +44,8 @@ const {chromium, webkit} = require('playwright');
       const before = await hostStyle();
       assert.equal(await call({...base, action: 'initialize', consumer: {source: script}}), 'ready');
       assert.deepEqual(await hostStyle(), before, 'panel CSS must not style host attributes');
+      assert.equal(await page.locator('.cti-hud').evaluate(node=>node.style.width),'292px');
+      assert.deepEqual(await page.locator('.cti-hud').evaluate(node=>node.__ctiLayout),{});
       assert.equal(await page.locator('[data-alerts]').isDisabled(), true);
       assert.equal(await page.locator('[data-alerts]').isChecked(), false);
       assert.equal(await page.evaluate(() => window.alertPreferenceReads), 0);

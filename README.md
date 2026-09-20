@@ -82,3 +82,5 @@ python3 -m unittest discover -s tests -v
 [V2 皮肤偏好与选择事件](docs/panel-skin-preference-contract.md) 仅接受注册皮肤，保存失败保留当前选择，伴宠、按钮和名称保持一致。
 
 [折叠偏好存储容错](docs/panel-collapse-storage-contract.md) 读取失败默认展开，保存失败仍完成折叠布局更新。
+
+[V2 持久布局输入校验](docs/panel-layout-data-contract.md) 拒绝非法结构和尺寸字段，保留有效坐标与左右停靠信息。
