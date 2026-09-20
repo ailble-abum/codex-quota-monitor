@@ -32,4 +32,4 @@
 
 这些证据不是现用原生窗口验收。原生宿主连接、常驻安装、真实健康/历史/通知、renderer 剩余来源替换和正式上传仍开放；Windows 未验收。
 
-本轮 Python 3.9.6 与 3.14.3 各 130 项测试通过。独立预览已安装到本机 `~/Library/Application Support/CodexQuotaMonitorV2/preview-20260920`，使用自己的 Python 3.9 虚拟环境与 websockets 15.0.1；44 项安装文件摘要核对通过。随后从该安装目录导入运行时、读取该目录 renderer，并使用安装环境重跑 Chromium 深浅主题实际账户联动，均通过。预览未注册常驻服务，未接入现用窗口，未上传。
+此前账户读取与预览安装阶段：Python 3.9.6 与 3.14.3 各 130 项测试通过（历史结果，非上述安装器修复轮次）。独立预览已安装到本机 `~/Library/Application Support/CodexQuotaMonitorV2/preview-20260920`，使用自己的 Python 3.9 虚拟环境与 websockets 15.0.1；44 项安装文件摘要核对通过。随后从该安装目录导入运行时、读取该目录 renderer，并使用安装环境重跑 Chromium 深浅主题实际账户联动，均通过。预览未注册常驻服务，未接入现用窗口，未上传。
