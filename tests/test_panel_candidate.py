@@ -75,3 +75,10 @@ class CandidateTests(unittest.TestCase):
         source = (Path(__file__).parents[1] / 'tools/build_panel_candidate.py').read_text()
         self.assertIn("(assets / 'panel_companion_behavior.js').read_text()", source)
         self.assertNotIn("'COMPANION_FEEDBACK_JS'", source)
+
+    def test_companion_runtime_replaces_old_dom_handlers(self):
+        source = (Path(__file__).parents[1] / 'tools/build_panel_candidate.py').read_text()
+        self.assertIn("(assets / 'panel_companion_runtime.js').read_text()", source)
+        for name in ('createRetainedMascot', 'applyCompanionExpression', 'companionReact',
+                     'applyCompanionFeedback'):
+            self.assertIn("script = cut(script, '  function %s(" % name, source)
