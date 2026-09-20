@@ -10,6 +10,8 @@
 
 ## 剩余模块与实施顺序
 
+首批进度：[时间展示独立替换](panel-time-contract.md)已移除四个旧时间辅助定义，接入 V2 模块；同口径残留名称 59→55。阶段 1 其余指标/文案仍未完成，最终构建仍依赖冻结旧源码。
+
 | 阶段 | 当前残留定位 | 替换方式与验收 |
 | --- | --- | --- |
 | 1. 展示文案与指标辅助 | tr、shortDuration、durationPhrase、windowLabel、nearestResetText、quotaTone、accountTone、contextTone、contextMeterValue、remainingContext、toneLabel、gaugeReading/gaugeColor | 从已记录的数据契约与双语展示需求独立实现；覆盖未知值、零值、过期、边界及文案，不逐行改写旧函数 |

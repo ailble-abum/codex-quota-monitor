@@ -121,7 +121,10 @@ const {chromium, webkit} = require('playwright');
         assert.ok((await page.locator('[data-freshness]').textContent()).includes('账户配额未更新'));
         assert.equal(await page.locator('[data-context] [role=meter]').getAttribute('aria-valuenow'), '50');
       }
-      payload.quota.windows = [{remaining: 0}, {remaining: 100}];
+      payload.quota.windows = [
+        {remaining: 0, duration: 300, resetsAt: 2000003600},
+        {remaining: 100, duration: 10080, resetsAt: 2000007200},
+      ];
       await publish();
       assert.equal(await page.locator('[data-quota] [role=meter]').count(), 2);
       assert.equal(await page.locator('[data-gauge]').getAttribute('data-state'), 'live');
@@ -131,6 +134,10 @@ const {chromium, webkit} = require('playwright');
       payload.quota.ordinaryUsageAllowed = false;
       await publish();
       assert.deepEqual(await page.locator('.cti-quota-window').evaluateAll(nodes => nodes.map(node => node.dataset.tone)), ['low', 'low']);
+      assert.deepEqual(await page.locator('[data-quota] [role=meter]').evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label'))), ['5h 剩余', '7d 剩余']);
+      const resetText = await page.evaluate(() => new Date(2000003600 * 1000).toLocaleString('zh-CN',
+        {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}));
+      assert.ok((await page.locator('.cti-quota-budget').textContent()).includes('最近重置 ' + resetText));
       if (process.argv[3]) {
         fs.mkdirSync(process.argv[3], {recursive: true});
         // Inspect card styling separately from the retained auto-docking layout.

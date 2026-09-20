@@ -165,6 +165,7 @@ def build(directory):
                             '    renderAccountOverview(body, quota, live, stoppedAccount);\n    const id = activeThreadId();', 1)
     script = cut(script, '  function accountBudgetText(', '  function nearestResetText(')
     script = cut(script, '  function windowBudgetText(', '  function nearestResetText(')
+    script = cut(script, '  function shortDuration(', '  function pressure(')
     script = cut(script, '    const stamp = payload.build', '    updateHudTitle(root);\n    updateUnitButtons(root);')
     script = script.replace('    updateHudTitle(root);\n    updateUnitButtons(root);',
                             '    renderDiagnostics(body, payload);\n    updateHudTitle(root);\n    updateUnitButtons(root);', 1)
@@ -176,6 +177,7 @@ def build(directory):
         raise ValueError('unexpected lifecycle boundary')
     assets = Path(__file__).parents[1] / 'quota_monitor'
     script = (script[:script.index(tail)] + (assets / 'panel_format.js').read_text()
+              + (assets / 'panel_time.js').read_text()
               + (assets / 'panel_language.js').read_text()
               + (assets / 'panel_companion_preferences.js').read_text()
               + (assets / 'panel_layout_data.js').read_text()
