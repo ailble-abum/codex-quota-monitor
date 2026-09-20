@@ -76,16 +76,7 @@ def build(directory):
         section = script.split('  function ' + function + '(', 1)[1]
         value = section.split(declaration + ' = `', 1)[1].split('`;', 1)[0]
         return '`' + value + '`'
-    visual = ('  const panelCSS = () => ' + panel_css(template('ensureStyle', 'const css')) + ';\n'
-              + '  const panelBodyTemplate = zh => ' + template('applyHud', 'body.innerHTML') + ';\n')
-    # V2 has no quota notification producer or sender. Keep the legacy preference untouched.
-    for old, new in (
-            ('<input type="checkbox" data-alerts>', '<input type="checkbox" data-alerts disabled aria-describedby="cti-quota-alerts-unavailable">'),
-            ('''<div class="cti-muted">${zh?'每个配额窗口仅提醒一次。系统需允许通知。':'Once per quota window. System notifications must be allowed.'}</div>''',
-             '''<div class="cti-muted" id="cti-quota-alerts-unavailable">${zh?'配额通知尚未接通。':'Quota notifications are not connected yet.'}</div>''')):
-        if visual.count(old) != 1:
-            raise ValueError('unexpected quota notification template')
-        visual = visual.replace(old, new)
+    visual = '  const panelCSS = () => ' + panel_css(template('ensureStyle', 'const css')) + ';\n'
     # Exact source digests make these bounded spans safe; unknown revisions stop.
     for start, end in (
             ('  function n(', '  function quotaTone('),

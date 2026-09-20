@@ -16,3 +16,50 @@
     </div>
     <div class="cti-body" data-cti-body></div>`;
   }
+
+  function panelBodyTemplate(zh) {
+    const text = (chinese, english) => zh ? chinese : english;
+    return `<section class="cti-section" data-quota></section>
+      <p class="cti-muted" data-freshness></p>
+      <section class="cti-section" data-context></section>
+      <section class="cti-section" data-health></section>
+      <details data-details>
+        <summary>${text('会话详情', 'Session details')}</summary>
+        <div class="cti-metrics" data-metrics></div>
+        <p class="cti-muted" data-explanation></p>
+      </details>
+      <div class="cti-settings" data-settings hidden>
+        <div data-units></div>
+        <label>${text('语言', 'Language')}
+          <select data-language>
+            <option value="auto">${text('跟随系统', 'System')}</option>
+            <option value="zh">中文</option><option value="en">English</option>
+          </select>
+        </label>
+        <fieldset><legend>${text('面板大小', 'Panel size')}</legend>
+          <button type="button" data-layout-preset="mini" aria-pressed="false">${text('紧凑', 'Compact')}</button>
+          <button type="button" data-layout-preset="standard" aria-pressed="false">${text('标准', 'Standard')}</button>
+          <button type="button" data-layout-preset="large" aria-pressed="false">${text('大', 'Large')}</button>
+        </fieldset>
+        <label><input type="checkbox" data-edge-dock> ${text('靠边收起', 'Edge docking')}</label>
+        <label>${text('伴宠大小', 'Companion size')}
+          <input type="range" min="75" max="200" step="5" data-mascot-scale>
+          <span data-mascot-scale-value></span>
+        </label>
+        <button type="button" data-mascot-scale-auto aria-pressed="false">${text('自动尺寸', 'Automatic size')}</button>
+        <details data-skins>
+          <summary>${text('伴宠皮肤', 'Companion skin')} · <span data-skin-current></span></summary>
+          <div class="cti-skin-grid">${skinButtons()}</div>
+        </details>
+        <label><input type="checkbox" data-companion-motion> ${text('伴宠动效', 'Companion motion')}</label>
+        <label><input type="checkbox" data-companion-reminders> ${text('伴宠提醒', 'Companion reminders')}</label>
+        <label><input type="checkbox" data-context-alerts> ${text('上下文提醒', 'Context reminders')}</label>
+        <label><input type="checkbox" data-alerts disabled aria-describedby="cti-quota-alerts-unavailable"> ${text('配额通知', 'Quota notifications')}</label>
+        <p class="cti-muted" id="cti-quota-alerts-unavailable">${text('配额通知尚未接通。', 'Quota notifications are not connected yet.')}</p>
+        <button type="button" data-handoff>${text('复制交接请求', 'Copy handoff request')}</button>
+        <button type="button" data-position-reset>${text('重置位置', 'Reset position')}</button>
+        <section class="cti-diagnostics">
+          <p data-build></p><div data-update></div><p data-dom></p>
+        </section>
+      </div>`;
+  }

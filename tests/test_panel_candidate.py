@@ -61,3 +61,4 @@ class CandidateTests(unittest.TestCase):
         source = (Path(__file__).parents[1] / 'tools/build_panel_candidate.py').read_text()
         self.assertIn("(assets / 'panel_templates.js').read_text()", source)
         self.assertNotIn("template('ensureHud', 'root.innerHTML')", source)
+        self.assertNotIn("template('applyHud', 'body.innerHTML')", source)
