@@ -75,6 +75,12 @@
       if (event.target.closest('[data-cti-unit],[data-cti-title],[data-cti-toggle]')) event.stopPropagation();
     });
     panel.addEventListener('toggle', event => handleDisclosureToggle(panel, event), true);
+    panel.addEventListener('input', event => {
+      if (event.target.matches('[data-mascot-scale]')) {
+        setMascotScalePreference(event.target.valueAsNumber / 100);
+        applyStoredHudPosition(panel);
+      }
+    });
     panel.addEventListener('change', event => {
       if (event.target.matches('[data-language]')) {
         setLanguagePreference(event.target.value);
@@ -86,7 +92,10 @@
     panel.addEventListener('click', event => {
       const button = event.target.closest('button');
       if (!button || !panel.contains(button)) return;
-      if (button.hasAttribute('data-position-reset')) {
+      if (button.hasAttribute('data-mascot-scale-auto')) {
+        setMascotScalePreference(null);
+        applyStoredHudPosition(panel);
+      } else if (button.hasAttribute('data-position-reset')) {
         resetPanelPosition(panel);
       } else if (button.hasAttribute('data-layout-preset')) {
         setLayoutPreset(panel, button.dataset.layoutPreset);

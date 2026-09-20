@@ -121,6 +121,8 @@ def build(directory):
     if script.count(old_write) != 1:
         raise ValueError('unexpected layout preset writer')
     script = script.replace(old_write, '    setLayoutPreference(preset);')
+    script = cut(script, '  function mascotScale()', '  function edgeDockEnabled(')
+    script = cut(script, "      body.querySelector('[data-mascot-scale]').addEventListener(", '      updateMascotSizeControls(root);')
     # Remove these after the intervening old mount/sidebar spans are gone.
     script = cut(script, '  function updateUnitButtons(', '  function applyHud(')
     start, end = '    if (selected) {', '    const errorLabels='
@@ -167,6 +169,7 @@ def build(directory):
               + (assets / 'panel_language.js').read_text()
               + (assets / 'panel_companion_preferences.js').read_text()
               + (assets / 'panel_layout_preference.js').read_text()
+              + (assets / 'panel_scale_preference.js').read_text()
               + (assets / 'panel_controls.js').read_text()
               + (assets / 'panel_details.js').read_text()
               + (assets / 'panel_context.js').read_text()

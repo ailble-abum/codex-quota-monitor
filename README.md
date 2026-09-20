@@ -74,3 +74,5 @@ python3 -m unittest discover -s tests -v
 [V2 布局写入失败处理](docs/panel-layout-write-contract.md) 预设保存失败保留临时选择，布局保存异常不再中断界面更新；两个存储键仍独立保存。
 
 [V2 位置重置](docs/panel-position-reset-contract.md) 删除记录失败也能复位当前界面，清理固定停靠状态和隐藏计时器，分别尝试两条记录清理。
+
+[V2 伴宠尺寸偏好](docs/panel-scale-preference-contract.md) 统一手动/自动缩放与控件，保存或删除失败时保留当前挂载选择，恢复后可再次持久化。

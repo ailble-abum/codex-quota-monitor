@@ -55,6 +55,39 @@ const {chromium, webkit} = require('playwright');
     }
     await page.locator('[data-settings-toggle]').click();
     await page.evaluate(() => {
+     localStorage.setItem('cti-mascot-scale','1.25');
+     window.scaleSetItem=Storage.prototype.setItem;window.scaleRemoveItem=Storage.prototype.removeItem;
+     Storage.prototype.setItem=function(key,value){if(key==='cti-mascot-scale')throw Error('full');return scaleSetItem.call(this,key,value);};
+     Storage.prototype.removeItem=function(key){if(key==='cti-mascot-scale')throw Error('denied');return scaleRemoveItem.call(this,key);};
+    });
+    await call({...base,action:'publish',payload,panel:true});
+    const manualWidth=(await mascot.boundingBox()).width;
+    const slider=page.locator('[data-mascot-scale]');
+    await slider.focus();await page.keyboard.press('End');
+    assert.equal(await mascot.evaluate(node=>node.style.getPropertyValue('--cti-mascot-scale')),'2');
+    assert.equal(await page.locator('[data-mascot-scale-value]').textContent(),'200%');
+    assert.ok((await mascot.boundingBox()).width > manualWidth);
+    await page.waitForFunction(()=>{const node=document.querySelector('.cti-hud'),rect=node.getBoundingClientRect();return Math.abs(rect.left-parseFloat(node.style.left))<1 && Math.abs(rect.top-parseFloat(node.style.top))<1;});
+    if(process.argv[3]) {
+     for(const colorScheme of ['light','dark']) {
+      await page.emulateMedia({colorScheme});
+      await page.screenshot({path:path.join(process.argv[3],`${engine.name()}-${edge}-scale-${colorScheme}.png`)});
+     }
+    }
+
+    assert.equal(await page.evaluate(()=>localStorage.getItem('cti-mascot-scale')),'1.25');
+    await page.locator('[data-mascot-scale-auto]').click();
+    assert.equal(await mascot.evaluate(node=>node.style.getPropertyValue('--cti-mascot-scale')),'1');
+    assert.equal(await page.locator('[data-mascot-scale-auto]').getAttribute('aria-pressed'),'true');
+    await call({...base,action:'publish',payload,panel:true});
+    assert.equal(await slider.inputValue(),'100');
+    await page.evaluate(()=>{Storage.prototype.setItem=scaleSetItem;Storage.prototype.removeItem=scaleRemoveItem;});
+    await slider.focus();await page.keyboard.press('Home');
+    assert.equal(await mascot.evaluate(node=>node.style.getPropertyValue('--cti-mascot-scale')),'0.75');
+    assert.equal(await page.evaluate(()=>localStorage.getItem('cti-mascot-scale')),'0.75');
+    await page.locator('[data-mascot-scale-auto]').click();
+    assert.equal(await page.evaluate(()=>localStorage.getItem('cti-mascot-scale')),null);
+    await page.evaluate(() => {
      localStorage.setItem('codex-context-token-inspector-position',JSON.stringify({left:500,top:200}));
      window.removalAttempts=[];window.resetErrors=[];
      window.addEventListener('error',event=>resetErrors.push(event.message));
