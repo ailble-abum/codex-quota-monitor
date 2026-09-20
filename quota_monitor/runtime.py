@@ -11,6 +11,7 @@ from urllib.parse import urlsplit
 from pathlib import Path
 
 from .cdp import CDPClient, CDPError
+from .account import AccountSource
 from .compat import panel_payload, thread_key
 from .journal import SessionJournal
 from .indexed import DirectorySource
@@ -109,10 +110,13 @@ class UpdateLoop:
 
     panel=True forwards to an existing consumer or an explicitly pinned initializer.
     """
-    def __init__(self, origin, page_url, paths=None, *, panel=False, host='explicit', session_root=None, consumer=None):
+    def __init__(self, origin, page_url, paths=None, *, panel=False, host='explicit', session_root=None, consumer=None, account_cli=None):
         local_origin(origin)
         if host not in ('explicit', 'codex-sidebar'):
             raise ValueError('invalid host adapter')
+        if account_cli is not None and (not isinstance(account_cli, str) or not Path(account_cli).is_absolute() or "\0" in account_cli):
+            raise ValueError("invalid account CLI")
+        self.account = AccountSource(account_cli) if account_cli is not None else None
         self.host = host
         if type(panel) is not bool:
             raise ValueError('invalid panel mode')
@@ -151,7 +155,11 @@ class UpdateLoop:
         except CDPError:
             result = 'lease_pending'
         finally:
-            await self.close()
+            try:
+                if self.account is not None:
+                    await self.account.close()
+            finally:
+                await self.close()
         return result
 
     async def step(self):
@@ -183,6 +191,8 @@ class UpdateLoop:
                     self.status = 'changed'
                     return self.status
             payload = self.source.read(key)
+            if self.account is not None:
+                payload["quota"] = self.account.snapshot()
             applied = await self.client.evaluate(page_expression(
                 action='publish', expected=self.page_url, key=key,
                 payload=payload, panel=self.panel, host=self.host, owner=self.owner))
@@ -208,4 +218,6 @@ class UpdateLoop:
                 await self.step()
                 await asyncio.sleep(interval)
         finally:
+            if self.account is not None:
+                await self.account.close()
             await self.close()

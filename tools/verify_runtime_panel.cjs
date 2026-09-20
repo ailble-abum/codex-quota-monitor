@@ -81,6 +81,20 @@ async function main() {
       await select('one');
       assert.equal(await step(), 'updated');
       await meter(25);
+      if (process.env.QUOTA_ACCOUNT_CLI) {
+        const deadline = Date.now() + 15000;
+        let live = false;
+        while (Date.now() < deadline) {
+          await step();
+          live = await page.evaluate(() => window.__quotaMonitorV2Snapshot?.quota?.status === 'live');
+          if (live) break;
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        assert.equal(live, true, 'real account read unavailable');
+        assert.match(await page.locator('[data-freshness]').innerText(), /账户接口/);
+        const expected = await page.evaluate(() => window.__quotaMonitorV2Snapshot.quota.windows.length);
+        assert.equal(await page.locator('.cti-quota-window').count(), expected);
+      }
       await fs.appendFile(path.join(temp, 'one.jsonl'), JSON.stringify({type: 'event_msg', payload: {
         type: 'token_count', info: {last_token_usage: {input_tokens: 350}, model_context_window: 1000}}}) + '\n');
       assert.equal(await step(), 'updated');

@@ -1,10 +1,10 @@
 # Codex Quota Monitor V2
 
-独立替换工作区，已实现日志增量读取、会话状态归约、任务身份核对、受限目录查找、旧面板数值投影与离线预览，尚无可安装版本。
+独立替换工作区，已实现日志增量读取、会话状态归约、任务身份核对、受限目录查找、旧面板数值投影与离线预览，现有独立目录预览安装入口，尚非正式可替换版本。
 
 目标：保留配额、会话统计、上下文、伴宠和本地历史能力，逐步替换旧版中的上游派生实现，并提高数据准确性、恢复能力与可维护性。
 
-最新方向见 [最小替换范围审计](docs/source-audit.md)：保留本项目新增设计，只替换上游派生底层。此前的 [整体重建设计](docs/design.md) 已被该范围修订，不作为整体重写授权。旧版继续维护，V2 暂不连接或替换现用安装。
+最新方向见 [最小替换范围审计](docs/source-audit.md)：保留本项目新增设计，只替换上游派生底层。此前的 [整体重建设计](docs/design.md) 已被该范围修订，不作为整体重写授权。旧版继续维护，V2 预览安装与现用安装隔离。
 
 实现及证据见 [读取器契约](docs/reader-contract.md)、[会话归约器契约](docs/session-contract.md)、[数值兼容桥](docs/compat-contract.md)、[身份核对](docs/identity-contract.md) 和 [受限查找](docs/discovery-contract.md)。运行合成测试：
 
@@ -86,3 +86,5 @@ python3 -m unittest discover -s tests -v
 [V2 持久布局输入校验](docs/panel-layout-data-contract.md) 拒绝非法结构和尺寸字段，保留有效坐标与左右停靠信息。
 
 [V2 旧位置记录迁移](docs/panel-legacy-position-contract.md) 有效新布局优先，旧坐标逐项校验，仅迁移到当前内存。
+
+[账户读取与预览安装](docs/account-and-preview.md)：可选官方 App Server 后台额度读取，独立目录安装与文件摘要清单；真实账户在隔离面板验证，原生及正式发行验收仍开放。
