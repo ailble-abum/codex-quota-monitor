@@ -66,7 +66,7 @@ def load_config(path):
     return config
 
 
-async def supervise(loop, *, interval, max_failures, once):
+async def supervise(loop, *, interval, max_failures, once, wait_for_host=False):
     task = asyncio.current_task()
     event_loop = asyncio.get_running_loop()
     stopped_by = None
@@ -91,6 +91,10 @@ async def supervise(loop, *, interval, max_failures, once):
             if once:
                 reason, code = 'once', 0 if status == 'updated' else 2
                 break
+            if wait_for_host and status in ('discovery_unavailable', 'not_found'):
+                failures = 0
+                await asyncio.sleep(15)
+                continue
             failures = 0 if status in ('updated', 'unselected', 'changed',
                 'data_index_wait', 'data_loading', 'data_incomplete', 'data_unavailable',
                 'data_not_found', 'data_ambiguous') else failures + 1
@@ -127,6 +131,8 @@ def main():
     parser = Parser(description=__doc__)
     parser.add_argument('--config', required=True, help='Explicit JSON configuration file')
     parser.add_argument('--once', action='store_true', help='Check and publish once, then release')
+    parser.add_argument('--wait-for-host', action='store_true',
+                        help='Wait quietly for the explicit endpoint/page; never launch or restart an app')
     parser.add_argument('--interval', type=float, default=1.0)
     parser.add_argument('--max-failures', type=int, default=5)
     try:
@@ -147,7 +153,8 @@ def main():
         emit('error', error=True, status='invalid_config')
         return 2
     try:
-        return asyncio.run(supervise(loop, interval=args.interval, max_failures=args.max_failures, once=args.once))
+        return asyncio.run(supervise(loop, interval=args.interval, max_failures=args.max_failures, once=args.once,
+                                     wait_for_host=args.wait_for_host))
     except KeyboardInterrupt:
         return 130
 

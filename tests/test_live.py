@@ -171,6 +171,38 @@ class LiveCLITests(unittest.TestCase):
             self.assertNotIn('PRIVATE', result.stderr)
 
 
+    @unittest.skipIf(os.name == 'nt', 'POSIX signal while waiting for a missing host')
+    def test_wait_mode_keeps_cli_alive_and_sigterm_cancels_sleep(self):
+        import select
+        self.config.write_text(json.dumps(self.value))
+        proc = subprocess.Popen([sys.executable, '-m', 'quota_monitor.live', '--config', str(self.config),
+            '--wait-for-host', '--max-failures', '1'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        try:
+            ready, _, _ = select.select([proc.stdout], [], [], 5)
+            self.assertTrue(ready)
+            self.assertEqual(json.loads(proc.stdout.readline())['status'], 'discovery_unavailable')
+            time.sleep(.2)
+            self.assertIsNone(proc.poll())
+            proc.send_signal(signal.SIGTERM)
+            out, err = proc.communicate(timeout=3)
+            self.assertEqual(proc.returncode, 143, err)
+            self.assertEqual(json.loads(out.strip())['reason'], 'sigterm')
+            self.assertEqual(err, '')
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait()
+            proc.stdout.close()
+            proc.stderr.close()
+
+    def test_wait_flag_does_not_change_once(self):
+        result = self.run_cli('--once', '--wait-for-host')
+        self.assertEqual(result.returncode, 2)
+        rows = [json.loads(line) for line in result.stdout.splitlines()]
+        self.assertEqual(rows[-1]['reason'], 'once')
+        self.assertEqual(rows[0]['status'], 'discovery_unavailable')
+
+
 class SupervisorTests(unittest.IsolatedAsyncioTestCase):
     async def test_unexpected_cleanup_error_is_sanitized_and_handlers_restored(self):
         import contextlib
@@ -213,3 +245,30 @@ class SupervisorTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(code, 143)
             self.assertEqual(json.loads(out.getvalue().splitlines()[-1]),
                              {'event': 'stopped', 'reason': 'sigterm', 'cleanup': 'released'})
+
+    async def test_wait_mode_survives_missing_host_then_resumes_and_bounds_other_errors(self):
+        import asyncio
+        import contextlib
+        import io
+        from unittest.mock import patch, AsyncMock
+        from quota_monitor.live import supervise
+        class Loop:
+            def __init__(self):
+                self.values = iter(['discovery_unavailable'] * 6 + ['not_found', 'updated', 'ambiguous', 'ambiguous'])
+                self.closed = False
+            async def step(self):
+                return next(self.values)
+            async def shutdown(self):
+                self.closed = True
+                return 'closed'
+        loop = Loop()
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), patch.object(asyncio, 'sleep', new_callable=AsyncMock) as sleep:
+            code = await supervise(loop, interval=.1, max_failures=2, once=False, wait_for_host=True)
+        self.assertEqual(code, 2)
+        self.assertTrue(loop.closed)
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], [15] * 7 + [.1, .1])
+        rows = [json.loads(line) for line in out.getvalue().splitlines()]
+        self.assertEqual([row['status'] for row in rows if row['event'] == 'state'],
+                         ['discovery_unavailable', 'not_found', 'updated', 'ambiguous'])
+        self.assertEqual(rows[-1]['reason'], 'failure_limit')

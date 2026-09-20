@@ -92,3 +92,5 @@ python3 -m unittest discover -s tests -v
 [本机 V2 切换](docs/local-switch.md)：支持按 Codex rollout 文件名定位当前任务，并继续核对内部身份；本机服务切换、原生验收和回退边界在此记录。
 
 [原生恢复验收](docs/native-recovery.md)：真实窗口刷新已通过；整应用重启未通过，当前需手动恢复调试连接，详见记录。
+
+[应用启动跟随](docs/host-follow.md)：新增可选安静等待与自动重连模式；完整普通启动跟随仍缺少端口开启环节，现用安装尚未更新。

@@ -24,7 +24,7 @@ async function main() {
       headless: true, args: ['--remote-debugging-address=127.0.0.1', '--remote-debugging-port=0']});
     await context.route('**/*', route => route.abort());
     const page = context.pages()[0];
-    const mount = () => page.evaluate(() => {
+    const mount = (target = page) => target.evaluate(() => {
       document.body.innerHTML = '<output></output>';
       window.__quotaMonitorV2Thread = 'one';
 
@@ -129,6 +129,29 @@ async function main() {
     assert.equal(closed.rows.at(-1).reason, 'failure_limit');
     assert.equal(closed.rows.at(-1).cleanup, 'lease_pending');
     assert.equal(closed.rows.filter(row => row.status === 'discovery_unavailable').length, 1);
+    const waiting = start(['--wait-for-host', '--max-failures', '1']);
+    const waitingPid = waiting.proc.pid;
+    for (let cycle = 0; cycle < 2; cycle++) {
+      await until(() => waiting.rows.filter(row => row.status === 'discovery_unavailable').length === cycle + 1);
+      await new Promise(resolve => setTimeout(resolve, 600));
+      assert.equal(waiting.proc.exitCode, null, waiting.stderr());
+      context = await chromium.launchPersistentContext(path.join(directory, `reopen-${cycle}`), {
+        headless: true, args: ['--remote-debugging-address=127.0.0.1', `--remote-debugging-port=${port}`]});
+      await context.route('**/*', route => route.abort());
+      const reopened = context.pages()[0];
+      await mount(reopened);
+      await reopened.waitForFunction(() => document.querySelector('output').textContent === '250', null, {timeout: 20000});
+      assert.equal(waiting.proc.pid, waitingPid);
+      assert.equal(waiting.proc.exitCode, null, waiting.stderr());
+      assert.equal(await reopened.evaluate(() => window.consumerMounts), 1);
+      if (cycle === 0) { await context.close(); context = null; }
+    }
+    waiting.proc.kill('SIGTERM');
+    await until(() => waiting.proc.exitCode !== null);
+    assert.equal(waiting.proc.exitCode, 143, waiting.stderr());
+    assert.equal(waiting.rows.at(-1).reason, 'sigterm');
+    assert.equal(waiting.stderr(), '');
+    console.log('wait mode: two temporary browser restarts, same CLI PID, single consumer and SIGTERM passed');
     console.log('live CLI Chromium: relative config, values, reload recovery, SIGINT/SIGTERM release, once, host exit, directory association/invalidation and quiet failure limit passed');
   } finally {
     for (const proc of children) {
