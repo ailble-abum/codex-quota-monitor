@@ -61,10 +61,13 @@ python3 -m venv .venv
 .venv/bin/python -m unittest discover -s tests
 .venv/bin/python tools/build_panel.py candidate
 .venv/bin/python tools/install_preview.py candidate preview
+.venv/bin/python tools/audit_release.py preview
 .venv/bin/python preview/run.py --help
 ```
 
 构建器只使用仓库内 V2 模块和 `assets/companions`，生成的 manifest 标记为 `independent-v2-candidate`。生成的 preview 继续保留来源声明，默认只是技术预览。运行包的生成基于这个入口，不以拷贝本机现用安装、虚拟环境、用户配置或会话数据制作包。旧 `build_panel_candidate.py` 仅用于带归因的行为对照，不是发行入口。
+
+`audit_release.py` 是发行前静态门槛：核对必需文件、consumer/安装清单摘要、独立构建状态，并拒绝旧 renderer 入口、认证/会话材料、日志和快照文件。它不能替代人工来源与权属审查。
 
 浏览器验收另需 Node.js 和 Playwright 的 Chromium/WebKit。已有环境可设置 `NODE_PATH`；没有时在单独测试工具目录安装 Playwright 与对应浏览器，然后按交接文档运行。对运行包做 CLI 合成验收可设置 `QUOTA_RUNTIME_DIR=/absolute/unpacked/runtime`、`PYTHON=/absolute/python-with-websockets` 后运行 `node tools/verify_live.cjs`；这只连接临时 Chromium，不操作真实 Codex。
 
