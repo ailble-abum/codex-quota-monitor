@@ -15,3 +15,16 @@
       return layout;
     } catch (_) { return {}; }
   }
+  function initialPanelLayout() {
+    const layout = readLayout();
+    if (layout.compact) return layout;
+    try {
+      const legacy = JSON.parse(localStorage.getItem(POSITION_KEY) || 'null');
+      if (!legacy || typeof legacy !== 'object' || Array.isArray(legacy)) return layout;
+      const compact = {};
+      if (Number.isFinite(legacy.left)) compact.x = legacy.left;
+      if (Number.isFinite(legacy.top)) compact.y = legacy.top;
+      if (Object.keys(compact).length) layout.compact = compact;
+    } catch (_) { /* A missing legacy position does not invalidate the current layout. */ }
+    return layout;
+  }

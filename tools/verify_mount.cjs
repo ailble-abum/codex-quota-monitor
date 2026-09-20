@@ -33,6 +33,7 @@ const {chromium, webkit} = require('playwright');
       await page.evaluate(() => {
         localStorage.setItem('cti-alerts', 'true');
         localStorage.setItem('cti-layout-v2',JSON.stringify({expanded:{width:'bad',x:'bad',y:null}}));
+        localStorage.setItem('codex-context-token-inspector-position',JSON.stringify({left:'bad',top:null}));
         window.alertPreferenceReads = 0;
         window.alertGetItem = Storage.prototype.getItem;
         Storage.prototype.getItem = function(key) {

@@ -84,3 +84,5 @@ python3 -m unittest discover -s tests -v
 [折叠偏好存储容错](docs/panel-collapse-storage-contract.md) 读取失败默认展开，保存失败仍完成折叠布局更新。
 
 [V2 持久布局输入校验](docs/panel-layout-data-contract.md) 拒绝非法结构和尺寸字段，保留有效坐标与左右停靠信息。
+
+[V2 旧位置记录迁移](docs/panel-legacy-position-contract.md) 有效新布局优先，旧坐标逐项校验，仅迁移到当前内存。

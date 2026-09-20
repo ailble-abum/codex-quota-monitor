@@ -129,6 +129,9 @@ def build(directory):
     script = cut(script, '  function updateSkinButtons(', '  function quotaTone(')
     script = cut(script, "      body.querySelectorAll('[data-skin-choice]')", '      updateSkinButtons(root);')
     script = cut(script, '  function readLayout(', '  function hudBase(')
+    script = cut(script, '      root.__ctiLayout=readLayout();', '    const mode=hudMode(root), layout=root.__ctiLayout;')
+    script = script.replace('    const mode=hudMode(root), layout=root.__ctiLayout;',
+                            '      root.__ctiLayout=initialPanelLayout();\n    }\n    const mode=hudMode(root), layout=root.__ctiLayout;', 1)
     # Remove these after the intervening old mount/sidebar spans are gone.
     script = cut(script, '  function updateUnitButtons(', '  function applyHud(')
     start, end = '    if (selected) {', '    const errorLabels='
