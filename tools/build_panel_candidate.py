@@ -100,6 +100,7 @@ def build(directory):
     script = script.replace("      const language=body.querySelector('[data-language]');",
                             "    if (preparePanelBody(root)) {\n      const language=body.querySelector('[data-language]');", 1)
     script = cut(script, '  function uiLanguage(', '  function tr(')
+    script = cut(script, '  function tr(', '  // Bitmap companions')
     script = cut(script, "      const language=body.querySelector('[data-language]');", "      body.querySelectorAll('[data-layout-preset]')")
     script = cut(script, "      body.querySelector('[data-handoff]').addEventListener(", "      alerts.checked = localStorage.getItem('cti-alerts')")
     script = cut(script, "      const details = body.querySelector('[data-details]');", "      const alerts = body.querySelector('[data-alerts]');")
@@ -166,6 +167,8 @@ def build(directory):
     script = cut(script, '  function accountBudgetText(', '  function nearestResetText(')
     script = cut(script, '  function windowBudgetText(', '  function nearestResetText(')
     script = cut(script, '  function shortDuration(', '  function pressure(')
+    script = cut(script, '  function quotaTone(', '  function hudMode(')
+    script = cut(script, '  function gaugeColor(', '  function applyMascotGauge(')
     script = cut(script, '    const stamp = payload.build', '    updateHudTitle(root);\n    updateUnitButtons(root);')
     script = script.replace('    updateHudTitle(root);\n    updateUnitButtons(root);',
                             '    renderDiagnostics(body, payload);\n    updateHudTitle(root);\n    updateUnitButtons(root);', 1)
@@ -178,6 +181,7 @@ def build(directory):
     assets = Path(__file__).parents[1] / 'quota_monitor'
     script = (script[:script.index(tail)] + (assets / 'panel_format.js').read_text()
               + (assets / 'panel_time.js').read_text()
+              + (assets / 'panel_metrics.js').read_text()
               + (assets / 'panel_language.js').read_text()
               + (assets / 'panel_companion_preferences.js').read_text()
               + (assets / 'panel_layout_data.js').read_text()

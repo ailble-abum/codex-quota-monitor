@@ -35,3 +35,9 @@ class CandidateTests(unittest.TestCase):
             candidate.panel_css(css.replace('[data-probe0]', '.other'))
         with self.assertRaises(ValueError):
             candidate.panel_css('unknown template')
+
+    def test_metrics_module_replaces_old_definitions(self):
+        source = (Path(__file__).parents[1] / 'tools/build_panel_candidate.py').read_text()
+        self.assertIn("(assets / 'panel_metrics.js').read_text()", source)
+        for name in ('tr', 'quotaTone', 'gaugeColor'):
+            self.assertIn("script = cut(script, '  function %s(" % name, source)
