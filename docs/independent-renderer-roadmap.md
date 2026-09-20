@@ -16,6 +16,8 @@
 
 阶段 3 已开始：`panel_templates.js` 以 V2 控件合约独立建立面板静态外壳和正文模板，包含标题、刷新/设置/折叠控件、单位组、账户/上下文/健康/会话挂载点、布局/语言/伴宠设置、交接、位置重置与诊断挂载点。配额通知在新模板中明确禁用并标注尚未接通。`panel_styles.js` 只使用原生 CSS 定义面板/伴宠 ID 作用域、深浅主题系统色、折叠/缩放/停靠可见状态、焦点边框与 reduced-motion，不包含宿主侧栏或消息选择器。构建器不再从旧 `ensureHud`/`applyHud` 提取 HTML，也不再从 `ensureStyle` 提取 CSS。伴宠装配仍保留来源归因，待后续替换。
 
+`panel_companion_view.js` 已独立实现伴宠手动/自动缩放、素材选择与缺失回退、双语皮肤按钮、皮肤应用、配额仪表和上下文环装配。构建器已删除对应旧函数。现有 `MASCOT_ART`/`MASCOT_EXPRESSIONS` 常量仍作为已归档的项目插画与表情素材使用，本轮不改记其来源或权属结论。伴宠 DOM 事件与反应/提醒状态机仍待替换。
+
 | 阶段 | 当前残留定位 | 替换方式与验收 |
 | --- | --- | --- |
 | 1. 展示文案与指标辅助 | tr、shortDuration、durationPhrase、windowLabel、nearestResetText、quotaTone、accountTone、contextTone、contextMeterValue、remainingContext、toneLabel、gaugeReading/gaugeColor | 从已记录的数据契约与双语展示需求独立实现；覆盖未知值、零值、过期、边界及文案，不逐行改写旧函数 |

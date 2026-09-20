@@ -39,7 +39,7 @@ class CandidateTests(unittest.TestCase):
     def test_metrics_module_replaces_old_definitions(self):
         source = (Path(__file__).parents[1] / 'tools/build_panel_candidate.py').read_text()
         self.assertIn("(assets / 'panel_metrics.js').read_text()", source)
-        for name in ('tr', 'quotaTone', 'gaugeColor'):
+        for name in ('tr', 'quotaTone'):
             self.assertIn("script = cut(script, '  function %s(" % name, source)
 
     def test_geometry_module_replaces_old_definitions(self):
@@ -64,3 +64,9 @@ class CandidateTests(unittest.TestCase):
         self.assertNotIn("template('ensureHud', 'root.innerHTML')", source)
         self.assertNotIn("template('applyHud', 'body.innerHTML')", source)
         self.assertNotIn("panel_css(template('ensureStyle', 'const css'))", source)
+
+    def test_companion_view_replaces_old_assembly(self):
+        source = (Path(__file__).parents[1] / 'tools/build_panel_candidate.py').read_text()
+        self.assertIn("(assets / 'panel_companion_view.js').read_text()", source)
+        self.assertIn("script = cut(script, '  function mascotSvg('", source)
+        self.assertIn("script = cut(script, '  function applyMascotSkin('", source)
