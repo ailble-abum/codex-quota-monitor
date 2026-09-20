@@ -1,6 +1,5 @@
 import importlib.util
 from pathlib import Path
-import tempfile
 import unittest
 
 spec = importlib.util.spec_from_file_location('panel_build', Path(__file__).parents[1] / 'tools/build_panel.py')
@@ -15,10 +14,11 @@ class PanelBuildTests(unittest.TestCase):
         self.assertNotIn('companion_feedback.py', source)
         self.assertIn("'panel_shell.js'", source)
 
-    def test_bad_resource_fails_before_output(self):
-        with tempfile.TemporaryDirectory() as directory:
-            with self.assertRaises(ValueError):
-                panel_build.build(directory)
+    def test_repository_artwork_is_complete(self):
+        art, expressions = panel_build.artwork()
+        self.assertEqual(set(art), {'candy', 'cat', 'corgi', 'frost', 'mint', 'tea'})
+        self.assertEqual(set(expressions['cat']), {'idle', 'happy', 'concerned', 'notice', 'waiting', 'pet'})
+        self.assertTrue(all(value.startswith('data:image/webp;base64,') for value in art.values()))
 
     def test_shell_owns_remaining_runtime_entry_points(self):
         shell = (Path(__file__).parents[1] / 'quota_monitor/panel_shell.js').read_text()

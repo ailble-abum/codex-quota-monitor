@@ -1,16 +1,11 @@
 """Build the repository-owned V2 panel from modules and pinned visual resources."""
 import argparse
-import ast
+import base64
 import hashlib
 import json
 from pathlib import Path
 
-RESOURCE_HASHES = {
-    'companion_art.py': 'bf82328005097b4af6df60b5c158f5f15230e0378b2cad06693ced15a5bb1865',
-    'companion_expressions.py': '1be738c3a9d7a1965df6cff09c3929ee12a5550b1fb88c893da165888e13138a',
-    'LICENSE': '3173384c5ec386cd808211ded2d3634f2521f9a92de981d2a104a2b42b291b40',
-    'NOTICE': '5e524e54bbf3d1839d6e695e5adc189e459921e619612e153d9da703c1729267',
-}
+ROOT = Path(__file__).parents[1]
 MODULES = (
     'panel_format.js', 'panel_time.js', 'panel_metrics.js', 'panel_geometry.js',
     'panel_companion_behavior.js', 'panel_companion_runtime.js', 'panel_companion_view.js',
@@ -24,36 +19,26 @@ MODULES = (
 )
 
 
-def literal(source, name):
-    for node in ast.parse(source).body:
-        targets = node.targets if isinstance(node, ast.Assign) else (
-            [node.target] if isinstance(node, ast.AnnAssign) else [])
-        if any(isinstance(target, ast.Name) and target.id == name for target in targets):
-            return ast.literal_eval(node.value)
-    raise ValueError('resource constant missing')
+def artwork():
+    directory = ROOT / 'assets/companions'
+    uri = lambda path: 'data:image/webp;base64,' + base64.b64encode(path.read_bytes()).decode()
+    art = {path.stem:uri(path) for path in sorted((directory / 'web').glob('*.webp'))}
+    expressions = {'cat':{path.stem.removeprefix('cat-'):uri(path)
+                          for path in sorted((directory / 'expressions').glob('cat-*.webp'))}}
+    if set(art) != {'candy', 'cat', 'corgi', 'frost', 'mint', 'tea'} or set(expressions['cat']) != {
+            'idle', 'happy', 'concerned', 'notice', 'waiting', 'pet'}:
+        raise ValueError('incomplete companion artwork')
+    return art, expressions
 
 
-def read_resources(directory):
-    texts = {}
-    for name, digest in RESOURCE_HASHES.items():
-        try:
-            data = (Path(directory) / name).read_bytes()
-        except OSError as error:
-            raise ValueError('resource missing') from error
-        if len(data) > 1048576 or hashlib.sha256(data).hexdigest() != digest:
-            raise ValueError('unrecognized resource revision')
-        texts[name] = data.decode('utf-8')
-    return texts
-
-
-def build(directory):
-    texts = read_resources(directory)
-    root = Path(__file__).parents[1] / 'quota_monitor'
+def build():
+    root = ROOT / 'quota_monitor'
     script = (root / 'panel_shell.js').read_text()
     script += ''.join((root / name).read_text() for name in MODULES)
+    art, expressions = artwork()
     replacements = {
-        '__COMPANION_ART__': literal(texts['companion_art.py'], 'COMPANION_ART'),
-        '__COMPANION_EXPRESSIONS__': literal(texts['companion_expressions.py'], 'COMPANION_EXPRESSIONS'),
+        '__COMPANION_ART__': art,
+        '__COMPANION_EXPRESSIONS__': expressions,
     }
     for marker, value in replacements.items():
         if script.count(marker) != 1:
@@ -62,21 +47,20 @@ def build(directory):
     header = ('// V2 repository-owned panel; attributed visual resources.\n'
               '// Copyright (c) 2026 Kevin Ke; Copyright (c) 2026 Ailble.\n'
               '// MIT: accompanying LICENSE and NOTICE must travel with this file.\n')
-    return header + script, texts
+    return header + script
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('resource_dir', type=Path)
     parser.add_argument('output_dir', type=Path)
     args = parser.parse_args()
-    script, texts = build(args.resource_dir)
+    script = build()
     args.output_dir.mkdir()
     (args.output_dir / 'consumer.js').write_text(script, encoding='utf-8')
     for name in ('LICENSE', 'NOTICE'):
-        (args.output_dir / name).write_text(texts[name], encoding='utf-8')
+        (args.output_dir / name).write_text((ROOT / name).read_text(), encoding='utf-8')
     manifest = {'consumer': {'path':'consumer.js', 'sha256':hashlib.sha256(script.encode()).hexdigest()},
-                'visualResourceSHA256': RESOURCE_HASHES, 'status':'independent-v2-candidate'}
+                'visualResources':'assets/companions', 'status':'independent-v2-candidate'}
     (args.output_dir / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
 
 
