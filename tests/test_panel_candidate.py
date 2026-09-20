@@ -41,3 +41,10 @@ class CandidateTests(unittest.TestCase):
         self.assertIn("(assets / 'panel_metrics.js').read_text()", source)
         for name in ('tr', 'quotaTone', 'gaugeColor'):
             self.assertIn("script = cut(script, '  function %s(" % name, source)
+
+    def test_geometry_module_replaces_old_definitions(self):
+        source = (Path(__file__).parents[1] / 'tools/build_panel_candidate.py').read_text()
+        self.assertIn("(assets / 'panel_geometry.js').read_text()", source)
+        for name in ('hudMode', 'dockSafeTop', 'dockVerticalY', 'dockCandidate',
+                     'presetWidth', 'resizeGeometry', 'contextHintGeometry'):
+            self.assertIn("script = cut(script, '  function %s(" % name, source)

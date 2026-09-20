@@ -12,6 +12,8 @@
 
 阶段 1 已完成：[时间展示独立替换](panel-time-contract.md)移除四个旧时间辅助定义；`panel_metrics.js` 按数据契约独立实现双语标签、额度/上下文色阶、余量与伴宠仪表读数，构建器明确删除对应旧定义。最终构建仍依赖冻结旧源码，下一步为阶段 2 布局交互。
 
+阶段 2 已开始：`panel_geometry.js` 独立实现展开/折叠尺寸、视口限制、伴宠拖动阈值、左右停靠候选、预设宽度、缩放与提示位置的纯几何计算；构建器已删除对应旧定义。DOM 指针监听、停靠状态切换及卸载清理仍待替换。本机的临时 Playwright 浏览器下载长时间无进度后已取消；本轮仅记录 Node 纯几何探针、候选构建与语法检查，不把它记为 Chromium/WebKit 完整停靠验收。
+
 | 阶段 | 当前残留定位 | 替换方式与验收 |
 | --- | --- | --- |
 | 1. 展示文案与指标辅助 | tr、shortDuration、durationPhrase、windowLabel、nearestResetText、quotaTone、accountTone、contextTone、contextMeterValue、remainingContext、toneLabel、gaugeReading/gaugeColor | 从已记录的数据契约与双语展示需求独立实现；覆盖未知值、零值、过期、边界及文案，不逐行改写旧函数 |
