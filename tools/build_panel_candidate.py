@@ -116,6 +116,11 @@ def build(directory):
     script = cut(script, '  function layoutPreset(', '  function presetWidth(')
     script = cut(script, '  function updatePresetButtons(', '  function setLayoutPreset(')
     script = cut(script, "      body.querySelectorAll('[data-layout-preset]')", "      body.querySelector('[data-mascot-scale]').addEventListener(")
+    script = cut(script, '  function saveLayout(', '  function dockSafeTop(')
+    old_write = '    localStorage.setItem(LAYOUT_PRESET_KEY,preset);'
+    if script.count(old_write) != 1:
+        raise ValueError('unexpected layout preset writer')
+    script = script.replace(old_write, '    setLayoutPreference(preset);')
     # Remove these after the intervening old mount/sidebar spans are gone.
     script = cut(script, '  function updateUnitButtons(', '  function applyHud(')
     start, end = '    if (selected) {', '    const errorLabels='

@@ -70,3 +70,5 @@ python3 -m unittest discover -s tests -v
 [配额通知可用性](docs/quota-notification-availability.md) 禁用尚未接通的通知开关，移除误导说明与无效偏好读写，保留原有存储值。
 
 [V2 面板尺寸预设读取与事件](docs/panel-layout-preference-contract.md) 读取失败回退标准尺寸，统一按钮选中态和根节点委托，保留现有布局计算。
+
+[V2 布局写入失败处理](docs/panel-layout-write-contract.md) 预设保存失败保留临时选择，布局保存异常不再中断界面更新；两个存储键仍独立保存。

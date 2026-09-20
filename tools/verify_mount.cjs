@@ -185,6 +185,32 @@ const {chromium, webkit} = require('playwright');
       assert.equal(await publish(), true);
       assert.equal(await page.locator('[data-layout-preset="standard"]').getAttribute('aria-pressed'), 'true');
       await page.evaluate(() => { Storage.prototype.getItem = window.layoutGetItem; });
+      const standardWidth = (await page.locator('.cti-hud').boundingBox()).width;
+      const persistedLayout = await page.evaluate(() => localStorage.getItem('cti-layout-v2'));
+      await page.evaluate(() => {
+        window.layoutErrors = [];
+        window.addEventListener('error', event => window.layoutErrors.push(event.message));
+        window.layoutSetItem = Storage.prototype.setItem;
+        Storage.prototype.setItem = function(key,value) {
+          if (['cti-layout-preset','cti-layout-v2'].includes(key)) throw new DOMException('Full','QuotaExceededError');
+          return window.layoutSetItem.call(this,key,value);
+        };
+      });
+      await page.locator('[data-layout-preset="large"]').click();
+      assert.ok((await page.locator('.cti-hud').boundingBox()).width > standardWidth);
+      await publish();
+      assert.equal(await page.locator('[data-layout-preset="large"]').getAttribute('aria-pressed'),'true');
+      assert.equal(await page.evaluate(() => localStorage.getItem('cti-layout-preset')),'standard');
+      assert.equal(await page.evaluate(() => localStorage.getItem('cti-layout-v2')),persistedLayout);
+      await page.locator('[data-language]').selectOption('en');
+      assert.equal(await page.locator('[data-layout-preset="large"]').getAttribute('aria-pressed'),'true');
+      await page.evaluate(() => { Storage.prototype.setItem=window.layoutSetItem; });
+      await page.locator('[data-layout-preset="standard"]').click();
+      assert.equal(await page.evaluate(() => localStorage.getItem('cti-layout-preset')),'standard');
+      assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('cti-layout-v2')).expanded.width),292);
+      await page.locator('[data-language]').selectOption('zh');
+      assert.deepEqual(await page.evaluate(() => window.layoutErrors),[]);
+
 
       await page.evaluate(() => {
         Object.defineProperty(navigator, 'clipboard', {configurable:true, value:{writeText: text => {
