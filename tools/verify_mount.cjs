@@ -35,6 +35,7 @@ const {chromium, webkit} = require('playwright');
         window.alertPreferenceReads = 0;
         window.alertGetItem = Storage.prototype.getItem;
         Storage.prototype.getItem = function(key) {
+          if (key === 'codex-context-token-inspector-collapsed') throw new DOMException('Denied','SecurityError');
           if (key === 'cti-alerts') window.alertPreferenceReads++;
           return window.alertGetItem.call(this, key);
         };

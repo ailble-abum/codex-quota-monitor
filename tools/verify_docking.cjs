@@ -33,12 +33,19 @@ const {chromium, webkit} = require('playwright');
       summaries:[{thread_id:'one',latest_context_percent:50,latest_context_tokens:500,context_window:1000}],
       quota:{status:'live',updatedAt:Date.now()/1000,windows:[{remaining:10,duration:300},{remaining:90,duration:10080}]}};
     await call({...base,action:'publish',payload,panel:true});
+    await page.evaluate(()=>{
+     window.collapseErrors=[];window.addEventListener('error',event=>collapseErrors.push(event.message));
+     window.collapseSetItem=Storage.prototype.setItem;
+     Storage.prototype.setItem=function(key,value){if(key==='codex-context-token-inspector-collapsed')throw Error('full');return collapseSetItem.call(this,key,value);};
+    });
     const toggle=page.locator('[data-cti-toggle]');
     await toggle.click();
     assert.equal(await root.getAttribute('data-collapsed'),'true');
     await toggle.click();
     assert.equal(await root.getAttribute('data-collapsed'),'false');
     assert.equal(await root.getAttribute('data-revealed'),'true', 'pinned dock must stay revealed after mode changes');
+    assert.deepEqual(await page.evaluate(()=>collapseErrors),[]);
+    await page.evaluate(()=>{Storage.prototype.setItem=collapseSetItem;});
     await page.setViewportSize({width:900,height:700});
     await page.locator('[data-settings-toggle]').click();
     // A real click waited for the post-resize position/transition to settle.

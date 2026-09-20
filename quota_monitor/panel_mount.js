@@ -57,12 +57,15 @@
     const panel = document.createElement('section');
     panel.id = ROOT_ID;
     panel.classList.add('cti-hud');
-    panel.dataset.collapsed = String(localStorage.getItem(COLLAPSE_KEY) === 'true');
+    panel.dataset.collapsed = 'false';
+    try { panel.dataset.collapsed = String(localStorage.getItem(COLLAPSE_KEY) === 'true'); }
+    catch (_) { /* Start expanded when the preference cannot be read. */ }
     panel.innerHTML = panelHeader();
     const toggle = () => {
       keepTogglePosition(panel, () => {
         panel.dataset.collapsed = String(panel.dataset.collapsed !== 'true');
-        localStorage.setItem(COLLAPSE_KEY, panel.dataset.collapsed);
+        try { localStorage.setItem(COLLAPSE_KEY, panel.dataset.collapsed); }
+        catch (_) { /* Keep this mounted panel's choice and finish its layout update. */ }
         panel.querySelector('[data-cti-toggle]').textContent = panel.dataset.collapsed === 'true' ? '+' : '−';
         updateHudTitle(panel);
         clampHud(panel);
