@@ -54,7 +54,7 @@ async function main() {
       journals: {one: 'one.jsonl'}, panel: true, consumer}));
     function start(extra = []) {
       const proc = spawn(process.env.PYTHON || 'python3', ['-m', 'quota_monitor.live', '--config', config,
-        '--interval', '0.1', '--max-failures', '3', ...extra], {cwd: path.join(__dirname, '..'), stdio: ['ignore', 'pipe', 'pipe']});
+        '--interval', '0.1', '--max-failures', '3', ...extra], {cwd: process.env.QUOTA_RUNTIME_DIR || path.join(__dirname, '..'), stdio: ['ignore', 'pipe', 'pipe']});
       children.push(proc);
       const rows = [];
       let stderr = '';
