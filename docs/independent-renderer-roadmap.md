@@ -18,6 +18,8 @@
 
 `panel_companion_view.js` 已独立实现伴宠手动/自动缩放、素材选择与缺失回退、双语皮肤按钮、皮肤应用、配额仪表和上下文环装配。构建器已删除对应旧函数。现有 `MASCOT_ART`/`MASCOT_EXPRESSIONS` 常量仍作为已归档的项目插画与表情素材使用，本轮不改记其来源或权属结论。伴宠 DOM 事件与反应/提醒状态机仍待替换。
 
+产品展示口径：完整面板继续显示每个配额窗口的百分比和进度条；折叠条与伴宠悬浮说明显示 `windowBudgetText` 给出的可用时长估算。若缺少速率数据则明示“时间估算暂不可用”，不回退成配额百分比；CTX 没有可靠时长模型，继续显示已用百分比。
+
 | 阶段 | 当前残留定位 | 替换方式与验收 |
 | --- | --- | --- |
 | 1. 展示文案与指标辅助 | tr、shortDuration、durationPhrase、windowLabel、nearestResetText、quotaTone、accountTone、contextTone、contextMeterValue、remainingContext、toneLabel、gaugeReading/gaugeColor | 从已记录的数据契约与双语展示需求独立实现；覆盖未知值、零值、过期、边界及文案，不逐行改写旧函数 |

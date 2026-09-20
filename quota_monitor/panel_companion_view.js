@@ -44,6 +44,15 @@
     positionContextHint(root);
   }
 
+  function companionWindowReadings(windows, context, zh) {
+    const parts = windows.map(item => {
+      const estimate = windowBudgetText(item);
+      return `${windowLabel(item, true)} ${estimate || (zh ? '时间估算暂不可用' : 'time estimate unavailable')}`;
+    });
+    if (context !== null) parts.push(`CTX ${Math.round(context)}%`);
+    return parts;
+  }
+
   function applyMascotGauge(root) {
     const mascot = document.getElementById(MASCOT_ID);
     if (!mascot) return;
@@ -75,9 +84,8 @@
     }
     gauge.replaceChildren(next);
     const zh = uiLanguage() === 'zh';
-    const parts = windows.map(item => `${windowLabel(item, true)} ${Math.round(item.remaining)}%`);
     const context = contextMeterValue(root.__ctiContext);
-    if (context !== null) parts.push(`CTX ${Math.round(context)}%`);
+    const parts = companionWindowReadings(windows, context, zh);
     if (!live) parts.push(quota.status === 'loading' ? (zh ? '正在读取配额…' : 'Reading quota…') : (zh ? '配额暂不可用' : 'Quota unavailable'));
     if (blocked) {
       const reset = nearestResetText(windows);
