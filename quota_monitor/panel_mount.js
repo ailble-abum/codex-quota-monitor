@@ -82,7 +82,14 @@
       }
     });
     panel.addEventListener('change', event => {
-      if (event.target.matches('[data-language]')) {
+      if (event.target.matches('[data-edge-dock]')) {
+        setEdgeDockEnabled(event.target.checked);
+        if (!edgeDockEnabled()) {
+          clearDockHide(panel);
+          undockHud(panel);
+        }
+        applyAll(window.__codexContextTokenInspectorPayload);
+      } else if (event.target.matches('[data-language]')) {
         setLanguagePreference(event.target.value);
         applyAll(window.__codexContextTokenInspectorPayload);
       } else {

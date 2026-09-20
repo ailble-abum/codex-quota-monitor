@@ -32,6 +32,8 @@
 
   function updateHudLanguage(root) {
     updateCompanionControls(root);
+    const edgeDock = root.querySelector('[data-edge-dock]');
+    if (edgeDock) edgeDock.checked = edgeDockEnabled();
     const chinese = uiLanguage() === 'zh';
     root.lang = chinese ? 'zh-CN' : 'en';
     const language = root.querySelector('[data-language]');

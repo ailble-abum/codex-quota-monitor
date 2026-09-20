@@ -76,3 +76,5 @@ python3 -m unittest discover -s tests -v
 [V2 位置重置](docs/panel-position-reset-contract.md) 删除记录失败也能复位当前界面，清理固定停靠状态和隐藏计时器，分别尝试两条记录清理。
 
 [V2 伴宠尺寸偏好](docs/panel-scale-preference-contract.md) 统一手动/自动缩放与控件，保存或删除失败时保留当前挂载选择，恢复后可再次持久化。
+
+[V2 边缘吸附偏好](docs/panel-edge-preference-contract.md) 关闭时立即解除停靠，写入失败保留当前选择；重新开启不会强制移动面板。
