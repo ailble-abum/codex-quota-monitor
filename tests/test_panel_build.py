@@ -26,6 +26,18 @@ class PanelBuildTests(unittest.TestCase):
             self.assertIn('function ' + name + '(', shell)
         self.assertTrue(shell.startswith('// V2-owned renderer shell.'))
 
+    def test_compact_bar_keeps_original_battery_visual(self):
+        styles = (Path(__file__).parents[1] / 'quota_monitor/panel_styles.js').read_text()
+        self.assertIn('width:max-content; overflow:hidden', styles)
+        self.assertIn('background:color-mix(in srgb,var(--cti-tone) 15%,transparent)', styles)
+        self.assertIn('width:9px; height:30px', styles)
+        self.assertIn('background:var(--cti-tone); border-radius:2px', styles)
+        self.assertIn('flex-direction:column; gap:4px; width:7px', styles)
+        self.assertIn('[data-edge="right"] [data-gauge] { left:-3px; }', styles)
+        self.assertIn('overflow-x:hidden; overflow-y:auto', styles)
+        self.assertIn('zoom:var(--cti-scale,1)', styles)
+        self.assertIn('background:linear-gradient(135deg,transparent 60%', styles)
+
 
 if __name__ == '__main__':
     unittest.main()
