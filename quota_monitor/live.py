@@ -91,8 +91,9 @@ async def supervise(loop, *, interval, max_failures, once, wait_for_host=False):
             if once:
                 reason, code = 'once', 0 if status == 'updated' else 2
                 break
-            if status == 'discovery_unavailable' and getattr(loop, 'host_follower', None) is not None:
-                action = await loop.follow_host()
+            if getattr(loop, 'host_follower', None) is not None and status in {
+                    'discovery_unavailable', 'not_found'}:
+                action = await loop.follow_host() if status == 'discovery_unavailable' else 'waiting_page'
                 emit('host_follow', action=action)
                 failures = 0
                 await asyncio.sleep(min(15, interval))
