@@ -86,7 +86,9 @@
     panel.addEventListener('click', event => {
       const button = event.target.closest('button');
       if (!button || !panel.contains(button)) return;
-      if (button.hasAttribute('data-layout-preset')) {
+      if (button.hasAttribute('data-position-reset')) {
+        resetPanelPosition(panel);
+      } else if (button.hasAttribute('data-layout-preset')) {
         setLayoutPreset(panel, button.dataset.layoutPreset);
       } else if (button.hasAttribute('data-handoff')) {
         void copyHandoff(button);

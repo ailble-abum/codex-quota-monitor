@@ -53,8 +53,41 @@ const {chromium, webkit} = require('playwright');
       await page.screenshot({path:path.join(process.argv[3],`${engine.name()}-${edge}-${colorScheme}.png`)});
      }
     }
+    await page.locator('[data-settings-toggle]').click();
+    await page.evaluate(() => {
+     localStorage.setItem('codex-context-token-inspector-position',JSON.stringify({left:500,top:200}));
+     window.removalAttempts=[];window.resetErrors=[];
+     window.addEventListener('error',event=>resetErrors.push(event.message));
+     window.originalRemoveItem=Storage.prototype.removeItem;
+     Storage.prototype.removeItem=function(key){
+      if(['codex-context-token-inspector-position','cti-layout-v2'].includes(key)){removalAttempts.push(key);throw Error('denied');}
+      return originalRemoveItem.call(this,key);
+     };
+    });
+    await page.locator('[data-position-reset]').click();
+    assert.equal(await root.getAttribute('data-docked'),null);
+    assert.equal(await root.getAttribute('data-dock-pinned'),null);
+    assert.equal(await root.getAttribute('data-revealed'),null);
+    assert.deepEqual(await page.evaluate(()=>removalAttempts),['codex-context-token-inspector-position','cti-layout-v2']);
+    assert.deepEqual(await root.evaluate(node=>node.__ctiLayout),{});
+    assert.equal(await mascot.getAttribute('data-visible'),'false');
+    await page.waitForFunction(()=>Math.abs(document.querySelector('.cti-hud').getBoundingClientRect().left-14)<1);
+    const resetRect=await root.boundingBox();
+    assert.ok(resetRect.x>=0 && resetRect.x+resetRect.width<=901 && resetRect.y>=0 && resetRect.y+resetRect.height<=701);
+    await call({...base,action:'publish',payload,panel:true});
+    assert.equal(await root.getAttribute('data-docked'),null);
+    if(process.argv[3]) {
+     for(const colorScheme of ['light','dark']) {
+      await page.emulateMedia({colorScheme});
+      await page.screenshot({path:path.join(process.argv[3],`${engine.name()}-${edge}-reset-${colorScheme}.png`)});
+     }
+    }
+    await page.evaluate(()=>{Storage.prototype.removeItem=originalRemoveItem;});
+    await page.locator('[data-position-reset]').click();
+    assert.deepEqual(await page.evaluate(()=>['codex-context-token-inspector-position','cti-layout-v2'].map(key=>localStorage.getItem(key))),[null,null]);
+    assert.deepEqual(await page.evaluate(()=>resetErrors),[]);
     await page.close();
-    console.log(engine.name()+' '+edge+': restore, focus reveal, pin, growth, toggle and viewport shrink passed');
+    console.log(engine.name()+' '+edge+': restore, reveal, pin, resize, reset with failed deletes and recovery passed');
    }
   } finally {await browser.close();}
  }

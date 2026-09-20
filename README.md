@@ -72,3 +72,5 @@ python3 -m unittest discover -s tests -v
 [V2 面板尺寸预设读取与事件](docs/panel-layout-preference-contract.md) 读取失败回退标准尺寸，统一按钮选中态和根节点委托，保留现有布局计算。
 
 [V2 布局写入失败处理](docs/panel-layout-write-contract.md) 预设保存失败保留临时选择，布局保存异常不再中断界面更新；两个存储键仍独立保存。
+
+[V2 位置重置](docs/panel-position-reset-contract.md) 删除记录失败也能复位当前界面，清理固定停靠状态和隐藏计时器，分别尝试两条记录清理。

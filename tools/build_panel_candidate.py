@@ -157,6 +157,8 @@ def build(directory):
     script = script.replace('    updateHudTitle(root);\n    updateUnitButtons(root);',
                             '    renderDiagnostics(body, payload);\n    updateHudTitle(root);\n    updateUnitButtons(root);', 1)
     script = cut(script, '    const put = (selector, html) => {', '    const quota = payload.quota')
+    script = cut(script, "      body.querySelector('[data-position-reset]').addEventListener(", "    const quota = payload.quota")
+    script = script.replace("    const quota = payload.quota", "    }\n    const quota = payload.quota", 1)
     tail = '  function clearFooters('
     if script.count(tail) != 1:
         raise ValueError('unexpected lifecycle boundary')
@@ -176,6 +178,7 @@ def build(directory):
               + (assets / 'panel_disclosures.js').read_text()
               + (assets / 'panel_body.js').read_text()
               + (assets / 'panel_handoff.js').read_text()
+              + (assets / 'panel_position_reset.js').read_text()
               + (assets / 'panel_mount.js').read_text()
               + (assets / 'panel_adapter.js').read_text())
     guard = """(payload => {
