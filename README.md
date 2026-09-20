@@ -90,3 +90,5 @@ python3 -m unittest discover -s tests -v
 [账户读取与预览安装](docs/account-and-preview.md)：可选官方 App Server 后台额度读取，独立目录安装与文件摘要清单；真实账户在隔离面板验证，原生及正式发行验收仍开放。
 
 [本机 V2 切换](docs/local-switch.md)：支持按 Codex rollout 文件名定位当前任务，并继续核对内部身份；本机服务切换、原生验收和回退边界在此记录。
+
+[原生恢复验收](docs/native-recovery.md)：真实窗口刷新已通过；整应用重启未通过，当前需手动恢复调试连接，详见记录。
