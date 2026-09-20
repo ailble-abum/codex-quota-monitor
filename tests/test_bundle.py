@@ -7,6 +7,20 @@ import tempfile
 import unittest
 
 class BundleTests(unittest.TestCase):
+    def test_accepts_independent_v2_candidate(self):
+        tool = Path(__file__).resolve().parents[1] / 'tools/install_preview.py'
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp); candidate = root / 'candidate'; candidate.mkdir()
+            data = b'(() => {})()'
+            (candidate / 'consumer.js').write_bytes(data)
+            (candidate / 'manifest.json').write_text(json.dumps({'status': 'independent-v2-candidate',
+                'consumer': {'sha256': hashlib.sha256(data).hexdigest()}}))
+            for name in ('LICENSE', 'NOTICE'):
+                (candidate / name).write_text('Synthetic attribution')
+            result = subprocess.run([sys.executable, str(tool), str(candidate), str(root / 'installed')],
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_rejects_malformed_manifest_and_consumer_shapes(self):
         tool = Path(__file__).resolve().parents[1] / 'tools/install_preview.py'
         invalid_manifests = (
