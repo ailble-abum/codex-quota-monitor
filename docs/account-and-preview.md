@@ -12,6 +12,14 @@
 
 ## 安装范围
 
+### 2026-09-20 接续：畸形候选清单
+
+离线合成复现发现：`manifest.json` 为 JSON 数组时，安装器调用 `.get()` 抛出 AttributeError，退出 1 并输出堆栈，偏离 CLI 退出 2 与简短错误的约定。目标目录尚未创建，没有覆盖现用安装。
+
+修复范围限定为读取清单后验证顶层和 consumer 均为对象、consumer 提供 sha256，再进行既有状态与摘要检查。复用 Python 类型校验，不增加依赖；不改变内嵌界面、启动方式、来源归因或现用安装。回归使用临时合成候选，验证受控失败、无成功输出、无目标目录和 staging 遗留；原有成功打包、归因保留、防覆盖及篡改拒绝继续验证。
+
+红绿证据：新增表驱动测试覆盖 8 种结构，修复前数组/null/字符串/整数 4 个顶层用例失败；修复后 bundle 的 2 项测试通过。随后使用独立临时虚拟环境运行 `python -m unittest discover -s tests`，Python 3.9 与 3.14 各 136 项通过。仅合成安装与协议/单元验证；没有调用真实 App Server，没有原生 UI 或 Windows 新证据。未安装、部署或上传。
+
 `python tools/install_preview.py CANDIDATE_DIR NEW_DESTINATION` 将 V2 Python/JS、固定 renderer、完整 LICENSE/NOTICE、依赖清单和配置样例放入新的独立目录；校验 renderer 摘要，拒绝覆盖已有目录。安装清单记录每个文件 SHA256。运行不再依赖旧仓库目录，但 renderer 构建仍依赖已固定的外部来源材料；这不表示来源替换已完成。
 
 使用独立虚拟环境安装 requirements-cdp.txt，再运行安装目录的 run.py。配置样例必须填写显式页面 URL 和授权会话目录，可添加 account_cli。不自动发现或重启宿主，不注册服务，不向现用页面叠加第二个监视器。先停止本实例再删除目录即可卸载。

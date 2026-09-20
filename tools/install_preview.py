@@ -12,6 +12,9 @@ def install(candidate, destination):
     if destination.exists() or destination.is_symlink():
         raise ValueError('destination_exists')
     manifest = json.loads((candidate / 'manifest.json').read_text())
+    if (not isinstance(manifest, dict) or not isinstance(manifest.get('consumer'), dict)
+            or 'sha256' not in manifest['consumer']):
+        raise ValueError('invalid_candidate')
     script = (candidate / 'consumer.js').read_bytes()
     if (len(script) > 8 * 1024 * 1024 or manifest.get('status') != 'derived-isolated-candidate'
             or hashlib.sha256(script).hexdigest() != manifest['consumer']['sha256']):
