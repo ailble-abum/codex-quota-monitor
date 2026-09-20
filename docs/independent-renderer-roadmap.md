@@ -14,6 +14,8 @@
 
 阶段 2 的源码替换已完成：`panel_geometry.js` 独立实现展开/折叠尺寸、视口限制、伴宠拖动阈值、左右停靠候选、预设宽度、缩放与提示位置；`panel_layout_runtime.js` 独立实现停靠显隐、位置应用、解除停靠、指针/键盘缩放、折叠锚点及四项全局监听的注册/卸载。构建器已删除对应旧定义。Node 探针覆盖几何边界、视口约束、停靠展开/解除、预设和 timer 清理；Python 3.9 候选回归通过。本机 Playwright 安装不完整，Chromium headless shell 与 WebKit 可执行文件均缺失，因此本轮不将源码替换记为 Chromium/WebKit 完整停靠验收；浏览器验收须在运行时可用后补跑。
 
+阶段 3 已开始：`panel_templates.js` 首先以 V2 控件合约独立建立面板静态外壳，包含标题、刷新/设置/折叠控件、单位组与正文挂载点。构建器不再从旧 `ensureHud` 提取 header HTML。正文模板、CSS 及伴宠装配仍保留来源归因，待后续替换。
+
 | 阶段 | 当前残留定位 | 替换方式与验收 |
 | --- | --- | --- |
 | 1. 展示文案与指标辅助 | tr、shortDuration、durationPhrase、windowLabel、nearestResetText、quotaTone、accountTone、contextTone、contextMeterValue、remainingContext、toneLabel、gaugeReading/gaugeColor | 从已记录的数据契约与双语展示需求独立实现；覆盖未知值、零值、过期、边界及文案，不逐行改写旧函数 |

@@ -56,3 +56,8 @@ class CandidateTests(unittest.TestCase):
                      'applyDockPosition', 'applyStoredHudPosition', 'syncExpandedAnchor',
                      'setLayoutPreset', 'installHudDrag', 'keepTogglePosition', 'clampHud'):
             self.assertIn("script = cut(script, '  function %s(" % name, source)
+
+    def test_header_template_is_not_extracted_from_old_renderer(self):
+        source = (Path(__file__).parents[1] / 'tools/build_panel_candidate.py').read_text()
+        self.assertIn("(assets / 'panel_templates.js').read_text()", source)
+        self.assertNotIn("template('ensureHud', 'root.innerHTML')", source)

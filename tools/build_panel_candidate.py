@@ -77,7 +77,6 @@ def build(directory):
         value = section.split(declaration + ' = `', 1)[1].split('`;', 1)[0]
         return '`' + value + '`'
     visual = ('  const panelCSS = () => ' + panel_css(template('ensureStyle', 'const css')) + ';\n'
-              + '  const panelHeader = () => ' + template('ensureHud', 'root.innerHTML') + ';\n'
               + '  const panelBodyTemplate = zh => ' + template('applyHud', 'body.innerHTML') + ';\n')
     # V2 has no quota notification producer or sender. Keep the legacy preference untouched.
     for old, new in (
@@ -202,6 +201,7 @@ def build(directory):
               + (assets / 'panel_metrics.js').read_text()
               + (assets / 'panel_geometry.js').read_text()
               + (assets / 'panel_layout_runtime.js').read_text()
+              + (assets / 'panel_templates.js').read_text()
               + (assets / 'panel_language.js').read_text()
               + (assets / 'panel_companion_preferences.js').read_text()
               + (assets / 'panel_layout_data.js').read_text()
