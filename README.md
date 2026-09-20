@@ -78,3 +78,5 @@ python3 -m unittest discover -s tests -v
 [V2 伴宠尺寸偏好](docs/panel-scale-preference-contract.md) 统一手动/自动缩放与控件，保存或删除失败时保留当前挂载选择，恢复后可再次持久化。
 
 [V2 边缘吸附偏好](docs/panel-edge-preference-contract.md) 关闭时立即解除停靠，写入失败保留当前选择；重新开启不会强制移动面板。
+
+[V2 皮肤偏好与选择事件](docs/panel-skin-preference-contract.md) 仅接受注册皮肤，保存失败保留当前选择，伴宠、按钮和名称保持一致。

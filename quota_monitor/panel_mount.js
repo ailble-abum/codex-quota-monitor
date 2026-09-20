@@ -99,7 +99,11 @@
     panel.addEventListener('click', event => {
       const button = event.target.closest('button');
       if (!button || !panel.contains(button)) return;
-      if (button.hasAttribute('data-mascot-scale-auto')) {
+      if (button.hasAttribute('data-skin-choice')) {
+        setMascotSkin(button.dataset.skinChoice);
+        applyMascotSkin(panel);
+        updateSkinButtons(panel);
+      } else if (button.hasAttribute('data-mascot-scale-auto')) {
         setMascotScalePreference(null);
         applyStoredHudPosition(panel);
       } else if (button.hasAttribute('data-position-reset')) {

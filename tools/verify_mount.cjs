@@ -334,6 +334,35 @@ const {chromium, webkit} = require('playwright');
       assert.deepEqual(await page.evaluate(() => ['cti-companion-motion','cti-companion-reminders','cti-context-reminders'].map(key => localStorage.getItem(key))), ['true','true','true']);
       await page.locator('[data-language]').selectOption('zh');
       assert.deepEqual(await page.evaluate(() => window.languageErrors), []);
+      await page.locator('[data-skins] > summary').click();
+      await page.evaluate(() => {
+        localStorage.setItem('cti-mascot-skin','cat');
+        window.skinSetItem=Storage.prototype.setItem;
+        Storage.prototype.setItem=function(key,value){if(key==='cti-mascot-skin')throw Error('full');return skinSetItem.call(this,key,value);};
+      });
+      await page.locator('[data-skin-choice="candy"]').click();
+      assert.equal(await page.locator('#codex-context-token-inspector-mascot').getAttribute('data-skin'),'candy');
+      assert.equal(await page.locator('[data-skin-choice="candy"]').getAttribute('aria-pressed'),'true');
+      assert.equal(await page.evaluate(()=>localStorage.getItem('cti-mascot-skin')),'cat');
+      await page.locator('[data-language]').selectOption('en');
+      assert.equal(await page.locator('#codex-context-token-inspector-mascot').getAttribute('data-skin'),'candy');
+      assert.equal(await page.locator('[data-skin-current]').textContent(),await page.locator('[data-skin-choice="candy"] small').textContent());
+      if(process.argv[3]) {
+        await page.locator('[data-skin-choice="candy"]').scrollIntoViewIfNeeded();
+        for(const colorScheme of ['light','dark']) {
+          await page.emulateMedia({colorScheme});
+          await page.locator('.cti-hud').screenshot({path:path.join(process.argv[3],`${engine.name()}-skin-${colorScheme}.png`)});
+        }
+      }
+      await page.evaluate(()=>{Storage.prototype.setItem=skinSetItem;});
+      await page.locator('[data-skin-choice="cat"]').click();
+      assert.equal(await page.locator('#codex-context-token-inspector-mascot').getAttribute('data-skin'),'cat');
+      await page.evaluate(()=>localStorage.setItem('cti-mascot-skin','constructor'));
+      assert.equal(await publish(),true);
+      assert.equal(await page.locator('#codex-context-token-inspector-mascot').getAttribute('data-skin'),'cat');
+      await page.evaluate(()=>localStorage.setItem('cti-mascot-skin','cat'));
+      await page.locator('[data-skins] > summary').click();
+      await page.locator('[data-language]').selectOption('zh');
       payload.build = {pluginVersion: '<b>test</b>'};
       payload.update = {status:'update_available',latestSemver:'2.0.0',url:'https://example.test/release'};
       await publish();

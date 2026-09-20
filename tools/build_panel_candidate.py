@@ -125,6 +125,9 @@ def build(directory):
     script = cut(script, "      body.querySelector('[data-mascot-scale]').addEventListener(", '      updateMascotSizeControls(root);')
     script = cut(script, '  function edgeDockEnabled(', '  function mascotArt(')
     script = cut(script, "      const edgeDock=body.querySelector('[data-edge-dock]');", "      body.querySelectorAll('[data-skin-choice]')")
+    script = cut(script, '  function mascotSkin(', '  // Logical window dimensions')
+    script = cut(script, '  function updateSkinButtons(', '  function quotaTone(')
+    script = cut(script, "      body.querySelectorAll('[data-skin-choice]')", '      updateSkinButtons(root);')
     # Remove these after the intervening old mount/sidebar spans are gone.
     script = cut(script, '  function updateUnitButtons(', '  function applyHud(')
     start, end = '    if (selected) {', '    const errorLabels='
@@ -173,6 +176,7 @@ def build(directory):
               + (assets / 'panel_layout_preference.js').read_text()
               + (assets / 'panel_scale_preference.js').read_text()
               + (assets / 'panel_edge_preference.js').read_text()
+              + (assets / 'panel_skin_preference.js').read_text()
               + (assets / 'panel_controls.js').read_text()
               + (assets / 'panel_details.js').read_text()
               + (assets / 'panel_context.js').read_text()
