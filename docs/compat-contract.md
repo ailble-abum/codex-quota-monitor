@@ -22,7 +22,7 @@
 
 调用者指定预期任务，SessionJournal 读取 session_meta.id；桥接器要求 identity_status=verified 且 thread_id 与选中任务一致，不再只信 readings 的字典键。桥接器不猜文件名、不自动查找其他任务。readings 字典使用规范任务 ID，活动 ID 可有 local: 前缀。
 
-仅发布当前明确选中的任务。原因是旧面板有 summaries[0] 回退行为；缺失活动任务时提供其他摘要会串任务。因此此阶段暂不提供其他会话侧栏摘要与项目排名。
+目录模式会发布所有已通过身份核对的数值摘要，供宿主侧栏行按 thread_id 匹配；`selectedThreadId` 仍只接受唯一活动任务，详情、健康和消息投影只属于选中任务。显式逐文件映射模式继续只发布调用方指定的任务。活动任务缺失或出现重复身份时返回空摘要，避免旧面板的 summaries[0] 回退串任务。
 
 status!=ok 或 more=true 的读数不发布。缺失数值仍为 None，零保留。detail=None、detailsByThread={} 明确表示尚无回复级数据；不编造 hover/footer 或消息匹配结果。未输出配额、历史、健康、版本字段，未来接入必须由原有组件提供，不能直接替换旧 build_payload 后就视为功能对等。
 

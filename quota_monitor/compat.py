@@ -16,9 +16,9 @@ def thread_key(value):
     return key if all(c.isascii() and (c.isalnum() or c in '-_') for c in key) else None
 
 
-def panel_summary(thread_id, reading):
+def panel_summary(thread_id, reading, *, allow_partial=False):
     key = thread_key(thread_id)
-    if key is None or reading['status'] != 'ok' or reading['more']:
+    if key is None or reading['status'] != 'ok' or (reading['more'] and not allow_partial):
         return None
     if reading.get('identity_status') != 'verified' or reading.get('thread_id') != key:
         return None
@@ -35,17 +35,23 @@ def panel_summary(thread_id, reading):
     return result
 
 
-def panel_payload(readings, active_thread_id):
+def panel_payload(readings, active_thread_id, *, allow_partial=False):
     key = thread_key(active_thread_id)
     result = {'activeThreadId': key, 'selectedThreadId': None, 'observedAt': time.time(),
               'summaries': [], 'detail': None, 'detailsByThread': {},
               'health': None, 'healthThreadId': None}
-    # The legacy renderer may fall back to the first summary. Restrict this
-    # bridge to the selected task so a failed lookup cannot show another task.
+    # Every summary is identity-verified by the source. The selected task still
+    # owns detail/health, while other summaries are numeric-only sidebar data.
     if key is not None and key in readings:
-        summary = panel_summary(key, readings[key])
+        summary = panel_summary(key, readings[key], allow_partial=allow_partial)
         if summary is not None:
-            result['summaries'] = [summary]
+            summaries = []
+            for candidate, reading in readings.items():
+                projected = panel_summary(candidate, reading,
+                                          allow_partial=allow_partial and candidate == key)
+                if projected is not None:
+                    summaries.append(projected)
+            result['summaries'] = summaries
             result['selectedThreadId'] = key
             health = readings[key].get('health')
             if isinstance(health, dict):

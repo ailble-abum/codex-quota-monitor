@@ -32,6 +32,7 @@ class DirectorySource:
         self._next_scan = float('-inf')
         self._scan_status = 'unavailable'
         self.status, self.bytes_read = 'not_found', 0
+        self.all_summaries = False
 
     def _current(self):
         if self._dirs is None:
@@ -120,7 +121,13 @@ class DirectorySource:
         readings = []
         quota = self.read_budget // max(1, len(self._journals))
         for path, journal in self._journals.items():
-            journal.reader.read_budget = quota
+            if self.all_summaries and path.name.endswith('-' + key + '.jsonl'):
+                # Keep the active task responsive even when sidebar inventory
+                # contains many older logs; the rollout adapter allows a
+                # bounded compacted line up to its 2 MiB reader limit.
+                journal.reader.read_budget = min(2 * 1024 * 1024, self.read_budget)
+            else:
+                journal.reader.read_budget = min(quota, 16384)
             reading = journal.poll()
             self.bytes_read += reading['bytes_read']
             if reading['reset']:
@@ -130,6 +137,28 @@ class DirectorySource:
             readings.append(reading)
         if not self._current():
             self.status = 'index_wait'
+        elif self.all_summaries:
+            # A background task may have a large or partial log. Keep the
+            # selected task responsive and omit only non-ready sidebar rows.
+            matches = [r for r in readings if r['thread_id'] == key and
+                       r.get('status') == 'ok' and r.get('identity_status') == 'verified']
+            self.status = 'ambiguous' if len(matches) > 1 else 'ok' if matches else 'not_found'
+            if self.status == 'ok':
+                verified = {}
+                duplicate = set()
+                for reading in readings:
+                    thread_id = reading.get('thread_id')
+                    if (reading.get('status') != 'ok' or
+                            reading.get('identity_status') != 'verified' or
+                            not isinstance(thread_id, str)):
+                        continue
+                    if thread_id in verified:
+                        duplicate.add(thread_id)
+                    else:
+                        verified[thread_id] = reading
+                for thread_id in duplicate:
+                    verified.pop(thread_id, None)
+                return panel_payload(verified, key, allow_partial=True)
         elif any(r['status'] != 'ok' for r in readings):
             self.status = 'unavailable'
         elif self._tainted:
@@ -142,7 +171,22 @@ class DirectorySource:
             matches = [r for r in readings if r['thread_id'] == key]
             self.status = 'ambiguous' if len(matches) > 1 else 'ok' if matches else 'not_found'
             if self.status == 'ok':
-                return panel_payload({key: matches[0]}, key)
+                if not self.all_summaries:
+                    return panel_payload({key: matches[0]}, key)
+                verified = {}
+                duplicate = set()
+                for reading in readings:
+                    thread_id = reading.get('thread_id')
+                    if (reading.get('identity_status') != 'verified' or
+                            not isinstance(thread_id, str)):
+                        continue
+                    if thread_id in verified:
+                        duplicate.add(thread_id)
+                    else:
+                        verified[thread_id] = reading
+                for thread_id in duplicate:
+                    verified.pop(thread_id, None)
+                return panel_payload(verified, key)
         return empty
 
 
@@ -155,9 +199,15 @@ class NamedDirectorySource(DirectorySource):
         # stricter default.
         super().__init__(root, read_budget=4 * 1024 * 1024, line_limit=2 * 1024 * 1024)
         self._selected_key = None
+        self.all_summaries = True
 
     def _accept_name(self, name):
-        return name.startswith('rollout-') and name.endswith('-' + self._selected_key + '.jsonl')
+        if not name.startswith('rollout-') or not name.endswith('.jsonl'):
+            return False
+        suffix = name[:-len('.jsonl')].rsplit('-', 1)[-1]
+        # Real rollout names end in a UUID-like task key. Keep the synthetic
+        # short keys used by offline tests, while ignoring numeric noise files.
+        return len(suffix) >= 3 and not suffix.isdigit()
 
     def read(self, key):
         if thread_key(key) != key or key is None:

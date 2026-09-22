@@ -143,6 +143,20 @@ class IndexedTests(unittest.TestCase):
             self.assertEqual(source.status, 'unavailable')
 
 class NamedDirectoryTests(unittest.TestCase):
+    def test_named_source_projects_verified_summaries_for_sidebar(self):
+        from quota_monitor.indexed import NamedDirectorySource
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for key, count in (('one', 10), ('two', 20)):
+                path = root / ('rollout-date-' + key + '.jsonl')
+                path.write_text(''.join(json.dumps(row) + '\n' for row in [
+                    {'type': 'session_meta', 'payload': {'id': key}},
+                    {'type': 'event_msg', 'payload': {'type': 'token_count', 'info': {
+                        'last_token_usage': {'input_tokens': count}, 'model_context_window': 100}}}]))
+            payload = NamedDirectorySource(root).read('one')
+            self.assertEqual(payload['selectedThreadId'], 'one')
+            self.assertEqual({item['thread_id'] for item in payload['summaries']}, {'one', 'two'})
+
     def test_named_rollout_accepts_bounded_compacted_record(self):
         from quota_monitor.indexed import NamedDirectorySource
         with tempfile.TemporaryDirectory() as directory:

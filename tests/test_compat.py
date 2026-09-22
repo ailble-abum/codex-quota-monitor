@@ -112,6 +112,13 @@ class CompatibilityTests(unittest.TestCase):
         self.assertTrue(payload['health']['recommendHandoff'])
         self.assertNotIn('private', repr(payload['health']))
 
+    def test_partial_selected_summary_is_opt_in(self):
+        result = reading()
+        result['more'] = True
+        self.assertEqual(panel_payload({'one': result}, 'one')['summaries'], [])
+        self.assertEqual(panel_payload({'one': result}, 'one', allow_partial=True)
+                         ['selectedThreadId'], 'one')
+
 
 if __name__ == '__main__':
     unittest.main()

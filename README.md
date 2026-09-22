@@ -45,6 +45,8 @@ python3 -m unittest discover -s tests -v
 
 [V2 消息级用量恢复](docs/panel-host-details-contract.md) 由仓库内独立模块从增量日志投影受限的助手 Token chip 与活动侧栏提示，不重新引入旧 renderer 扫描层。
 
+[V2 多任务侧栏摘要](docs/compat-contract.md) 在受限 rollout 目录模式下为已核对身份的任务提供数值摘要，详情与健康数据仍严格绑定当前活动任务。
+
 [V2 上下文正文投影](docs/panel-context-contract.md) 替换上下文数值和进度条构建，保留双语、边界值、无障碍及重复刷新行为。
 
 [V2 本地健康提示正文](docs/panel-health-contract.md) 使用文本 DOM 和明确输入校验，统一建议与警告状态；V2 `HealthState` 已从增量日志生成并在隔离 CDP 实例验证。
