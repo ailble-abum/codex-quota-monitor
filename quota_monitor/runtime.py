@@ -19,6 +19,7 @@ from .consumer import load_consumer
 from .reader import finite_float, reject_constant
 from .host_follow import HostFollower
 from .local_samples import LocalSampleStore
+from .update_state import CURRENT_VERSION, UpdateSource
 
 
 _PAGE_BRIDGE = Path(__file__).with_name('page_bridge.js').read_text(encoding='utf-8')
@@ -112,7 +113,7 @@ class UpdateLoop:
 
     panel=True forwards to an existing consumer or an explicitly pinned initializer.
     """
-    def __init__(self, origin, page_url, paths=None, *, panel=False, host='explicit', session_root=None, consumer=None, account_cli=None, session_layout=None, host_app=None, history_root=None):
+    def __init__(self, origin, page_url, paths=None, *, panel=False, host='explicit', session_root=None, consumer=None, account_cli=None, session_layout=None, host_app=None, history_root=None, update_url=None, version=CURRENT_VERSION):
         local_origin(origin)
         if host not in ('explicit', 'codex-sidebar'):
             raise ValueError('invalid host adapter')
@@ -120,6 +121,7 @@ class UpdateLoop:
             raise ValueError("invalid account CLI")
         self.account = AccountSource(account_cli) if account_cli is not None else None
         self.history = LocalSampleStore(history_root) if history_root is not None else None
+        self.update = UpdateSource(update_url, current=version)
         self.host = host
         if type(panel) is not bool:
             raise ValueError('invalid panel mode')
@@ -169,7 +171,10 @@ class UpdateLoop:
                 if self.account is not None:
                     await self.account.close()
             finally:
-                await self.close()
+                try:
+                    await self.update.close()
+                finally:
+                    await self.close()
         return result
 
     async def step(self):
@@ -203,6 +208,8 @@ class UpdateLoop:
             payload = self.source.read(key)
             if self.account is not None:
                 payload["quota"] = self.account.snapshot()
+            payload['build'] = {'pluginVersion': self.update.current}
+            payload['update'] = self.update.snapshot()
             if self.history is not None:
                 selected = payload.get('summaries', [{}])
                 selected = selected[0] if selected else {}

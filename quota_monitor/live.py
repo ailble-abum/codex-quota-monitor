@@ -6,6 +6,7 @@ import math
 from pathlib import Path
 import signal
 import sys
+from urllib.parse import urlsplit
 
 from .compat import thread_key
 from .reader import reject_constant
@@ -37,7 +38,7 @@ def load_config(path):
     if len(raw) > 65536:
         raise ValueError('config limit')
     config = json.loads(raw, object_pairs_hook=unique_object, parse_constant=reject_constant)
-    if (not isinstance(config, dict) or set(config) - {'origin', 'page_url', 'journals', 'session_root', 'host', 'panel', 'consumer', 'account_cli', 'session_layout', 'host_app', 'history_root'}
+    if (not isinstance(config, dict) or set(config) - {'origin', 'page_url', 'journals', 'session_root', 'host', 'panel', 'consumer', 'account_cli', 'session_layout', 'host_app', 'history_root', 'update_url', 'version'}
             or not {'origin', 'page_url'} <= set(config)
             or ('journals' in config) == ('session_root' in config)):
         raise ValueError('invalid config fields')
@@ -59,6 +60,22 @@ def load_config(path):
         if not isinstance(root, str) or not root or '\0' in root:
             raise ValueError('invalid history root')
         config['history_root'] = path.parent / root
+    if 'update_url' in config:
+        root = config['update_url']
+        valid = False
+        if isinstance(root, str):
+            try:
+                parsed = urlsplit(root)
+                valid = (parsed.scheme == 'https' and bool(parsed.hostname) and
+                         not parsed.username and not parsed.password and not parsed.fragment)
+            except ValueError:
+                pass
+        if (not isinstance(root, str) or len(root) > 2048 or
+                any(ord(c) < 32 or c.isspace() for c in root) or not valid):
+            raise ValueError('invalid update URL')
+        config['update_url'] = root
+    if 'version' in config and (not isinstance(config['version'], str) or not config['version'] or len(config['version']) > 64):
+        raise ValueError('invalid version')
     if 'consumer' in config:
         consumer = config['consumer']
         if (not isinstance(consumer, dict) or set(consumer) != {'path', 'sha256'}

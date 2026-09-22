@@ -90,6 +90,19 @@ class LiveCLITests(unittest.TestCase):
         with self.assertRaises(ValueError):
             load_config(self.config)
 
+    def test_update_settings_are_optional_and_bounded(self):
+        from quota_monitor.live import load_config
+        self.value['update_url'] = 'https://example.invalid/manifest.json'
+        self.value['version'] = '0.2.0-beta'
+        self.config.write_text(json.dumps(self.value))
+        value = load_config(self.config)
+        self.assertEqual(value['update_url'], self.value['update_url'])
+        self.assertEqual(value['version'], '0.2.0-beta')
+        self.value['update_url'] = 'http://example.invalid/manifest.json'
+        self.config.write_text(json.dumps(self.value))
+        with self.assertRaises(ValueError):
+            load_config(self.config)
+
     def test_consumer_requires_panel_and_valid_pinned_file(self):
         import hashlib
         from quota_monitor.live import load_config

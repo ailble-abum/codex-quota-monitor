@@ -65,7 +65,7 @@ python3 -m unittest discover -s tests -v
 
 [V2 账户聚合正文](docs/account-overview-contract.md) 替换总预算、状态说明与附加用量，校验预算/用量/额度，过期数据不继续展示附加值。
 
-[V2 版本、更新与界面诊断正文](docs/panel-diagnostics-contract.md) 改为文本 DOM，更新入口随当前 HTTPS URL 同步，缺失诊断不再误报失败。
+[V2 版本、更新与界面诊断正文](docs/panel-diagnostics-contract.md) 改为文本 DOM；版本信息来自 V2 runtime，更新检查只有显式 HTTPS manifest 配置才联网。
 
 [V2 正文挂载与语言重建](docs/panel-body-contract.md) 保留单位节点与设置区展开状态，修复切换语言后设置关闭但按钮仍标为展开的问题；正文模板继续归因。
 

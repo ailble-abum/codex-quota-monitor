@@ -6,7 +6,7 @@
 
 更新入口仅接受显式 HTTPS URL，拒绝带账号密码的 URL、相对路径和其他协议。无效链接仍可显示新版本文字，但不产生入口，也不回退到旧项目发布页。原生链接使用新窗口及 noopener noreferrer；取消旧剪贴板回退。同版本 URL 改变时同步更新 href，状态离开可用更新后清除旧入口；相同内容保留节点。
 
-旧源的 dom 合约为 sidebarRows 数量、activeRow 布尔值和 conversationId 布尔值。行数要求非负安全整数，标记只接受布尔值；缺失字段显示未知，全部缺失显示“界面探测未提供”。只有明确的零行或已知行数配合活动行 false 才提示界面可能更新。V2 尚无 build/update/dom 生产链路，缺失数据不等同探测失败。
+旧源的 dom 合约为 sidebarRows 数量、activeRow 布尔值和 conversationId 布尔值。行数要求非负安全整数，标记只接受布尔值；缺失字段显示未知，全部缺失显示“界面探测未提供”。只有明确的零行或已知行数配合活动行 false 才提示界面可能更新。V2 runtime 现在始终发布受限 `build.pluginVersion` 与 `update.status`；更新状态默认 `not_configured`，只有显式 HTTPS manifest 才后台低频请求，响应仅接受版本号和 HTTPS 链接，网络失败不阻塞日志或账户数据。
 
 ## 验证与边界
 
