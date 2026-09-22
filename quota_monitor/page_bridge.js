@@ -56,6 +56,12 @@
     }
     if (!options.key || current() !== options.key) return false;
 
+    if (options.action === 'refresh') {
+        const requested = window.__quotaMonitorV2RefreshRequested === true;
+        try { delete window.__quotaMonitorV2RefreshRequested; } catch (_) {}
+        return requested;
+    }
+
     if (options.action === 'prepare' || options.action === 'initialize') {
         // A partial/failed initializer must not be retried or adopted as healthy.
         if (window.__quotaMonitorV2Consumer?.status === 'failed')

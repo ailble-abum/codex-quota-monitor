@@ -60,9 +60,11 @@
       #codex-context-token-inspector-root .cti-settings { display:grid; gap:8px; }
       #codex-context-token-inspector-root .cti-settings[hidden] { display:none; }
       /* Header controls are icons; settings controls carry text. */
+      #codex-context-token-inspector-root .cti-settings { min-width:0; }
       #codex-context-token-inspector-root .cti-unit-group button,
       #codex-context-token-inspector-root .cti-settings button {
-        width:auto; height:auto; min-height:24px; white-space:nowrap;
+        width:auto; height:auto; min-width:0; min-height:24px; overflow:hidden;
+        text-overflow:ellipsis; white-space:nowrap;
       }
       #codex-context-token-inspector-root fieldset { border:0; margin:0; padding:0; }
       #codex-context-token-inspector-root legend { margin-bottom:4px; font-weight:650; }

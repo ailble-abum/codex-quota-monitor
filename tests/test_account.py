@@ -72,12 +72,14 @@ input()
         loop.account.close = AsyncMock()
         client = AsyncMock()
         client.endpoint = 'ws://127.0.0.1:9222/devtools/page/one'
-        client.evaluate.side_effect = ['one', True]
+        client.evaluate.side_effect = ['one', False, True]
         loop.client = client
         with patch('quota_monitor.runtime.list_pages', return_value=[]), patch('quota_monitor.runtime.select_page', return_value=client.endpoint):
             self.assertEqual(await loop.step(), 'updated')
         expression = client.evaluate.call_args.args[0]
         self.assertIn('"quota": {"status": "live"', expression)
+        loop.account.request_refresh()
+        self.assertEqual(loop.account.next_read, 0)
         client.evaluate.side_effect = None
         client.evaluate.return_value = True
         await loop.shutdown()

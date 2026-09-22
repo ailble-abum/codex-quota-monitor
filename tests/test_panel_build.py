@@ -61,6 +61,12 @@ class PanelBuildTests(unittest.TestCase):
         self.assertIn('const hoverBudget = windows.map', shell)
         self.assertIn('windowBudgetText(item)', shell)
 
+    def test_refresh_button_requests_account_refresh(self):
+        mount = (Path(__file__).parents[1] / 'quota_monitor/panel_mount.js').read_text()
+        bridge = (Path(__file__).parents[1] / 'quota_monitor/page_bridge.js').read_text()
+        self.assertIn('window.__quotaMonitorV2RefreshRequested = true', mount)
+        self.assertIn("options.action === 'refresh'", bridge)
+
 
 if __name__ == '__main__':
     unittest.main()

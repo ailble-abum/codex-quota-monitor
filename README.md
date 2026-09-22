@@ -63,6 +63,8 @@ python3 -m unittest discover -s tests -v
 
 [V2 账户速度估算](docs/panel-local-samples-contract.md) 从本地数值样本计算耗尽速度、均匀进度差和总预算；只有观察到实际下降才显示“按当前速度”，紧凑栏悬浮优先显示时间。
 
+账户面板的刷新按钮现在会向 V2 runtime 请求一次后台账户读取；没有配置 `account_cli` 时请求会被忽略，不伪造刷新结果。
+
 [固定停靠折叠往返修复](docs/docking-toggle-contract.md) 区分正常初始隐藏与固定状态丢失，修复折叠后重新展开时面板意外隐藏；左右停靠真实控件回归通过。
 
 [V2 账户聚合正文](docs/account-overview-contract.md) 替换总预算、状态说明与附加用量，校验预算/用量/额度，过期数据不继续展示附加值。

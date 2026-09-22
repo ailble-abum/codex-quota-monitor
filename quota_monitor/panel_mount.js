@@ -116,6 +116,10 @@
         setLayoutPreset(panel, button.dataset.layoutPreset);
       } else if (button.hasAttribute('data-handoff')) {
         void copyHandoff(button);
+      } else if (button.hasAttribute('data-refresh')) {
+        window.__quotaMonitorV2RefreshRequested = true;
+        button.setAttribute('aria-busy', 'true');
+        queueMicrotask(() => button.removeAttribute('aria-busy'));
       } else if (button.hasAttribute('data-cti-unit')) {
         event.preventDefault();
         event.stopPropagation();
@@ -136,8 +140,6 @@
         if (button.hasAttribute('data-cti-toggle') || panel.dataset.collapsed === 'true') toggle();
       }
     });
-    // V2 has no account-refresh backend yet; do not offer a nonfunctional action.
-    panel.querySelector('[data-refresh]').disabled = true;
     document.body.append(panel);
     mountedPanel = panel;
     applyStoredHudPosition(panel);

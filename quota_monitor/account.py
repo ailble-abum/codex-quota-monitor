@@ -143,6 +143,9 @@ class AccountSource:
             return unavailable()
         return self.value
 
+    def request_refresh(self):
+        self.next_read = 0
+
     async def close(self):
         if self.task is not None:
             self.task.cancel()

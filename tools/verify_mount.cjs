@@ -156,7 +156,9 @@ const {chromium, webkit} = require('playwright');
       delete payload.quota; payload.observedAt = Date.now()/1000;
       await publish();
       assert.ok((await page.locator('[data-quota]').textContent()).includes('暂时无法读取配额'));
-      assert.equal(await page.locator('[data-refresh]').isDisabled(), true);
+      assert.equal(await page.locator('[data-refresh]').isDisabled(), false);
+      await page.locator('[data-refresh]').click();
+      assert.equal(await page.evaluate(() => window.__quotaMonitorV2RefreshRequested), true);
       assert.equal(await page.locator('.cti-hud').count(), 1);
       for (const [language, htmlLang, autoLabel, rawLabel, groupLabel] of [
         ['en', 'en', 'Auto', 'raw', 'Token unit'], ['zh', 'zh-CN', '自动', '原值', 'Token 单位']
