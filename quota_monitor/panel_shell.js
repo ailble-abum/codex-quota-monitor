@@ -103,7 +103,11 @@
     root.dataset.tone = tone;
     title.setAttribute('aria-expanded', String(!collapsed));
     const compact = windows.map(item => `${windowLabel(item, true)} ${Math.round(item.remaining)}%`).join(' · ');
-    title.title = toneLabel(tone);
+    const hoverBudget = windows.map(item => {
+      const estimate = windowBudgetText(item);
+      return `${windowLabel(item, true)} ${estimate || toneLabel(quotaTone(item.remaining))}`;
+    }).join(' · ');
+    title.title = hoverBudget || toneLabel(tone);
     if (collapsed) {
       const cell = (label, value, cellTone, fill, sub = '', figure = null) =>
         `<span class="cti-mini" data-tone="${cellTone}">${fill == null ? '' : `<span class="cti-battery" aria-hidden="true"><i style="height:${fill}%"></i></span>`}<span class="cti-mini-copy"><small>${label}</small><strong>${figure != null ? figure : value == null ? '—' : Math.round(value) + '%'}</strong>${sub ? `<em>${sub}</em>` : ''}</span></span>`;

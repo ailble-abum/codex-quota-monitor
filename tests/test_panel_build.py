@@ -56,6 +56,11 @@ class PanelBuildTests(unittest.TestCase):
         self.assertIn('zoom:var(--cti-scale,1)', styles)
         self.assertIn('background:linear-gradient(135deg,transparent 60%', styles)
 
+    def test_compact_bar_hover_prefers_time_budget(self):
+        shell = (Path(__file__).parents[1] / 'quota_monitor/panel_shell.js').read_text()
+        self.assertIn('const hoverBudget = windows.map', shell)
+        self.assertIn('windowBudgetText(item)', shell)
+
 
 if __name__ == '__main__':
     unittest.main()

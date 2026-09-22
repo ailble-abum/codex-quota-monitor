@@ -61,6 +61,8 @@ python3 -m unittest discover -s tests -v
 
 [V2 账户窗口正文](docs/account-window-view-contract.md) 以文本 DOM 构建逐窗口内容，保留倒计时与预测；初始停靠组合的视口问题另列为待处理边界。
 
+[V2 账户速度估算](docs/panel-local-samples-contract.md) 从本地数值样本计算耗尽速度、均匀进度差和总预算；只有观察到实际下降才显示“按当前速度”，紧凑栏悬浮优先显示时间。
+
 [固定停靠折叠往返修复](docs/docking-toggle-contract.md) 区分正常初始隐藏与固定状态丢失，修复折叠后重新展开时面板意外隐藏；左右停靠真实控件回归通过。
 
 [V2 账户聚合正文](docs/account-overview-contract.md) 替换总预算、状态说明与附加用量，校验预算/用量/额度，过期数据不继续展示附加值。

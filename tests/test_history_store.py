@@ -35,6 +35,20 @@ class HistoryStoreTests(unittest.TestCase):
             self.assertEqual(store.summary()['samples'], 1)
             self.assertEqual(store.summary()['minRemaining'], 10)
 
+    def test_enrich_quota_derives_pace_without_using_reset_as_exhaustion(self):
+        with tempfile.TemporaryDirectory() as directory:
+            now = [2000.0]
+            store = LocalSampleStore(directory, clock=lambda: now[0])
+            quota = {'windows': [{'key': 'primary', 'remaining': 50, 'duration': 300,
+                                  'resetsAt': 2300}]}
+            store.record({'windows': [{'key': 'primary', 'remaining': 80}]}, {}, {}, None)
+            now[0] += 100
+            store.record({'windows': [{'key': 'primary', 'remaining': 50}]}, {}, {}, None)
+            result = store.enrich_quota(quota, now=now[0])
+            self.assertEqual(result['budget']['kind'], 'exhaust')
+            self.assertGreater(result['windows'][0]['exhaustInSec'], 0)
+            self.assertIn('paceDelta', result['windows'][0])
+
 
 if __name__ == '__main__':
     unittest.main()

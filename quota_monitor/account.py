@@ -49,6 +49,29 @@ def project(raw, *, now):
     # Preserve an explicit server block even if percentages look available.
     blocked = limits.get('rateLimitReachedType')
     result['ordinaryUsageAllowed'] = not bool(blocked) and not any(w['remaining'] == 0 for w in windows)
+    usage = raw.get('usage')
+    if isinstance(usage, dict):
+        buckets = []
+        for bucket in usage.get('dailyUsageBuckets', []):
+            if isinstance(bucket, dict) and number(bucket.get('tokens')):
+                buckets.append({'tokens': bucket['tokens']})
+        summary = usage.get('summary')
+        lifetime = summary.get('lifetimeTokens') if isinstance(summary, dict) else None
+        if buckets or number(lifetime):
+            result['usage'] = {'dailyUsageBuckets': buckets[:31], 'summary': {}}
+            if number(lifetime):
+                result['usage']['summary']['lifetimeTokens'] = lifetime
+    credits = raw.get('resetCredits')
+    if isinstance(credits, dict):
+        available, expiry = credits.get('availableCount'), credits.get('nextExpiresAt')
+        if (type(available) is int and 0 <= available <= 10000 and
+                (expiry is None or number(expiry))):
+            result['resetCredits'] = {'availableCount': available}
+            if expiry is not None:
+                result['resetCredits']['nextExpiresAt'] = expiry
+    budget = raw.get('budget')
+    if isinstance(budget, dict) and budget.get('kind') in ('floor', 'exhaust') and number(budget.get('seconds')):
+        result['budget'] = {'kind': budget['kind'], 'seconds': budget['seconds']}
     return result
 
 

@@ -83,6 +83,17 @@ input()
         await loop.shutdown()
         loop.account.close.assert_awaited_once()
 
+    def test_project_preserves_bounded_usage_reset_credits_and_budget(self):
+        result = account.project({'rateLimits': {'primary': {'usedPercent': 25}},
+            'usage': {'dailyUsageBuckets': [{'tokens': 123, 'secret': 'drop'}],
+                      'summary': {'lifetimeTokens': 456}},
+            'resetCredits': {'availableCount': 2, 'nextExpiresAt': 2000, 'secret': 'drop'},
+            'budget': {'kind': 'exhaust', 'seconds': 90, 'secret': 'drop'}}, now=1000)
+        self.assertEqual(result['usage'], {'dailyUsageBuckets': [{'tokens': 123}],
+                                           'summary': {'lifetimeTokens': 456}})
+        self.assertEqual(result['resetCredits'], {'availableCount': 2, 'nextExpiresAt': 2000})
+        self.assertEqual(result['budget'], {'kind': 'exhaust', 'seconds': 90})
+
     def test_large_numbers_and_explicit_block(self):
         for percent in (10**400, -1, 101, '25', None):
             self.assertEqual(account.project({'rateLimits': {'primary': {'usedPercent': percent}}}, now=1)['status'], 'unavailable')

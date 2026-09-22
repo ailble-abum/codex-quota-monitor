@@ -208,6 +208,8 @@ class UpdateLoop:
             payload = self.source.read(key)
             if self.account is not None:
                 payload["quota"] = self.account.snapshot()
+            if self.history is not None and payload.get('quota') is not None:
+                payload['quota'] = self.history.enrich_quota(payload['quota'])
             payload['build'] = {'pluginVersion': self.update.current}
             payload['update'] = self.update.snapshot()
             if self.history is not None:

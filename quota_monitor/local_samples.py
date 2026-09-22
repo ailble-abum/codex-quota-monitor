@@ -131,3 +131,44 @@ class LocalSampleStore:
             'averageCachedShare': sum(cached) / len(cached) if cached else None,
             'models': sorted(by_model, key=lambda key: (-by_model[key], key))[:6],
         }
+
+    def enrich_quota(self, quota, now=None):
+        """Add bounded pace estimates derived from numeric local samples."""
+        if not isinstance(quota, dict):
+            return quota
+        now = self.clock() if now is None else now
+        result = dict(quota)
+        windows, budgets = [], []
+        sources = quota.get('windows') if isinstance(quota.get('windows'), list) else []
+        for source in sources:
+            if not isinstance(source, dict):
+                continue
+            item, key = dict(source), source.get('key')
+            series = []
+            for row in self.rows:
+                samples = row.get('windows') if isinstance(row.get('windows'), list) else []
+                for sample in samples:
+                    if (isinstance(sample, dict) and sample.get('key') == key and
+                            _number(sample.get('remaining'), high=100) and _number(row.get('at'), 0)):
+                        series.append((row['at'], sample['remaining']))
+            if len(series) >= 2:
+                first_at, first_remaining = series[0]
+                last_at, last_remaining = series[-1]
+                elapsed, consumed = last_at - first_at, first_remaining - last_remaining
+                if elapsed > 0 and consumed > 0:
+                    exhaust = max(0, last_remaining) * elapsed / consumed
+                    if _number(exhaust):
+                        item['exhaustInSec'] = exhaust
+                        budgets.append(exhaust)
+                        reset = item.get('resetsAt')
+                        if _number(reset, 0) and reset > now and exhaust < reset - now:
+                            item['projectedExhaustAt'] = now + exhaust
+            duration, reset = item.get('duration'), item.get('resetsAt')
+            if _number(duration, low=1) and _number(reset, 0) and reset >= now:
+                expected = max(0, min(100, (reset - now) / (duration * 60) * 100))
+                item['paceDelta'] = item.get('remaining', 0) - expected
+            windows.append(item)
+        result['windows'] = windows
+        if budgets:
+            result['budget'] = {'kind': 'exhaust', 'seconds': min(budgets)}
+        return result

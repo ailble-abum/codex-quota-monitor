@@ -4,7 +4,7 @@
 
 windows 必须为数组，空数组允许（可表达未报告窗口）。每项必须为非数组对象，remaining 必须为 0–100 的有限 number。可选值 null/undefined 视为未提供：duration 如提供必须有限且大于零；paceDelta 必须有限，允许负数；exhaustInSec 必须有限非负；resetsAt/projectedExhaustAt 必须是 0 至 8.64e12 的有限 Unix 秒，保证可转换为 JavaScript Date。稀疏项、字符串数字、NaN/Infinity、越界比例及坏日期均使整组失效。
 
-字段范围由保留 renderer 的实际消费点核对：remaining/duration/resetsAt/paceDelta/projectedExhaustAt/exhaustInSec 覆盖其窗口数值读取。使用标准 Array/Number 和普通循环，不引入 schema 库或依赖。此校验不覆盖窗口以外的 usage/resetCredits/budget 等账户字段，也不表示真实账户通路已完成。现用安装与真实会话未修改。
+字段范围由保留 renderer 的实际消费点核对：remaining/duration/resetsAt/paceDelta/projectedExhaustAt/exhaustInSec 覆盖其窗口数值读取。使用标准 Array/Number 和普通循环，不引入 schema 库或依赖。窗口以外的 usage/resetCredits/budget 字段现在由账户投影按数值白名单保留，速度估算由本地样本摘要独立完成。现用安装与真实会话未修改。
 
 ## 验证
 
