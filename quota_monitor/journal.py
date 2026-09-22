@@ -3,6 +3,7 @@ from .reader import JournalReader
 from .session import SessionState
 from .compat import thread_key
 from .conversation_detail import ConversationDetail
+from .health_state import HealthState
 
 
 class SessionJournal:
@@ -12,6 +13,7 @@ class SessionJournal:
         self.thread_id = None
         self.identity_status = 'missing'
         self.detail = ConversationDetail()
+        self.health = HealthState()
 
     def poll(self):
         batch = self.reader.poll()
@@ -20,6 +22,7 @@ class SessionJournal:
             self.thread_id = None
             self.identity_status = 'missing'
             self.detail.reset()
+            self.health.reset()
         for record in batch.records:
             if record.get('type') == 'session_meta':
                 payload = record.get('payload')
@@ -34,10 +37,11 @@ class SessionJournal:
                     self.identity_status = 'verified'
             self.state.accept(record)
             self.detail.accept(record)
+            self.health.accept(record)
         detail = self.detail.snapshot(self.thread_id) if self.thread_id else None
         return {'session': self.state.snapshot(), 'status': batch.status,
                 'thread_id': self.thread_id, 'identity_status': self.identity_status,
                 'reset': batch.reset, 'more': batch.more,
                 'pending': batch.pending,
                 'bytes_read': batch.bytes_read, 'invalid_lines': batch.invalid_lines,
-                'detail': detail}
+                'detail': detail, 'health': self.health.snapshot()}

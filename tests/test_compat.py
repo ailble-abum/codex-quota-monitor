@@ -101,6 +101,17 @@ class CompatibilityTests(unittest.TestCase):
         self.assertNotIn('private', repr(detail))
         self.assertEqual(payload['detailsByThread']['local:one'], detail)
 
+    def test_health_projection_is_bound_to_selected_task(self):
+        result = reading()
+        result['health'] = {'count': 1, 'after': 100, 'afterPercent': 50.0,
+                            'latestAt': '2026-09-21T00:00:00Z', 'intervals': [2],
+                            'recommendHandoff': True, 'reason': 'baseline',
+                            'private': 'drop'}
+        payload = panel_payload({'one': result}, 'one')
+        self.assertEqual(payload['healthThreadId'], 'one')
+        self.assertTrue(payload['health']['recommendHandoff'])
+        self.assertNotIn('private', repr(payload['health']))
+
 
 if __name__ == '__main__':
     unittest.main()

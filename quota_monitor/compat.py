@@ -38,7 +38,8 @@ def panel_summary(thread_id, reading):
 def panel_payload(readings, active_thread_id):
     key = thread_key(active_thread_id)
     result = {'activeThreadId': key, 'selectedThreadId': None, 'observedAt': time.time(),
-              'summaries': [], 'detail': None, 'detailsByThread': {}}
+              'summaries': [], 'detail': None, 'detailsByThread': {},
+              'health': None, 'healthThreadId': None}
     # The legacy renderer may fall back to the first summary. Restrict this
     # bridge to the selected task so a failed lookup cannot show another task.
     if key is not None and key in readings:
@@ -46,6 +47,12 @@ def panel_payload(readings, active_thread_id):
         if summary is not None:
             result['summaries'] = [summary]
             result['selectedThreadId'] = key
+            health = readings[key].get('health')
+            if isinstance(health, dict):
+                result['health'] = {name: health.get(name) for name in (
+                    'count', 'after', 'afterPercent', 'latestAt', 'intervals',
+                    'recommendHandoff', 'reason')}
+                result['healthThreadId'] = key
             detail = readings[key].get('detail')
             if isinstance(detail, dict) and detail.get('thread_id') == key:
                 # The detail projection is deliberately limited to assistant

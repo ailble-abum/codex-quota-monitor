@@ -12,7 +12,8 @@
     if (disposed) throw new Error('consumer disposed');
     if (!data || data !== panelData()) {
       data = {activeThreadId: null, selectedThreadId: null, summaries: [],
-        detail: null, detailsByThread: {}, observedAt: Date.now() / 1000};
+        detail: null, detailsByThread: {}, health: null, healthThreadId: null,
+        observedAt: Date.now() / 1000};
     }
     appliedPayload = data;
     window.__codexContextTokenInspectorPayload = data;
