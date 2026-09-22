@@ -10,6 +10,7 @@ const {chromium, webkit} = require('playwright');
     const browser = await engine.launch();
     try {
       const page = await browser.newPage();
+      await page.emulateMedia({reducedMotion: 'reduce'});
       await page.route('**/*', route => route.fulfill({body: '<html><head></head><body></body></html>', contentType: 'text/html'}));
       await page.goto('http://mount.invalid/');
       await page.evaluate(() => { window.__quotaMonitorV2Thread = 'one'; localStorage.setItem('cti-language', 'zh'); localStorage.setItem('codex-context-token-inspector-unit', 'k'); });
@@ -178,6 +179,22 @@ const {chromium, webkit} = require('playwright');
       assert.equal(await toggle.getAttribute('aria-label'), '收起监控');
       await page.locator('[data-settings-toggle]').click();
       assert.equal(await page.locator('[data-settings-toggle]').getAttribute('aria-expanded'), 'true');
+      assert.equal(await page.locator('[data-refresh]').evaluate(button => getComputedStyle(button).width), '28px');
+      const readable = '[data-cti-unit],[data-layout-preset],[data-mascot-scale-auto],[data-handoff],[data-position-reset]';
+      assert.ok(await page.locator(readable).evaluateAll(buttons => buttons.every(button => {
+        const range = document.createRange(); range.selectNodeContents(button);
+        return [...range.getClientRects()].filter(rect => rect.width && rect.height).length === 1;
+      })), 'settings controls must not inherit header icon dimensions');
+      const skinsSummary = page.locator('[data-skins] > summary');
+      await skinsSummary.click();
+      assert.ok(await page.locator('[data-skin-choice]').evaluateAll(buttons => buttons.every(button => {
+        const box = button.getBoundingClientRect();
+        return [...button.querySelectorAll('.cti-skin-art,small')].every(child => {
+          const rect = child.getBoundingClientRect();
+          return rect.left >= box.left && rect.right <= box.right && rect.top >= box.top && rect.bottom <= box.bottom;
+        });
+      })), 'skin cards must contain artwork and captions');
+      await skinsSummary.click();
       const presetWidths = [];
       for (const preset of ['mini','standard','large']) {
         await page.locator(`[data-layout-preset="${preset}"]`).click();

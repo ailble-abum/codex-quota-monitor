@@ -59,6 +59,11 @@
       #codex-context-token-inspector-root summary { cursor:pointer; font-weight:650; }
       #codex-context-token-inspector-root .cti-settings { display:grid; gap:8px; }
       #codex-context-token-inspector-root .cti-settings[hidden] { display:none; }
+      /* Header controls are icons; settings controls carry text. */
+      #codex-context-token-inspector-root .cti-unit-group button,
+      #codex-context-token-inspector-root .cti-settings button {
+        width:auto; height:auto; min-height:24px; white-space:nowrap;
+      }
       #codex-context-token-inspector-root fieldset { border:0; margin:0; padding:0; }
       #codex-context-token-inspector-root legend { margin-bottom:4px; font-weight:650; }
       #codex-context-token-inspector-root .cti-muted { color:color-mix(in srgb,CanvasText 64%,transparent); }
@@ -79,8 +84,9 @@
       #codex-context-token-inspector-root .cti-update-badge,
       #codex-context-token-inspector-root .cti-status { display:inline-block; padding:1px 6px; border-radius:999px; background:color-mix(in srgb,CanvasText 9%,transparent); font-size:11px; }
       #codex-context-token-inspector-root .cti-skin-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:7px; }
-      #codex-context-token-inspector-root .cti-skin-button { display:grid; place-items:center; min-width:0; }
+      #codex-context-token-inspector-root .cti-skin-button { display:grid; place-items:center; width:100%; min-width:0; min-height:64px; padding:3px; }
       #codex-context-token-inspector-root .cti-skin-art { width:38px; height:42px; object-fit:contain; }
+      #codex-context-token-inspector-root .cti-skin-button small { min-width:0; max-width:100%; overflow:hidden; text-overflow:ellipsis; }
       #codex-context-token-inspector-root[data-collapsed="true"] .cti-body,
       #codex-context-token-inspector-root[data-collapsed="true"] .cti-unit-group,
       #codex-context-token-inspector-root[data-collapsed="true"] [data-refresh],
