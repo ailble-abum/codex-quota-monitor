@@ -23,6 +23,7 @@
       <p class="cti-muted" data-freshness></p>
       <section class="cti-section" data-context></section>
       <section class="cti-section" data-health></section>
+      <section class="cti-section" data-history></section>
       <details data-details>
         <summary>${text('会话详情', 'Session details')}</summary>
         <div class="cti-metrics" data-metrics></div>

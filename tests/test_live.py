@@ -80,6 +80,16 @@ class LiveCLITests(unittest.TestCase):
         with self.assertRaises(ValueError):
             load_config(self.config)
 
+    def test_history_root_is_optional_and_relative_to_config(self):
+        from quota_monitor.live import load_config
+        self.value['history_root'] = 'history'
+        self.config.write_text(json.dumps(self.value))
+        self.assertEqual(load_config(self.config)['history_root'], self.config.parent / 'history')
+        self.value['history_root'] = ''
+        self.config.write_text(json.dumps(self.value))
+        with self.assertRaises(ValueError):
+            load_config(self.config)
+
     def test_consumer_requires_panel_and_valid_pinned_file(self):
         import hashlib
         from quota_monitor.live import load_config

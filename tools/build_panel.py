@@ -14,7 +14,7 @@ MODULES = (
     'panel_scale_preference.js', 'panel_edge_preference.js', 'panel_skin_preference.js',
     'panel_controls.js', 'panel_details.js', 'panel_context.js', 'panel_health.js',
     'panel_account_status.js', 'panel_account_windows.js', 'panel_account_overview.js',
-    'panel_diagnostics.js', 'panel_disclosures.js', 'panel_body.js', 'panel_handoff.js',
+    'panel_diagnostics.js', 'panel_samples.js', 'panel_disclosures.js', 'panel_body.js', 'panel_handoff.js',
     'panel_position_reset.js', 'panel_host_details.js', 'panel_mount.js', 'panel_adapter.js',
 )
 

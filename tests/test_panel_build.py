@@ -36,6 +36,14 @@ class PanelBuildTests(unittest.TestCase):
         for name in ('applySidebar', 'applyFooters', 'assistantNodes', 'detailForVisiblePage'):
             self.assertNotIn('function ' + name + '(', module)
 
+    def test_local_samples_projection_is_repository_owned(self):
+        source = (Path(__file__).parents[1] / 'tools/build_panel.py').read_text()
+        module = (Path(__file__).parents[1] / 'quota_monitor/panel_samples.js').read_text()
+        self.assertIn("'panel_samples.js'", source)
+        self.assertIn('function renderLocalSamples(', module)
+        self.assertNotIn('panel_history.js', source)
+        self.assertNotIn('session.jsonl', module)
+
     def test_compact_bar_keeps_original_battery_visual(self):
         styles = (Path(__file__).parents[1] / 'quota_monitor/panel_styles.js').read_text()
         self.assertIn('width:max-content; overflow:hidden', styles)

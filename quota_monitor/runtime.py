@@ -18,6 +18,7 @@ from .indexed import DirectorySource, NamedDirectorySource
 from .consumer import load_consumer
 from .reader import finite_float, reject_constant
 from .host_follow import HostFollower
+from .local_samples import LocalSampleStore
 
 
 _PAGE_BRIDGE = Path(__file__).with_name('page_bridge.js').read_text(encoding='utf-8')
@@ -111,13 +112,14 @@ class UpdateLoop:
 
     panel=True forwards to an existing consumer or an explicitly pinned initializer.
     """
-    def __init__(self, origin, page_url, paths=None, *, panel=False, host='explicit', session_root=None, consumer=None, account_cli=None, session_layout=None, host_app=None):
+    def __init__(self, origin, page_url, paths=None, *, panel=False, host='explicit', session_root=None, consumer=None, account_cli=None, session_layout=None, host_app=None, history_root=None):
         local_origin(origin)
         if host not in ('explicit', 'codex-sidebar'):
             raise ValueError('invalid host adapter')
         if account_cli is not None and (not isinstance(account_cli, str) or not Path(account_cli).is_absolute() or "\0" in account_cli):
             raise ValueError("invalid account CLI")
         self.account = AccountSource(account_cli) if account_cli is not None else None
+        self.history = LocalSampleStore(history_root) if history_root is not None else None
         self.host = host
         if type(panel) is not bool:
             raise ValueError('invalid panel mode')
@@ -201,6 +203,16 @@ class UpdateLoop:
             payload = self.source.read(key)
             if self.account is not None:
                 payload["quota"] = self.account.snapshot()
+            if self.history is not None:
+                selected = payload.get('summaries', [{}])
+                selected = selected[0] if selected else {}
+                if not isinstance(selected, dict):
+                    selected = {}
+                try:
+                    payload['history'] = self.history.record(
+                        payload.get('quota', {}), selected, payload.get('health'), selected.get('model'))
+                except OSError:
+                    payload['history'] = None
             applied = await self.client.evaluate(page_expression(
                 action='publish', expected=self.page_url, key=key,
                 payload=payload, panel=self.panel, host=self.host, owner=self.owner))

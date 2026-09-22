@@ -70,6 +70,7 @@
     root.__ctiHealth = health;
     applyCompanionFeedback(root, payload, selected, health, id);
     renderHealth(body, health);
+    renderLocalSamples(body, payload.history);
     renderSessionDetails(body, selected);
     renderContext(body, selected);
     renderAccountStatus(body, quota, live, age);

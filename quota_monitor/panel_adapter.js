@@ -12,7 +12,7 @@
     if (disposed) throw new Error('consumer disposed');
     if (!data || data !== panelData()) {
       data = {activeThreadId: null, selectedThreadId: null, summaries: [],
-        detail: null, detailsByThread: {}, health: null, healthThreadId: null,
+        detail: null, detailsByThread: {}, health: null, healthThreadId: null, history: null,
         observedAt: Date.now() / 1000};
     }
     appliedPayload = data;
