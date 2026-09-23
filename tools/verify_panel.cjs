@@ -52,7 +52,11 @@ async function main() {
             for (const key of ['textContent', 'innerText']) Object.defineProperty(message, key, {
               get() { throw Error('private conversation read'); }
             });
-            window.originalRows = [...document.querySelectorAll('[data-app-action-sidebar-thread-row]')].map(row => row.outerHTML);
+            window.originalRows = [...document.querySelectorAll('[data-app-action-sidebar-thread-row]')].map(row => {
+              const copy = row.cloneNode(true);
+              copy.removeAttribute('data-cti-v2-sidebar-note');
+              return copy.outerHTML;
+            });
           });
           const push = key => page.evaluate(({payload, bridge}) => {
             if (!bridge) return window.__codexContextTokenInspectorUpdate(payload);
@@ -91,8 +95,14 @@ async function main() {
           await push('one');
           await meter(25);
           if (candidate) {
-            assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('[data-app-action-sidebar-thread-row]')].map(row => row.outerHTML)),
+            assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('[data-app-action-sidebar-thread-row]')].map(row => {
+              const copy = row.cloneNode(true);
+              copy.removeAttribute('data-cti-v2-sidebar-note');
+              return copy.outerHTML;
+            })),
               await page.evaluate(() => window.originalRows));
+            assert.ok(await page.evaluate(() => [...document.querySelectorAll('[data-app-action-sidebar-thread-row]')]
+              .some(row => row.hasAttribute('data-cti-v2-sidebar-note'))));
             assert.equal(await page.locator('[data-context-token-chip],[data-context-token-footer]').count(), 0);
             // A copied stale payload cannot bypass the bridge after task switching.
             await page.evaluate(() => { window.savedPayload = window.__codexContextTokenInspectorPayload; });
