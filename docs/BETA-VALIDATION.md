@@ -18,3 +18,10 @@
 目录安装器覆盖拒绝覆盖已有目录、摘要篡改拒绝、畸形清单受控失败；合成浏览器覆盖正常退出清理。真实宿主断连时仍可能为 `lease_pending`，不宣称原生卸载/回退已验收。
 
 纯文档与归因文件不适用新增功能单测；独立构建与安装入口均有对应测试。正式压缩包的构建提交与摘要仍需在浏览器运行时可用、来源审查完成后，以发行附带的 `BETA-RELEASE.json`、`install-manifest.json` 和 `SHA256SUMS` 为准。
+
+## 2026-09-23 后续验证
+
+- Python 3.9 全套 177 项通过；`tools/verify_live.cjs` 通过临时 Chromium 的相对配置、重载恢复、SIGINT/SIGTERM 清理、目录索引歧义、页面关闭和等待模式重开。
+- `tools/verify_runtime_panel.cjs` 使用 V2 独立候选在 Chromium 明暗主题通过真实 CDP、追加、任务切换、缺失、自动过期、重载和单实例；`tools/verify_panel.cjs --bridge` 在 Chromium/WebKit 明暗主题通过。侧栏只保留 V2 自有摘要属性，宿主文字与状态不变。
+- 预览目录 `beta-20260923-r20` 的独立构建、12 个视觉资源哈希、安装清单和 `audit_release.py` 均通过。该目录仍是隔离预览，不替换稳定版安装。
+- 以上补齐了合成浏览器证据，不等同于真实 Codex 整应用退出重开、LaunchAgent 切换、Windows、签名/公证或最终来源/权属审查。
