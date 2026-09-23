@@ -10,41 +10,10 @@ codex_monitor_valid_port() {
 codex_monitor_devtools_target_state() {
   local port="${1:?port required}"
   local mode="${2:?mode required}"
+  local script_dir
   codex_monitor_valid_port "${port}" || return 1
-  python3 - "${port}" "${mode}" <<'PY'
-import json
-import sys
-import urllib.parse
-import urllib.request
-
-port, mode = sys.argv[1], sys.argv[2]
-try:
-    with urllib.request.urlopen(f"http://127.0.0.1:{port}/json", timeout=0.6) as response:
-        value = json.load(response)
-except (OSError, ValueError):
-    raise SystemExit(1)
-
-if not isinstance(value, list):
-    raise SystemExit(1)
-for target in value:
-    if not isinstance(target, dict) or target.get("type") != "page":
-        continue
-    title = str(target.get("title") or "").lower()
-    url = str(target.get("url") or "").lower()
-    decoded = urllib.parse.unquote(url)
-    owned = url.startswith("app://") and (
-        "codex" in title or "chatgpt" in title
-        or url.startswith("app://codex/")
-        or url.startswith("app://-/index.html")
-    )
-    if not owned:
-        continue
-    if mode == "owned":
-        raise SystemExit(0)
-    if mode == "ready" and "initialroute=" not in decoded and "avatar-overlay" not in decoded:
-        raise SystemExit(0)
-raise SystemExit(1)
-PY
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  python3 "${script_dir}/cdp_transport.py" target-state "${port}" "${mode}"
 }
 
 codex_monitor_devtools_available() {

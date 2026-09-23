@@ -6,7 +6,7 @@ import struct
 import threading
 import unittest
 
-from cdp_transport import CDPClient, CDPError, select_target
+from cdp_transport import CDPClient, CDPError, has_renderer_target, select_target
 
 
 def server_text(payload, *, final=True, opcode=1):
@@ -106,6 +106,19 @@ class CDPTransportTests(unittest.TestCase):
              'webSocketDebuggerUrl': 'ws://127.0.0.1:2/yes'},
         ])
         self.assertEqual(target['webSocketDebuggerUrl'], 'ws://127.0.0.1:2/yes')
+
+    def test_target_state_matches_launcher_owned_and_ready_rules(self):
+        targets = [
+            {'type': 'page', 'title': 'Codex', 'url': 'app://-/index.html?initialRoute=home'},
+            {'type': 'page', 'title': 'Codex', 'url': 'app://-/index.html?avatar-overlay=true'},
+            {'type': 'page', 'title': 'Codex', 'url': 'app://-/index.html'},
+        ]
+        self.assertTrue(has_renderer_target(targets, 'owned'))
+        self.assertTrue(has_renderer_target(targets, 'ready'))
+        self.assertFalse(has_renderer_target(targets[:2], 'ready'))
+        self.assertFalse(has_renderer_target([{'type': 'page', 'url': 'https://example.com'}], 'owned'))
+        with self.assertRaisesRegex(ValueError, '^invalid target state$'):
+            has_renderer_target(targets, 'unknown')
 
     def test_remote_javascript_errors_are_distinguished(self):
         def handler(sock):

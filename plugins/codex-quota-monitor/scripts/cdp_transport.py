@@ -6,6 +6,7 @@ no page code or renderer selectors live here.
 """
 from __future__ import annotations
 
+import argparse
 import base64
 import hashlib
 import ipaddress
@@ -259,11 +260,13 @@ class CDPClient:
         return remote.get('value')
 
 
-def devtools_targets(port: int) -> list[dict[str, Any]]:
+def devtools_targets(port: int, timeout: float = 2.0) -> list[dict[str, Any]]:
     if type(port) is not int or not 1 <= port <= 65535:
         raise ValueError('invalid port')
+    if not _valid_timeout(timeout):
+        raise ValueError('invalid timeout')
     try:
-        with urllib.request.urlopen(f'http://127.0.0.1:{port}/json', timeout=2) as response:
+        with urllib.request.urlopen(f'http://127.0.0.1:{port}/json', timeout=timeout) as response:
             raw = response.read(MAX_MESSAGE + 1)
     except (urllib.error.URLError, OSError, UnicodeError, json.JSONDecodeError) as error:
         raise CDPError(f'Cannot connect to the Codex renderer on 127.0.0.1:{port}. '
@@ -285,6 +288,22 @@ def is_codex_renderer_target(target: dict[str, Any]) -> bool:
     return url.startswith('app://') and (
         'codex' in title or 'chatgpt' in title or
         url.startswith('app://codex/') or url.startswith('app://-/index.html'))
+
+
+def has_renderer_target(targets: list[dict[str, Any]], mode: str = 'owned') -> bool:
+    if mode not in {'owned', 'ready'}:
+        raise ValueError('invalid target state')
+    for target in targets:
+        if not isinstance(target, dict) or target.get('type') != 'page':
+            continue
+        if not is_codex_renderer_target(target):
+            continue
+        if mode == 'owned':
+            return True
+        decoded = urllib.parse.unquote(str(target.get('url') or '').lower())
+        if 'initialroute=' not in decoded and 'avatar-overlay' not in decoded:
+            return True
+    return False
 
 
 def target_score(target: dict[str, Any]) -> int:
@@ -313,3 +332,20 @@ def select_target(targets: list[dict[str, Any]]) -> dict[str, Any]:
     for target in sorted(candidates, key=target_score, reverse=True):
         return target
     raise CDPError('No debuggable Codex renderer target found')
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    commands = parser.add_subparsers(dest='command', required=True)
+    state = commands.add_parser('target-state')
+    state.add_argument('port', type=int)
+    state.add_argument('mode', choices=('owned', 'ready'))
+    args = parser.parse_args(argv)
+    try:
+        return 0 if has_renderer_target(devtools_targets(args.port, timeout=0.6), args.mode) else 1
+    except (CDPError, ValueError):
+        return 1
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())
