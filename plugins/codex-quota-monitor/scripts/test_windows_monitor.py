@@ -195,6 +195,11 @@ class WindowsPlanTests(unittest.TestCase):
         self.assertIn("cti-layout-v2", source)
         self.assertIn("root.__ctiLayout={}", source)
 
+    def test_stop_expression_clears_the_page_bridge(self):
+        self.assertIn("window.__codexContextTokenInspectorHideSidebarTooltip?.();", monitor.STOP_OVERLAY_EXPRESSION)
+        self.assertIn("window.__codexContextTokenInspectorPageRefresh?.dispose?.();", monitor.STOP_OVERLAY_EXPRESSION)
+        self.assertIn("window.__codexContextTokenInspectorPageBridge?.clearSidebar?.();", monitor.STOP_OVERLAY_EXPRESSION)
+
     def test_notification_is_once_per_fresh_timestamp(self):
         self.assertTrue(monitor.notification_is_fresh({"message": "low", "at": 1000}, now=1120))
         self.assertFalse(monitor.notification_is_fresh({"message": "low", "at": 1000}, now=1120.1))

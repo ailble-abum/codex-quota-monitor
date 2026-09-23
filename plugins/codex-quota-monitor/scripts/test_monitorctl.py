@@ -200,5 +200,13 @@ class BuildRecordTest(unittest.TestCase):
         self.assertEqual(sorted(info), ['cachebuster', 'installedAt', 'pluginVersion', 'runtimeVersion'])
 
 
+class OverlayCleanupTest(unittest.TestCase):
+    def test_stop_clears_the_page_bridge_before_removing_the_overlay(self):
+        source = Path(monitorctl.__file__).read_text(encoding='utf-8')
+        self.assertIn('window.__codexContextTokenInspectorHideSidebarTooltip?.();', source)
+        self.assertIn('window.__codexContextTokenInspectorPageRefresh?.dispose?.();', source)
+        self.assertIn('window.__codexContextTokenInspectorPageBridge?.clearSidebar?.();', source)
+
+
 if __name__ == '__main__':
     unittest.main()

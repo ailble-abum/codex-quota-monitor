@@ -147,8 +147,9 @@ class InspectorTests(unittest.TestCase):
         self.assertIn("focusin", tooltip)
         self.assertIn("focusout", tooltip)
         self.assertIn("aria-describedby", tooltip)
-        sidebar = block("function applySidebar", "function assistantNodes")
-        self.assertIn("row.tabIndex<0", sidebar)
+        sidebar = block("function projectSidebar", "function clearSidebar")
+        self.assertIn("row.tabIndex < 0", sidebar)
+        self.assertIn("originalTabindexAttr", sidebar)
 
     def test_edge_docking_and_all_companion_skins_are_bundled(self):
         self.assertIn("function dockCandidate", INJECTION_SCRIPT)
@@ -405,7 +406,7 @@ class InspectorTests(unittest.TestCase):
         # A resident renderer already carrying this runtime must not have the
         # whole script, companion bitmaps and all, re-parsed every ten seconds.
         tail = block("window.__codexContextTokenInspectorUpdate =", "return {")
-        self.assertIn("installObserver(nextPayload)", tail)
+        self.assertIn("pageRefresh.update(nextPayload)", tail)
         self.assertIn("applyAll(nextPayload)", tail)
 
     def test_push_skips_the_script_when_the_runtime_is_applied(self):

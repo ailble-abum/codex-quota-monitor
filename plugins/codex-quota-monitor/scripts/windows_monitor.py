@@ -769,6 +769,9 @@ true
 """
 
 STOP_OVERLAY_EXPRESSION = r"""
+window.__codexContextTokenInspectorHideSidebarTooltip?.();
+window.__codexContextTokenInspectorPageRefresh?.dispose?.();
+window.__codexContextTokenInspectorPageBridge?.clearSidebar?.();
 window.__codexContextTokenInspectorObserver?.disconnect();
 clearTimeout(window.__codexContextTokenInspectorDetailTimer);
 window.cancelIdleCallback?.(window.__codexContextTokenInspectorIdleCallback || 0);

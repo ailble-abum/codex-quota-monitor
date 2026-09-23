@@ -206,7 +206,10 @@ def main():
         try:
             client = injector.CDPClient(injector.select_target(injector.devtools_targets(9222))['webSocketDebuggerUrl'])
             if args.action == 'stop':
-                expression = """window.__codexContextTokenInspectorObserver?.disconnect();
+                expression = """window.__codexContextTokenInspectorHideSidebarTooltip?.();
+                window.__codexContextTokenInspectorPageRefresh?.dispose?.();
+                window.__codexContextTokenInspectorPageBridge?.clearSidebar?.();
+                window.__codexContextTokenInspectorObserver?.disconnect();
                 document.getElementById('codex-context-token-inspector-root')?.__ctiRemoveResize?.();
                 document.getElementById('codex-context-token-inspector-root')?.__ctiClearHint?.();
                 clearTimeout(window.__codexContextTokenInspectorDetailTimer);

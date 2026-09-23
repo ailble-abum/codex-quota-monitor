@@ -23,7 +23,7 @@ if str(SCRIPT_DIR) not in sys.path:
 import context_token_inspector as inspector
 from cdp_transport import CDPClient, CDPError, devtools_targets, select_target
 from injector_status import write_status
-from page_bridge import read as read_page_state
+from page_bridge import HOST_BRIDGE_SCRIPT, read as read_page_state
 from payload_builder import (DETAIL_SESSION_LIMIT, build_payload, normalize_thread_id,
                              session_file_for_thread, thread_keys)
 from platform_paths import runtime_root
@@ -55,7 +55,7 @@ INJECTION_SCRIPT = r"""
   // new script: stacked observers and timers are torn down, and the companion
   // bitmap is rebuilt from the new data URIs. A renderer may still contain an
   // observer from an older plugin release.
-  const RUNTIME_VERSION = 35;
+  const RUNTIME_VERSION = 36;
   const ROOT_ID = 'codex-context-token-inspector-root';
   const STYLE_ID = 'codex-context-token-inspector-style';
   const FOOTER_ATTR = 'data-context-token-footer';
@@ -75,6 +75,20 @@ INJECTION_SCRIPT = r"""
   const previousRuntimeVersion = window.__codexContextTokenInspectorRuntimeVersion;
   const runtimeChanged = previousRuntimeVersion !== RUNTIME_VERSION;
   window.__codexContextTokenInspectorRuntimeVersion = RUNTIME_VERSION;
+
+  __HOST_BRIDGE__
+  window.__codexContextTokenInspectorPageRefresh?.dispose?.();
+  window.__codexContextTokenInspectorObserver?.disconnect?.();
+  window.__codexContextTokenInspectorObserver = null;
+  clearTimeout(window.__ctiFreshnessTimer);
+  window.__ctiFreshnessTimer = null;
+  const page = createPageBridge({
+    rootId: ROOT_ID,
+    footerAttr: FOOTER_ATTR,
+    chipAttr: CHIP_ATTR,
+    sidebarHoverAttr: SIDEBAR_HOVER_ATTR,
+  });
+  window.__codexContextTokenInspectorPageBridge = page;
 
   const I18N = {
     en: {
@@ -346,27 +360,12 @@ INJECTION_SCRIPT = r"""
     lines.push(labeled('assistantRounds', `${assistantIndex}/${assistantTotal}`));
     return lines.join('\n');
   }
-  function rowThreadId(row) {
-    return row.getAttribute('data-app-action-sidebar-thread-id') ||
-      row.querySelector('[data-app-action-sidebar-thread-id]')?.getAttribute('data-app-action-sidebar-thread-id') ||
-      null;
-  }
   function normalizeThreadId(threadId) {
     return String(threadId || '').replace(/^local:/, '');
   }
   function threadKeys(threadId) {
     const normalized = normalizeThreadId(threadId);
     return [String(threadId || ''), normalized, `local:${normalized}`].filter(Boolean);
-  }
-  function activeSidebarRow() {
-    return document.querySelector('[data-app-action-sidebar-thread-row][data-app-action-sidebar-thread-active="true"]') ||
-      document.querySelector('[data-app-action-sidebar-thread-row][aria-current="page"]') ||
-      document.querySelector('[data-app-action-sidebar-thread-active="true"]') ||
-      document.querySelector('[data-app-action-sidebar-thread-row][data-app-action-sidebar-thread-active]:not([data-app-action-sidebar-thread-active="false"])');
-  }
-  function activeThreadId() {
-    const row = activeSidebarRow();
-    return row ? rowThreadId(row) : null;
   }
   function ensureStyle() {
     let style = document.getElementById(STYLE_ID);
@@ -776,12 +775,6 @@ INJECTION_SCRIPT = r"""
       }
     `;
     if (style.textContent !== css) style.textContent = css;
-  }
-  function cleanOriginalTitle(value) {
-    return String(value || '')
-      .split(/\n{2,}(?=(?:Context|上下文)\s)/)[0]
-      .replace(/\n?(?:Context|上下文)\s+[\s\S]*$/m, '')
-      .trim();
   }
   function hideSidebarTooltip() {
     const tooltip=document.querySelector('.cti-sidebar-tooltip');
@@ -1434,252 +1427,11 @@ INJECTION_SCRIPT = r"""
     updateHudLanguage(root);
     return root;
   }
-  function applySidebar(summaries) {
-    const byThread = new Map();
-    summaries.forEach(item => {
-      byThread.set(String(item.thread_id), item);
-      (item.thread_keys || []).forEach(key => byThread.set(String(key), item));
-    });
-    document.querySelectorAll('[data-app-action-sidebar-thread-row]').forEach(row => {
-      const id = rowThreadId(row);
-      const item = byThread.get(String(id));
-      if (!item) return;
-      const existing = row.getAttribute('data-cti-original-title') || cleanOriginalTitle(row.getAttribute('title') || '');
-      if (!row.hasAttribute('data-cti-original-title')) row.setAttribute('data-cti-original-title', existing);
-      row.removeAttribute('title');
-      row.setAttribute(SIDEBAR_HOVER_ATTR, summaryHover(item));
-      if(!row.matches('a,button')&&row.tabIndex<0)row.tabIndex=0;
-    });
-  }
-  function assistantNodes() {
-    // Codex tasks and ChatGPT conversations currently use different turn
-    // wrappers. Keep both paths so an app update can move a task between them.
-    const selectors = [
-      '[data-content-search-assistant-turn-key]',
-      '[data-local-conversation-final-assistant]',
-      '[data-chatgpt-conversation-turn="true"]',
-    ];
-    const seen = new Set();
-    const nodes = [];
-    for (const selector of selectors) {
-      document.querySelectorAll(selector).forEach(node => {
-        const element = node.closest('[data-content-search-assistant-turn-key]') ||
-          node.closest('[data-chatgpt-conversation-turn="true"]') ||
-          node;
-        if (!seen.has(element)) {
-          seen.add(element);
-          nodes.push(element);
-        }
-      });
-      if (nodes.length) break;
-    }
-    return nodes.filter(node => !node.closest(`#${ROOT_ID}`));
-  }
-  function actionRowForAssistant(node) {
-    const turn = node.closest('[data-turn-key], [data-chatgpt-conversation-turn="true"]') || node;
-    const sentTime = turn.querySelector('[data-assistant-message-sent-time]');
-    if (sentTime?.parentElement) return sentTime.parentElement;
-    const candidates = Array.from(turn.querySelectorAll('span, div')).filter(el => {
-      if (el.closest(`#${ROOT_ID}`) || el.hasAttribute(CHIP_ATTR)) return false;
-      const text = (el.textContent || '').trim();
-      return /^Work(?:ing|ed) for /.test(text) || /\b\d{1,2}:\d{2}\s?(?:AM|PM)\b/.test(text);
-    });
-    const candidate = candidates.find(el => /^Work(?:ing|ed) for /.test((el.textContent || '').trim())) ||
-      candidates.find(el => /\b\d{1,2}:\d{2}\s?(?:AM|PM)\b/.test((el.textContent || '').trim())) ||
-      null;
-    return candidate?.parentElement || null;
-  }
-  function assistantChipTargets() {
-    const targetsByHost = new Map();
-    assistantNodes().forEach(node => {
-      const actionRow = actionRowForAssistant(node);
-      const host = actionRow?.parentElement || node;
-      if (!host) return;
-      // Multi-step turns can expose several assistant wrappers for one native
-      // action row. The action-row host is the visible reply boundary, so the
-      // last wrapper for that host owns its single token chip.
-      targetsByHost.set(host, { node, actionRow, host });
-    });
-    return Array.from(targetsByHost.values());
-  }
-  function directReplyChips(host) {
-    return Array.from(host?.children || []).filter(child => child.hasAttribute(CHIP_ATTR));
-  }
-  function normalizedText(value) {
-    return String(value || '')
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-      .replace(/[`*~]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
-  }
-  function visibleItemForNode(node, index, items, used, visibleCount) {
-    const nodeText = normalizedText(node.textContent);
-    for (let itemIndex = 0; itemIndex < items.length; itemIndex += 1) {
-      if (used.has(itemIndex)) continue;
-      const prefix = normalizedText(items[itemIndex].textPrefix);
-      if (prefix && nodeText.includes(prefix)) {
-        used.add(itemIndex);
-        return items[itemIndex];
-      }
-    }
-    const fallbackStart = Math.max(0, items.length - visibleCount);
-    const fallbackIndex = fallbackStart + index;
-    if (items[fallbackIndex] && !used.has(fallbackIndex)) {
-      used.add(fallbackIndex);
-      return items[fallbackIndex];
-    }
-    return null;
-  }
-  function detailCandidates(payload) {
-    if (payload.__ctiDetailCandidates) return payload.__ctiDetailCandidates;
-    const details = new Map();
-    if (payload.detail?.thread_id) details.set(String(payload.detail.thread_id), payload.detail);
-    Object.values(payload.detailsByThread || {}).forEach(detail => {
-      if (detail?.thread_id) details.set(String(detail.thread_id), detail);
-    });
-    payload.__ctiDetailCandidates = Array.from(details.values());
-    return payload.__ctiDetailCandidates;
-  }
-  function detailPrefixes(detail) {
-    if (detail.__ctiPrefixes) return detail.__ctiPrefixes;
-    const items = detail?.assistantItems || [];
-    detail.__ctiPrefixes = items
-      .map((item, index) => ({ index, prefix: normalizedText(item.textPrefix) }))
-      .filter(item => item.prefix.length >= 24);
-    return detail.__ctiPrefixes;
-  }
-  function scoreDetailForNodes(detail, nodes) {
-    if (!nodes.length) return 0;
-    const prefixes = detailPrefixes(detail);
-    if (!prefixes.length) return 0;
-    let score = 0;
-    const used = new Set();
-    for (const node of nodes) {
-      const nodeText = normalizedText(node.textContent);
-      if (nodeText.length < 24) continue;
-      for (const item of prefixes) {
-        if (used.has(item.index)) continue;
-        const matchScore = textMatchScore(nodeText, item.prefix);
-        if (matchScore > 0) {
-          used.add(item.index);
-          score += matchScore;
-          break;
-        }
-      }
-    }
-    return score;
-  }
-  function textChunks(value) {
-    return normalizedText(value)
-      .split(/[，。！？；：、,.!?;:\n\r()[\]{}<>《》"'“”‘’|]+/)
-      .map(chunk => chunk.trim())
-      .filter(chunk => chunk.length >= 6);
-  }
-  function textMatchScore(nodeText, prefix) {
-    if (nodeText.includes(prefix)) return 100 + Math.min(prefix.length, 120);
-    const nodeHead = nodeText.slice(0, Math.min(120, nodeText.length));
-    if (prefix.includes(nodeHead)) return 80 + Math.min(nodeHead.length, 120);
-    const prefixHead = prefix.slice(0, Math.min(80, prefix.length));
-    if (nodeText.includes(prefixHead)) return 60 + Math.min(prefixHead.length, 80);
-
-    let chunkScore = 0;
-    let chunkMatches = 0;
-    for (const chunk of textChunks(prefix)) {
-      if (nodeText.includes(chunk)) {
-        chunkMatches += 1;
-        chunkScore += Math.min(chunk.length, 40);
-      }
-    }
-    if (chunkMatches >= 2 || chunkScore >= 18) return chunkScore;
-
-    chunkScore = 0;
-    chunkMatches = 0;
-    for (const chunk of textChunks(nodeText)) {
-      if (prefix.includes(chunk)) {
-        chunkMatches += 1;
-        chunkScore += Math.min(chunk.length, 40);
-      }
-    }
-    if (chunkMatches >= 2 || chunkScore >= 18) return chunkScore;
-    return 0;
-  }
-  function detailForVisiblePage(payload) {
-    const nodes = assistantNodes();
-    if (!nodes.length) return null;
-    const signature = nodes
-      .map(node => normalizedText(node.textContent).slice(0, 180))
-      .join('||');
-    if (
-      payload.__ctiVisibleMatchCache &&
-      payload.__ctiVisibleMatchCache.signature === signature &&
-      payload.__ctiVisibleMatchCache.threadId
-    ) {
-      const cached = detailCandidates(payload).find(
-        detail => String(detail.thread_id) === String(payload.__ctiVisibleMatchCache.threadId)
-      );
-      if (cached) return cached;
-    }
-    let best = null;
-    let bestScore = 0;
-    for (const detail of detailCandidates(payload)) {
-      const score = scoreDetailForNodes(detail, nodes);
-      if (score > bestScore) {
-        best = detail;
-        bestScore = score;
-      }
-    }
-    payload.__ctiVisibleMatchCache = {
-      signature,
-      threadId: bestScore > 0 ? best?.thread_id : null,
-      score: bestScore,
-    };
-    return bestScore > 0 ? best : null;
-  }
   function applyFooters(detail) {
-    if (!detail) return;
-    const targets = assistantChipTargets();
-    const items = detail.assistantItems || [];
-    const used = new Set();
-    const keptChips = new Set();
-    targets.forEach(({ node, actionRow, host }, index) => {
-      const item = visibleItemForNode(node, index, items, used, targets.length);
-      const text = item?.footer;
-      if (!text) return;
-      node.querySelector(`[${FOOTER_ATTR}]`)?.remove();
-      const sessionRound = item.roundIndex || index + 1;
-      const sessionTotalRounds = item.totalRounds || items.length || targets.length;
-      const chipText = itemChip(item, sessionRound, sessionTotalRounds);
-      const directChips = directReplyChips(host);
-      // A v5 chip can be outside `node` after it is moved below the native
-      // buttons. Look it up from the stable host first so refreshes reuse it.
-      let chip = actionRow?.nextElementSibling?.hasAttribute(CHIP_ATTR)
-        ? actionRow.nextElementSibling
-        : directChips[0] || node.querySelector(`[${CHIP_ATTR}]`);
-      if (!chip) {
-        chip = document.createElement('div');
-        chip.className = 'cti-reply-chip';
-        chip.setAttribute(CHIP_ATTR, 'true');
-      }
-      keptChips.add(chip);
-      chip.lang = uiLanguage() === 'zh' ? 'zh-CN' : 'en';
-      if (actionRow?.parentElement === host) {
-        // Keep Codex's fixed-height action row untouched. The chip is a sibling
-        // immediately below it, so buttons and timestamps retain their layout.
-        if (chip.parentElement !== host || chip.previousElementSibling !== actionRow) {
-          actionRow.insertAdjacentElement('afterend', chip);
-        }
-      } else if (chip.parentElement !== host) {
-        host.appendChild(chip);
-      }
-      if (chip.textContent !== chipText) chip.textContent = chipText;
-      const title = itemTitle(item, sessionRound, sessionTotalRounds);
-      if (chip.getAttribute('title') !== title) chip.setAttribute('title', title);
-    });
-    // Remove duplicates created by older runtimes and chips whose virtualized
-    // reply host is no longer present. This also makes repeated refreshes
-    // idempotent, preventing token rows from growing the scrollable content.
-    document.querySelectorAll(`[${CHIP_ATTR}]`).forEach(chip => {
-      if (!keptChips.has(chip)) chip.remove();
+    page.applyFooters(detail, {
+      chipText: itemChip,
+      title: itemTitle,
+      language: () => uiLanguage() === 'zh' ? 'zh-CN' : 'en',
     });
   }
   function applyHud(payload, currentDetail = null) {
@@ -1858,7 +1610,7 @@ INJECTION_SCRIPT = r"""
     if(usageParts.length)quotaHtml+=`<div class="cti-account-quota">${usageParts.join(' · ')}</div>`;
     quotaHtml=`<div class="cti-source-row"><span class="cti-trust" data-kind="official">${zh?'官方账户':'Official account'}</span></div>`+quotaHtml;
     put('[data-quota]', quotaHtml);
-    const id = activeThreadId();
+    const id = page.activeThreadId();
     const snapshotFresh=typeof payload.observedAt!=='number'||Date.now()/1000-payload.observedAt<120;
     const selected = snapshotFresh ? (payload.summaries || []).find(item =>
       threadKeys(id).some(key => String(item.thread_id) === key || (item.thread_keys || []).includes(key))) : null;
@@ -2011,12 +1763,11 @@ INJECTION_SCRIPT = r"""
     updateHudLanguage(root);
   }
   function clearFooters() {
-    document.querySelectorAll(`[${FOOTER_ATTR}]`).forEach(node => node.remove());
-    document.querySelectorAll(`[${CHIP_ATTR}]`).forEach(node => node.remove());
+    page.clearFooters();
   }
   function detailForCurrentThread(payload) {
     const details = payload.detailsByThread || {};
-    for (const key of threadKeys(activeThreadId() || payload.activeThreadId)) {
+    for (const key of threadKeys(page.activeThreadId() || payload.activeThreadId)) {
       if (details[key]) return details[key];
     }
     return null;
@@ -2035,7 +1786,7 @@ INJECTION_SCRIPT = r"""
       if (window.__codexContextTokenInspectorApplying) return;
       window.__codexContextTokenInspectorApplying = true;
       try {
-        const currentDetail = detailForCurrentThread(payload) || detailForVisiblePage(payload);
+        const currentDetail = detailForCurrentThread(payload) || page.detailForVisiblePage(payload);
         payload.currentDetailThreadId = currentDetail?.thread_id || null;
         applyHud(payload, currentDetail);
         if (currentDetail) {
@@ -2058,11 +1809,11 @@ INJECTION_SCRIPT = r"""
   function applyAll(payload) {
     window.__codexContextTokenInspectorApplying = true;
     try {
-      payload.activeThreadId = activeThreadId() || payload.activeThreadId;
-      applySidebar(payload.summaries || []);
+      payload.activeThreadId = page.activeThreadId() || payload.activeThreadId;
+      page.projectSidebar(payload.summaries || [], summaryHover);
       // The active sidebar row is the authoritative session identity. Visible
       // text matching remains a fallback for app builds that omit that marker.
-      const currentDetail = detailForCurrentThread(payload) || detailForVisiblePage(payload);
+      const currentDetail = detailForCurrentThread(payload) || page.detailForVisiblePage(payload);
       payload.currentDetailThreadId = currentDetail?.thread_id || null;
       applyHud(payload, currentDetail);
     } finally {
@@ -2070,42 +1821,11 @@ INJECTION_SCRIPT = r"""
     }
     scheduleDetailApply(payload);
   }
-  function installObserver(payload) {
-    window.__codexContextTokenInspectorPayload = payload;
-    clearTimeout(window.__ctiFreshnessTimer);
-    const remaining=typeof payload.observedAt==='number'?Math.max(0,120000-(Date.now()-payload.observedAt*1000)):120000;
-    window.__ctiFreshnessTimer=setTimeout(()=>applyAll(window.__codexContextTokenInspectorPayload),remaining+100);
-    if (window.__codexContextTokenInspectorObserver) return;
-    let timer = null;
-    const observer = new MutationObserver(records => {
-      if (window.__codexContextTokenInspectorApplying) return;
-      const activeChanged = records.some(record =>
-        record.type === 'attributes' &&
-        (record.attributeName === 'data-app-action-sidebar-thread-active' || record.attributeName === 'aria-current')
-      );
-      // Session switches deserve a fast path. Ordinary render churn is batched
-      // to avoid repeatedly walking the message tree while a response streams.
-      if (timer && !activeChanged) return;
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        timer = null;
-        applyAll(window.__codexContextTokenInspectorPayload);
-      }, activeChanged ? 80 : 300);
-    });
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['data-app-action-sidebar-thread-active', 'aria-current'],
-    });
-    window.__codexContextTokenInspectorObserver = observer;
-  }
 
   function resetStaleRuntime() {
     if (!runtimeChanged) return;
-    window.__codexContextTokenInspectorObserver?.disconnect();
-    window.__codexContextTokenInspectorObserver = null;
     hideSidebarTooltip();
+    page.clearSidebar();
     if (window.__codexContextTokenInspectorDetailTimer) {
       clearTimeout(window.__codexContextTokenInspectorDetailTimer);
       window.__codexContextTokenInspectorDetailTimer = null;
@@ -2126,7 +1846,13 @@ INJECTION_SCRIPT = r"""
   ensureDefaultUnit();
   ensureStyle();
   installSidebarHoverDelegation();
-  installObserver(payload);
+  window.__codexContextTokenInspectorHideSidebarTooltip = hideSidebarTooltip;
+  const pageRefresh = createPageRefreshController({
+    apply: nextPayload => applyAll(nextPayload),
+    isApplying: () => window.__codexContextTokenInspectorApplying === true,
+  });
+  window.__codexContextTokenInspectorPageRefresh = pageRefresh;
+  pageRefresh.update(payload);
   applyAll(payload);
   // Leave a data-only entry point behind. The resident injector pushes a fresh
   // reading every ten seconds, and once this runtime is applied it can do so
@@ -2134,16 +1860,16 @@ INJECTION_SCRIPT = r"""
   // the companion bitmaps) each time. The observer holds the payload; applyAll
   // re-renders from the one passed here.
   window.__codexContextTokenInspectorUpdate = nextPayload => {
-    installObserver(nextPayload);
+    pageRefresh.update(nextPayload);
     applyAll(nextPayload);
   };
   return {
     ok: true,
     summaries: (payload.summaries || []).length,
-    activeThreadId: activeThreadId() || payload.activeThreadId,
+    activeThreadId: page.activeThreadId() || payload.activeThreadId,
     selectedThreadId: payload.selectedThreadId,
     currentDetailThreadId: payload.currentDetailThreadId || null,
-    assistantNodes: assistantNodes().length,
+    assistantNodes: page.assistantNodes().length,
     replyChips: document.querySelectorAll(`[${CHIP_ATTR}]`).length,
     dom: payload.dom,
   };
@@ -2154,6 +1880,7 @@ INJECTION_SCRIPT = r"""
 # scripts directory, so referencing files under assets/ would break every
 # installed copy, and the overlay renders in the Codex window, where a file://
 # image would be blocked anyway.
+INJECTION_SCRIPT = INJECTION_SCRIPT.replace("__HOST_BRIDGE__", HOST_BRIDGE_SCRIPT)
 INJECTION_SCRIPT = INJECTION_SCRIPT.replace("__COMPANION_FEEDBACK__", COMPANION_FEEDBACK_JS)
 INJECTION_SCRIPT = INJECTION_SCRIPT.replace("__COMPANION_EXPRESSIONS__", json.dumps(COMPANION_EXPRESSIONS, separators=(",", ":")))
 INJECTION_SCRIPT = INJECTION_SCRIPT.replace(
