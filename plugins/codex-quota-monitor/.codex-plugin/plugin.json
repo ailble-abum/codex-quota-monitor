@@ -1,6 +1,6 @@
 {
   "name": "codex-quota-monitor",
-  "version": "0.1.0+codex.20260923000100",
+  "version": "0.1.0+codex.20260923000200",
   "description": "English: A local, read-only Codex quota monitor for token usage, context, and compaction state. Account limits and windows are dynamic—there is no assumed 5-hour window for every user. The draggable, resizable overlay adapts to its content, with Mini/Standard/Large presets; soft edge docking on the left or right wall tucks it behind one of six selectable companion skins, all of them illustrated and carrying one gauge cell per reported limit window; the collapsed bar reports a time budget rather than a percentage, and a reached limit is drawn as a stopped gauge; quota history and local context/cache trends are stored locally. macOS menu bar support is available; a Windows adapter and tray companion are included, pending real-machine runtime verification.\n中文：本地只读的 Codex 配额监视器，用于查看令牌使用量、上下文和压缩状态。账户限制和窗口是动态的，并非每个用户都有 5 小时窗口，因此不会默认假设存在该窗口。可拖动、可调整大小的悬浮层会根据内容自适应。左右边缘软吸附可把悬浮层收成六款角色伴宠之一，六款均带插画，吸附后的伴宠按账户上报的限额窗口逐格显示；折叠栏以时间预算而非百分比作答，已达上限时整条转为停止态；配额历史保存在本地。macOS 菜单栏支持可用；已包含 Windows 适配器与托盘组件，仍待 Windows 实机运行验证。",
   "author": {
     "name": "Ailble",
