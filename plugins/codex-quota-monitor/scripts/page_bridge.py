@@ -454,11 +454,56 @@ function createPageBridge(config) {
   };
 }
 
-function createPageRefreshController({apply, isApplying}) {
+function createPageRefreshController({page, renderHud, applyFooters, clearFooters, summaryHover, isApplying}) {
   let observer = null;
   let timer = null;
   let freshnessTimer = null;
   let payload = null;
+  function scheduleDetailApply() {
+    if (window.__codexContextTokenInspectorDetailTimer) {
+      clearTimeout(window.__codexContextTokenInspectorDetailTimer);
+    }
+    if (window.__codexContextTokenInspectorIdleCallback && window.cancelIdleCallback) {
+      window.cancelIdleCallback(window.__codexContextTokenInspectorIdleCallback);
+      window.__codexContextTokenInspectorIdleCallback = null;
+    }
+    const run = () => {
+      window.__codexContextTokenInspectorDetailTimer = null;
+      const work = () => {
+        if (!payload || isApplying()) return;
+        window.__codexContextTokenInspectorApplying = true;
+        try {
+          const detail = page.detailForActiveThread(payload) || page.detailForVisiblePage(payload);
+          payload.currentDetailThreadId = detail?.thread_id || null;
+          renderHud(payload, detail);
+          if (detail) applyFooters(detail);
+          else clearFooters();
+        } finally {
+          setTimeout(() => { window.__codexContextTokenInspectorApplying = false; }, 0);
+        }
+      };
+      if (window.requestIdleCallback) {
+        window.__codexContextTokenInspectorIdleCallback = window.requestIdleCallback(work, {timeout: 900});
+      } else {
+        setTimeout(work, 0);
+      }
+    };
+    window.__codexContextTokenInspectorDetailTimer = setTimeout(run, 220);
+  }
+  function apply() {
+    if (!payload) return;
+    window.__codexContextTokenInspectorApplying = true;
+    try {
+      payload.activeThreadId = page.activeThreadId() || payload.activeThreadId;
+      page.projectSidebar(payload.summaries || [], summaryHover);
+      const detail = page.detailForActiveThread(payload) || page.detailForVisiblePage(payload);
+      payload.currentDetailThreadId = detail?.thread_id || null;
+      renderHud(payload, detail);
+    } finally {
+      setTimeout(() => { window.__codexContextTokenInspectorApplying = false; }, 0);
+    }
+    scheduleDetailApply();
+  }
   const controller = {
     update(nextPayload) {
       payload = nextPayload;
@@ -467,7 +512,7 @@ function createPageRefreshController({apply, isApplying}) {
       const remaining = typeof payload?.observedAt === 'number'
         ? Math.max(0, 120000 - (Date.now() - payload.observedAt * 1000))
         : 120000;
-      freshnessTimer = setTimeout(() => apply(payload), remaining + 100);
+      freshnessTimer = setTimeout(apply, remaining + 100);
       window.__ctiFreshnessTimer = freshnessTimer;
       if (observer) return;
       observer = new MutationObserver(records => {
@@ -478,7 +523,7 @@ function createPageRefreshController({apply, isApplying}) {
         if (timer) clearTimeout(timer);
         timer = setTimeout(() => {
           timer = null;
-          if (payload) apply(payload);
+          apply();
         }, activeChanged ? 80 : 300);
       });
       observer.observe(document.body, {
@@ -489,6 +534,7 @@ function createPageRefreshController({apply, isApplying}) {
       });
       window.__codexContextTokenInspectorObserver = observer;
     },
+    apply,
     dispose() {
       observer?.disconnect();
       if (timer) clearTimeout(timer);

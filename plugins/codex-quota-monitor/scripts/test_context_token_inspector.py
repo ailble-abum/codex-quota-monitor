@@ -409,7 +409,7 @@ class InspectorTests(unittest.TestCase):
         # whole script, companion bitmaps and all, re-parsed every ten seconds.
         tail = block("window.__codexContextTokenInspectorUpdate =", "return {")
         self.assertIn("pageRefresh.update(nextPayload)", tail)
-        self.assertIn("applyAll(nextPayload)", tail)
+        self.assertIn("pageRefresh.apply()", tail)
 
     def test_push_skips_the_script_when_the_runtime_is_applied(self):
         class Recorder:

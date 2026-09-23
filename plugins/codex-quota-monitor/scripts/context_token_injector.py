@@ -55,7 +55,7 @@ INJECTION_SCRIPT = r"""
   // new script: stacked observers and timers are torn down, and the companion
   // bitmap is rebuilt from the new data URIs. A renderer may still contain an
   // observer from an older plugin release.
-  const RUNTIME_VERSION = 37;
+  const RUNTIME_VERSION = 38;
   const ROOT_ID = 'codex-context-token-inspector-root';
   const STYLE_ID = 'codex-context-token-inspector-style';
   const FOOTER_ATTR = 'data-context-token-footer';
@@ -1684,59 +1684,6 @@ INJECTION_SCRIPT = r"""
   function clearFooters() {
     page.clearFooters();
   }
-  function detailForCurrentThread(payload) {
-    return page.detailForActiveThread(payload);
-  }
-  function scheduleDetailApply(payload) {
-    if (window.__codexContextTokenInspectorDetailTimer) {
-      clearTimeout(window.__codexContextTokenInspectorDetailTimer);
-    }
-    if (window.__codexContextTokenInspectorIdleCallback && window.cancelIdleCallback) {
-      window.cancelIdleCallback(window.__codexContextTokenInspectorIdleCallback);
-      window.__codexContextTokenInspectorIdleCallback = null;
-    }
-    const run = () => {
-    window.__codexContextTokenInspectorDetailTimer = null;
-    const work = () => {
-      if (window.__codexContextTokenInspectorApplying) return;
-      window.__codexContextTokenInspectorApplying = true;
-      try {
-        const currentDetail = detailForCurrentThread(payload) || page.detailForVisiblePage(payload);
-        payload.currentDetailThreadId = currentDetail?.thread_id || null;
-        applyHud(payload, currentDetail);
-        if (currentDetail) {
-          applyFooters(currentDetail);
-        } else {
-          clearFooters();
-        }
-      } finally {
-        setTimeout(() => { window.__codexContextTokenInspectorApplying = false; }, 0);
-      }
-    };
-      if (window.requestIdleCallback) {
-        window.__codexContextTokenInspectorIdleCallback = window.requestIdleCallback(work, { timeout: 900 });
-      } else {
-        setTimeout(work, 0);
-      }
-    };
-    window.__codexContextTokenInspectorDetailTimer = setTimeout(run, 220);
-  }
-  function applyAll(payload) {
-    window.__codexContextTokenInspectorApplying = true;
-    try {
-      payload.activeThreadId = page.activeThreadId() || payload.activeThreadId;
-      page.projectSidebar(payload.summaries || [], summaryHover);
-      // The active sidebar row is the authoritative session identity. Visible
-      // text matching remains a fallback for app builds that omit that marker.
-      const currentDetail = detailForCurrentThread(payload) || page.detailForVisiblePage(payload);
-      payload.currentDetailThreadId = currentDetail?.thread_id || null;
-      applyHud(payload, currentDetail);
-    } finally {
-      setTimeout(() => { window.__codexContextTokenInspectorApplying = false; }, 0);
-    }
-    scheduleDetailApply(payload);
-  }
-
   function resetStaleRuntime() {
     if (!runtimeChanged) return;
     page.hideSidebarTooltip();
@@ -1767,20 +1714,24 @@ INJECTION_SCRIPT = r"""
   });
   window.__codexContextTokenInspectorHideSidebarTooltip = () => page.hideSidebarTooltip();
   const pageRefresh = createPageRefreshController({
-    apply: nextPayload => applyAll(nextPayload),
+    page,
+    renderHud: applyHud,
+    applyFooters,
+    clearFooters,
+    summaryHover,
     isApplying: () => window.__codexContextTokenInspectorApplying === true,
   });
   window.__codexContextTokenInspectorPageRefresh = pageRefresh;
   pageRefresh.update(payload);
-  applyAll(payload);
+  pageRefresh.apply();
   // Leave a data-only entry point behind. The resident injector pushes a fresh
   // reading every ten seconds, and once this runtime is applied it can do so
   // through this handle instead of re-parsing the whole script (which carries
   // the companion bitmaps) each time. The observer holds the payload; applyAll
-  // re-renders from the one passed here.
+  // re-renders against the currently active page.
   window.__codexContextTokenInspectorUpdate = nextPayload => {
     pageRefresh.update(nextPayload);
-    applyAll(nextPayload);
+    pageRefresh.apply();
   };
   return {
     ok: true,
