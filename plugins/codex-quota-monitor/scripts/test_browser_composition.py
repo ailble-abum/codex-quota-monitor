@@ -207,6 +207,15 @@ class BrowserCompositionTests(unittest.TestCase):
         self.assertIn("Session total", state["hover"])
         self.assertIn("Current 101", state["chip"])
         self.assertTrue(state["tabStop"])
+        identity = self.client.evaluate("""(() => {
+          const page = window.__codexContextTokenInspectorPageBridge;
+          return {
+            summary: page.summaryForActiveThread([{thread_id: 'local:thread-a', session_total_tokens: 303}]),
+            detail: page.detailForActiveThread({detailsByThread: {'local:thread-a': {thread_id: 'thread-a'}}})
+          };
+        })()""")
+        self.assertEqual(identity["summary"]["session_total_tokens"], 303)
+        self.assertEqual(identity["detail"]["thread_id"], "thread-a")
 
         beta = "Beta assistant answer has enough unique words to exercise visible page matching."
         self.client.evaluate("""(() => {

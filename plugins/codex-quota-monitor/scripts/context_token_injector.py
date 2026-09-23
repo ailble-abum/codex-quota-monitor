@@ -360,13 +360,6 @@ INJECTION_SCRIPT = r"""
     lines.push(labeled('assistantRounds', `${assistantIndex}/${assistantTotal}`));
     return lines.join('\n');
   }
-  function normalizeThreadId(threadId) {
-    return String(threadId || '').replace(/^local:/, '');
-  }
-  function threadKeys(threadId) {
-    const normalized = normalizeThreadId(threadId);
-    return [String(threadId || ''), normalized, `local:${normalized}`].filter(Boolean);
-  }
   function ensureStyle() {
     let style = document.getElementById(STYLE_ID);
     if (!style) {
@@ -1539,8 +1532,7 @@ INJECTION_SCRIPT = r"""
     put('[data-quota]', quotaHtml);
     const id = page.activeThreadId();
     const snapshotFresh=typeof payload.observedAt!=='number'||Date.now()/1000-payload.observedAt<120;
-    const selected = snapshotFresh ? (payload.summaries || []).find(item =>
-      threadKeys(id).some(key => String(item.thread_id) === key || (item.thread_keys || []).includes(key))) : null;
+    const selected = snapshotFresh ? page.summaryForActiveThread(payload.summaries) : null;
     root.__ctiSessionTotalTokens = selected?.session_total_tokens;
     root.__ctiContext = selected?.latest_context_percent;
     applyMascotContext(root, root.__ctiContext);
@@ -1693,11 +1685,7 @@ INJECTION_SCRIPT = r"""
     page.clearFooters();
   }
   function detailForCurrentThread(payload) {
-    const details = payload.detailsByThread || {};
-    for (const key of threadKeys(page.activeThreadId() || payload.activeThreadId)) {
-      if (details[key]) return details[key];
-    }
-    return null;
+    return page.detailForActiveThread(payload);
   }
   function scheduleDetailApply(payload) {
     if (window.__codexContextTokenInspectorDetailTimer) {

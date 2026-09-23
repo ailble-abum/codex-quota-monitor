@@ -77,6 +77,23 @@ function createPageBridge(config) {
       read(document.querySelector('[data-above-composer-conversation-id]'), 'data-above-composer-conversation-id') ||
       null;
   }
+  function threadKeys(threadId) {
+    const value = String(threadId || '');
+    const normalized = value.replace(/^local:/, '');
+    return Array.from(new Set([value, normalized, `local:${normalized}`].filter(Boolean)));
+  }
+  function summaryForActiveThread(summaries) {
+    const keys = threadKeys(activeThreadId());
+    return (summaries || []).find(item => keys.some(key =>
+      String(item.thread_id) === key || (item.thread_keys || []).includes(key))) || null;
+  }
+  function detailForActiveThread(payload) {
+    const details = payload?.detailsByThread || {};
+    for (const key of threadKeys(activeThreadId() || payload?.activeThreadId)) {
+      if (details[key]) return details[key];
+    }
+    return null;
+  }
   function sidebarRows() {
     return Array.from(document.querySelectorAll(sidebarSelector));
   }
@@ -424,6 +441,8 @@ function createPageBridge(config) {
   }
   return {
     activeThreadId,
+    summaryForActiveThread,
+    detailForActiveThread,
     projectSidebar,
     clearSidebar,
     hideSidebarTooltip,
