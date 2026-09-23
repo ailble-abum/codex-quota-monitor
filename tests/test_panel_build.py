@@ -20,6 +20,21 @@ class PanelBuildTests(unittest.TestCase):
         self.assertEqual(set(expressions['cat']), {'idle', 'happy', 'concerned', 'notice', 'waiting', 'pet'})
         self.assertTrue(all(value.startswith('data:image/webp;base64,') for value in art.values()))
 
+    def test_repository_artwork_has_reproducible_manifest(self):
+        hashes = panel_build.resource_hashes()
+        self.assertEqual(len(hashes), 12)
+        self.assertEqual(set(hashes), {
+            'assets/companions/web/candy.webp', 'assets/companions/web/cat.webp',
+            'assets/companions/web/corgi.webp', 'assets/companions/web/frost.webp',
+            'assets/companions/web/mint.webp', 'assets/companions/web/tea.webp',
+            'assets/companions/expressions/cat-concerned.webp',
+            'assets/companions/expressions/cat-happy.webp',
+            'assets/companions/expressions/cat-idle.webp',
+            'assets/companions/expressions/cat-notice.webp',
+            'assets/companions/expressions/cat-pet.webp',
+            'assets/companions/expressions/cat-waiting.webp'})
+        self.assertTrue(all(len(value) == 64 for value in hashes.values()))
+
     def test_shell_owns_remaining_runtime_entry_points(self):
         shell = (Path(__file__).parents[1] / 'quota_monitor/panel_shell.js').read_text()
         for name in ('applyHud', 'positionRetainedHint', 'updateHudTitle'):

@@ -65,6 +65,8 @@ python3 -m unittest discover -s tests -v
 
 账户面板的刷新按钮现在会向 V2 runtime 请求一次后台账户读取；没有配置 `account_cli` 时请求会被忽略，不伪造刷新结果。
 
+[伴宠资源来源记录](docs/asset-provenance.md) 为每个内建 WebP 固定 SHA-256；来源和权属复核完成前继续保留 LICENSE/NOTICE，不宣称资源全部原创。
+
 [固定停靠折叠往返修复](docs/docking-toggle-contract.md) 区分正常初始隐藏与固定状态丢失，修复折叠后重新展开时面板意外隐藏；左右停靠真实控件回归通过。
 
 [V2 账户聚合正文](docs/account-overview-contract.md) 替换总预算、状态说明与附加用量，校验预算/用量/额度，过期数据不继续展示附加值。

@@ -31,6 +31,14 @@ def artwork():
     return art, expressions
 
 
+def resource_hashes():
+    """Return reproducible hashes for every bundled visual input."""
+    directory = ROOT / 'assets' / 'companions'
+    paths = sorted(directory.glob('web/*.webp')) + sorted(directory.glob('expressions/*.webp'))
+    return {path.relative_to(ROOT).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in paths}
+
+
 def build():
     root = ROOT / 'quota_monitor'
     script = (root / 'panel_shell.js').read_text()
@@ -60,7 +68,9 @@ def main():
     for name in ('LICENSE', 'NOTICE'):
         (args.output_dir / name).write_text((ROOT / name).read_text(), encoding='utf-8')
     manifest = {'consumer': {'path':'consumer.js', 'sha256':hashlib.sha256(script.encode()).hexdigest()},
-                'visualResources':'assets/companions', 'status':'independent-v2-candidate'}
+                'visualResources':'assets/companions',
+                'visualResourceSHA256': resource_hashes(),
+                'status':'independent-v2-candidate'}
     (args.output_dir / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
 
 

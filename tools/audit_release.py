@@ -12,6 +12,16 @@ FORBIDDEN_NAMES = {'auth', 'authentication', 'session.jsonl', 'snapshot', 'histo
 REQUIRED = {'run.py', 'requirements-cdp.txt', 'config.example.json', 'PREVIEW.txt',
             'renderer/consumer.js', 'renderer/manifest.json', 'renderer/LICENSE',
             'renderer/NOTICE', 'install-manifest.json'}
+VISUAL_RESOURCES = {
+    'assets/companions/web/candy.webp', 'assets/companions/web/cat.webp',
+    'assets/companions/web/corgi.webp', 'assets/companions/web/frost.webp',
+    'assets/companions/web/mint.webp', 'assets/companions/web/tea.webp',
+    'assets/companions/expressions/cat-concerned.webp',
+    'assets/companions/expressions/cat-happy.webp',
+    'assets/companions/expressions/cat-idle.webp',
+    'assets/companions/expressions/cat-notice.webp',
+    'assets/companions/expressions/cat-pet.webp',
+    'assets/companions/expressions/cat-waiting.webp'}
 
 
 def _files(root):
@@ -33,6 +43,12 @@ def audit(root):
         raise ValueError('invalid release manifests') from error
     if manifest.get('status') != 'independent-v2-candidate':
         raise ValueError('renderer is not an independent V2 candidate')
+    visual_hashes = manifest.get('visualResourceSHA256')
+    if (not isinstance(visual_hashes, dict) or set(visual_hashes) != VISUAL_RESOURCES or
+            any(not isinstance(value, str) or len(value) != 64 or
+                any(char not in '0123456789abcdef' for char in value)
+                for value in visual_hashes.values())):
+        raise ValueError('visual resource manifest missing or invalid')
     consumer_path = Path(manifest.get('consumer', {}).get('path', ''))
     consumer = root / (Path('renderer') / consumer_path if consumer_path.parts[:1] != ('renderer',)
                        else consumer_path)

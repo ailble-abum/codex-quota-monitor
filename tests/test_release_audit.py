@@ -24,6 +24,7 @@ class ReleaseAuditTests(unittest.TestCase):
         (root / 'renderer/manifest.json').write_text(json.dumps({
             'status': 'independent-v2-candidate',
             'consumer': {'path': 'consumer.js', 'sha256': hashlib.sha256(data).hexdigest()},
+            'visualResourceSHA256': {name: '0' * 64 for name in audit_release.VISUAL_RESOURCES},
         }))
         files = {path: hashlib.sha256((root / path).read_bytes()).hexdigest()
                  for path in audit_release.REQUIRED if path != 'install-manifest.json'}
