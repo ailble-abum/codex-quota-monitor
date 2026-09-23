@@ -7,6 +7,7 @@ from pathlib import Path
 from companion_art import COMPANION_ART
 from context_token_inspector import summarize_session, summarize_session_fast
 from context_token_injector import BUILD_STAMP, INJECTION_SCRIPT, RUNTIME_VERSION, build_payload, push, runtime_state
+from page_bridge import HOST_BRIDGE_SCRIPT
 
 
 def block(start: str, end: str) -> str:
@@ -142,12 +143,13 @@ class InspectorTests(unittest.TestCase):
         self.assertIn("tr('displaySettings')", language)
 
     def test_sidebar_details_are_available_on_keyboard_focus(self):
-        tooltip = block("function hideSidebarTooltip", "function hudMode")
-        self.assertIn("role','tooltip", tooltip)
+        tooltip = HOST_BRIDGE_SCRIPT
+        self.assertIn("function installSidebarHoverDelegation", tooltip)
+        self.assertIn("tooltip.setAttribute('role', 'tooltip')", tooltip)
         self.assertIn("focusin", tooltip)
         self.assertIn("focusout", tooltip)
         self.assertIn("aria-describedby", tooltip)
-        sidebar = block("function projectSidebar", "function clearSidebar")
+        sidebar = HOST_BRIDGE_SCRIPT
         self.assertIn("row.tabIndex < 0", sidebar)
         self.assertIn("originalTabindexAttr", sidebar)
 

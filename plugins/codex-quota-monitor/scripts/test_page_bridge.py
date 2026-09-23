@@ -22,6 +22,7 @@ class PageBridgeTests(unittest.TestCase):
         self.assertIn("data-content-search-assistant-turn-key", script)
         self.assertIn("new MutationObserver", script)
         self.assertIn("restoreSidebarRow", script)
+        self.assertIn("installSidebarHoverDelegation", script)
 
 
 if __name__ == "__main__":

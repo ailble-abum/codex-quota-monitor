@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 
 import windows_monitor as monitor
 
@@ -199,6 +200,20 @@ class WindowsPlanTests(unittest.TestCase):
         self.assertIn("window.__codexContextTokenInspectorHideSidebarTooltip?.();", monitor.STOP_OVERLAY_EXPRESSION)
         self.assertIn("window.__codexContextTokenInspectorPageRefresh?.dispose?.();", monitor.STOP_OVERLAY_EXPRESSION)
         self.assertIn("window.__codexContextTokenInspectorPageBridge?.clearSidebar?.();", monitor.STOP_OVERLAY_EXPRESSION)
+
+    def test_display_action_uses_the_transport_without_importing_the_injector(self):
+        target = {"webSocketDebuggerUrl": "ws://127.0.0.1:9222/devtools/page/codex"}
+        client = mock.Mock()
+        client.evaluate.return_value = True
+        with mock.patch.object(monitor, "devtools_targets", return_value=[target]) as targets, \
+                mock.patch.object(monitor, "select_target", return_value=target) as select, \
+                mock.patch.object(monitor, "CDPClient", return_value=client) as connect:
+            self.assertEqual(monitor.display_action("show"), {"available": True, "value": True})
+        targets.assert_called_once_with(9222)
+        select.assert_called_once_with([target])
+        connect.assert_called_once_with(target["webSocketDebuggerUrl"])
+        client.close.assert_called_once_with()
+        self.assertNotIn("import context_token_injector", Path(monitor.__file__).read_text(encoding="utf-8"))
 
     def test_notification_is_once_per_fresh_timestamp(self):
         self.assertTrue(monitor.notification_is_fresh({"message": "low", "at": 1000}, now=1120))

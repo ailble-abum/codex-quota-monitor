@@ -200,6 +200,20 @@ class BuildRecordTest(unittest.TestCase):
         self.assertEqual(sorted(info), ['cachebuster', 'installedAt', 'pluginVersion', 'runtimeVersion'])
 
 
+class RendererClientTest(unittest.TestCase):
+    def test_renderer_client_uses_the_transport_without_loading_the_injector(self):
+        target = {'webSocketDebuggerUrl': 'ws://127.0.0.1:9222/devtools/page/codex'}
+        client = mock.sentinel.client
+        with mock.patch.object(monitorctl, 'devtools_targets', return_value=[target]) as targets, \
+                mock.patch.object(monitorctl, 'select_target', return_value=target) as select, \
+                mock.patch.object(monitorctl, 'CDPClient', return_value=client) as connect:
+            self.assertIs(monitorctl.renderer_client(9222), client)
+        targets.assert_called_once_with(9222)
+        select.assert_called_once_with([target])
+        connect.assert_called_once_with(target['webSocketDebuggerUrl'])
+        self.assertNotIn('import context_token_injector', Path(monitorctl.__file__).read_text(encoding='utf-8'))
+
+
 class OverlayCleanupTest(unittest.TestCase):
     def test_stop_clears_the_page_bridge_before_removing_the_overlay(self):
         source = Path(monitorctl.__file__).read_text(encoding='utf-8')

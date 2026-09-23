@@ -10,6 +10,8 @@ import subprocess
 import sys
 import time
 
+from cdp_transport import CDPClient, devtools_targets, select_target
+
 LABEL = 'local.codex-quota-monitor'
 SERVICE = f'gui/{os.getuid() if hasattr(os,"getuid") else 0}/{LABEL}'
 PLIST = Path.home() / 'Library/LaunchAgents' / f'{LABEL}.plist'
@@ -87,6 +89,11 @@ def read_plist(path):
 
 def describe(result, action):
     return result.stderr.strip() or result.stdout.strip() or f'{action} failed'
+
+
+def renderer_client(port=9222):
+    target = select_target(devtools_targets(port))
+    return CDPClient(str(target['webSocketDebuggerUrl']))
 
 
 def load_agent(service, plist, previous=None):
@@ -202,9 +209,8 @@ def main():
         run('launchctl', 'bootout', SERVICE)
         run('launchctl', 'bootout', f'gui/{os.getuid()}/local.codex-quota-menu')
     if args.action in ('stop', 'reset-position', 'show'):
-        import context_token_injector as injector
         try:
-            client = injector.CDPClient(injector.select_target(injector.devtools_targets(9222))['webSocketDebuggerUrl'])
+            client = renderer_client()
             if args.action == 'stop':
                 expression = """window.__codexContextTokenInspectorHideSidebarTooltip?.();
                 window.__codexContextTokenInspectorPageRefresh?.dispose?.();
@@ -243,12 +249,10 @@ def main():
     # install at all.
     print('Build: '+describe_build())
     if args.action == 'doctor':
-        import context_token_injector as injector
         from injector_status import read_status
         from quota_reader import read_quota
         try:
-            target = injector.select_target(injector.devtools_targets(9222))
-            client = injector.CDPClient(target['webSocketDebuggerUrl'])
+            client = renderer_client()
             print('Display: '+str(client.evaluate("!!document.getElementById('codex-context-token-inspector-root')")))
             client.close()
         except Exception as exc:

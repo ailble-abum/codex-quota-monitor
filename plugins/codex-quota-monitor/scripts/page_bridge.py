@@ -146,6 +146,77 @@ function createPageBridge(config) {
   function clearSidebar() {
     sidebarRows().forEach(restoreSidebarRow);
   }
+  function hideSidebarTooltip() {
+    const tooltip = document.querySelector('.cti-sidebar-tooltip');
+    if (!tooltip) return;
+    const row = tooltip.__ctiRow;
+    if (row) {
+      const previous = tooltip.__ctiPreviousDescription;
+      if (previous) row.setAttribute('aria-describedby', previous); else row.removeAttribute('aria-describedby');
+    }
+    tooltip.remove();
+  }
+  function showSidebarTooltip(row, text, render) {
+    hideSidebarTooltip();
+    const tooltip = document.createElement('div');
+    tooltip.className = 'cti-sidebar-tooltip';
+    tooltip.id = 'cti-sidebar-tooltip';
+    tooltip.setAttribute('role', 'tooltip');
+    tooltip.lang = render.language();
+    tooltip.__ctiRow = row;
+    tooltip.__ctiPreviousDescription = row.getAttribute('aria-describedby') || '';
+    row.setAttribute('aria-describedby', [tooltip.__ctiPreviousDescription, tooltip.id].filter(Boolean).join(' '));
+    const content = document.createElement('div');
+    content.textContent = text;
+    const credit = document.createElement('span');
+    credit.className = 'cti-sidebar-credit';
+    credit.textContent = render.credit();
+    tooltip.append(content, credit);
+    document.body.appendChild(tooltip);
+    const rect = row.getBoundingClientRect();
+    const tooltipRect = tooltip.getBoundingClientRect();
+    const left = Math.min(window.innerWidth - tooltipRect.width - 12, Math.max(12, rect.right + 8));
+    const top = Math.min(window.innerHeight - tooltipRect.height - 12, Math.max(12, rect.top + 30));
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${top}px`;
+  }
+  function installSidebarHoverDelegation(render) {
+    const previous = window.__codexContextTokenInspectorSidebarDelegation;
+    if (previous?.version === render.runtimeVersion) return;
+    if (previous?.mouseover) document.removeEventListener('mouseover', previous.mouseover);
+    if (previous?.mouseout) document.removeEventListener('mouseout', previous.mouseout);
+    if (previous?.focusin) document.removeEventListener('focusin', previous.focusin);
+    if (previous?.focusout) document.removeEventListener('focusout', previous.focusout);
+    const mouseover = event => {
+      const row = event.target?.closest?.(`[${sidebarHoverAttr}]`);
+      if (row) setTimeout(() => showSidebarTooltip(row, row.getAttribute(sidebarHoverAttr) || '', render), 0);
+    };
+    const mouseout = event => {
+      const row = event.target?.closest?.(`[${sidebarHoverAttr}]`);
+      if (!row || (event.relatedTarget && row.contains(event.relatedTarget))) return;
+      setTimeout(hideSidebarTooltip, 0);
+    };
+    const focusin = event => {
+      const row = event.target?.closest?.(`[${sidebarHoverAttr}]`);
+      if (row) showSidebarTooltip(row, row.getAttribute(sidebarHoverAttr) || '', render);
+    };
+    const focusout = event => {
+      const row = event.target?.closest?.(`[${sidebarHoverAttr}]`);
+      if (!row || (event.relatedTarget && row.contains(event.relatedTarget))) return;
+      hideSidebarTooltip();
+    };
+    document.addEventListener('mouseover', mouseover);
+    document.addEventListener('mouseout', mouseout);
+    document.addEventListener('focusin', focusin);
+    document.addEventListener('focusout', focusout);
+    window.__codexContextTokenInspectorSidebarDelegation = {
+      version: render.runtimeVersion,
+      mouseover,
+      mouseout,
+      focusin,
+      focusout,
+    };
+  }
   function assistantNodes() {
     const selectors = [
       '[data-content-search-assistant-turn-key]',
@@ -355,6 +426,8 @@ function createPageBridge(config) {
     activeThreadId,
     projectSidebar,
     clearSidebar,
+    hideSidebarTooltip,
+    installSidebarHoverDelegation,
     assistantNodes,
     applyFooters,
     clearFooters,

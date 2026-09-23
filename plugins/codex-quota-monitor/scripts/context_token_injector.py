@@ -55,7 +55,7 @@ INJECTION_SCRIPT = r"""
   // new script: stacked observers and timers are torn down, and the companion
   // bitmap is rebuilt from the new data URIs. A renderer may still contain an
   // observer from an older plugin release.
-  const RUNTIME_VERSION = 36;
+  const RUNTIME_VERSION = 37;
   const ROOT_ID = 'codex-context-token-inspector-root';
   const STYLE_ID = 'codex-context-token-inspector-style';
   const FOOTER_ATTR = 'data-context-token-footer';
@@ -775,79 +775,6 @@ INJECTION_SCRIPT = r"""
       }
     `;
     if (style.textContent !== css) style.textContent = css;
-  }
-  function hideSidebarTooltip() {
-    const tooltip=document.querySelector('.cti-sidebar-tooltip');
-    if(!tooltip)return;
-    const row=tooltip.__ctiRow;
-    if(row){
-      const previous=tooltip.__ctiPreviousDescription;
-      if(previous)row.setAttribute('aria-describedby',previous);else row.removeAttribute('aria-describedby');
-    }
-    tooltip.remove();
-  }
-  function showSidebarTooltip(row, text) {
-    hideSidebarTooltip();
-    const tooltip = document.createElement('div');
-    tooltip.className = 'cti-sidebar-tooltip';
-    tooltip.id = 'cti-sidebar-tooltip';
-    tooltip.setAttribute('role','tooltip');
-    tooltip.lang = uiLanguage() === 'zh' ? 'zh-CN' : 'en';
-    tooltip.__ctiRow=row;
-    tooltip.__ctiPreviousDescription=row.getAttribute('aria-describedby')||'';
-    row.setAttribute('aria-describedby',[tooltip.__ctiPreviousDescription,tooltip.id].filter(Boolean).join(' '));
-    const content = document.createElement('div');
-    content.textContent = text;
-    const credit = document.createElement('span');
-    credit.className = 'cti-sidebar-credit';
-    credit.textContent = tr('madeBy');
-    tooltip.append(content, credit);
-    document.body.appendChild(tooltip);
-    const rect = row.getBoundingClientRect();
-    const tooltipRect = tooltip.getBoundingClientRect();
-    const left = Math.min(window.innerWidth - tooltipRect.width - 12, Math.max(12, rect.right + 8));
-    const top = Math.min(window.innerHeight - tooltipRect.height - 12, Math.max(12, rect.top + 30));
-    tooltip.style.left = `${left}px`;
-    tooltip.style.top = `${top}px`;
-  }
-  function installSidebarHoverDelegation() {
-    const previous = window.__codexContextTokenInspectorSidebarDelegation;
-    if (previous?.version === RUNTIME_VERSION) return;
-    if (previous?.mouseover) document.removeEventListener('mouseover', previous.mouseover);
-    if (previous?.mouseout) document.removeEventListener('mouseout', previous.mouseout);
-    if (previous?.focusin) document.removeEventListener('focusin', previous.focusin);
-    if (previous?.focusout) document.removeEventListener('focusout', previous.focusout);
-    const mouseover = event => {
-      const row = event.target?.closest?.(`[${SIDEBAR_HOVER_ATTR}]`);
-      if (!row) return;
-      setTimeout(() => showSidebarTooltip(row, row.getAttribute(SIDEBAR_HOVER_ATTR) || ''), 0);
-    };
-    const mouseout = event => {
-      const row = event.target?.closest?.(`[${SIDEBAR_HOVER_ATTR}]`);
-      if (!row) return;
-      if (event.relatedTarget && row.contains(event.relatedTarget)) return;
-      setTimeout(hideSidebarTooltip, 0);
-    };
-    const focusin = event => {
-      const row=event.target?.closest?.(`[${SIDEBAR_HOVER_ATTR}]`);
-      if(row)showSidebarTooltip(row,row.getAttribute(SIDEBAR_HOVER_ATTR)||'');
-    };
-    const focusout = event => {
-      const row=event.target?.closest?.(`[${SIDEBAR_HOVER_ATTR}]`);
-      if(!row || (event.relatedTarget&&row.contains(event.relatedTarget)))return;
-      hideSidebarTooltip();
-    };
-    document.addEventListener('mouseover', mouseover);
-    document.addEventListener('mouseout', mouseout);
-    document.addEventListener('focusin', focusin);
-    document.addEventListener('focusout', focusout);
-    window.__codexContextTokenInspectorSidebarDelegation = {
-      version: RUNTIME_VERSION,
-      mouseover,
-      mouseout,
-      focusin,
-      focusout,
-    };
   }
   function hudMode(root) { return root.dataset.collapsed === 'true' ? 'compact' : 'expanded'; }
   function readLayout() {
@@ -1824,7 +1751,7 @@ INJECTION_SCRIPT = r"""
 
   function resetStaleRuntime() {
     if (!runtimeChanged) return;
-    hideSidebarTooltip();
+    page.hideSidebarTooltip();
     page.clearSidebar();
     if (window.__codexContextTokenInspectorDetailTimer) {
       clearTimeout(window.__codexContextTokenInspectorDetailTimer);
@@ -1845,8 +1772,12 @@ INJECTION_SCRIPT = r"""
   resetStaleRuntime();
   ensureDefaultUnit();
   ensureStyle();
-  installSidebarHoverDelegation();
-  window.__codexContextTokenInspectorHideSidebarTooltip = hideSidebarTooltip;
+  page.installSidebarHoverDelegation({
+    runtimeVersion: RUNTIME_VERSION,
+    language: () => uiLanguage() === 'zh' ? 'zh-CN' : 'en',
+    credit: () => tr('madeBy'),
+  });
+  window.__codexContextTokenInspectorHideSidebarTooltip = () => page.hideSidebarTooltip();
   const pageRefresh = createPageRefreshController({
     apply: nextPayload => applyAll(nextPayload),
     isApplying: () => window.__codexContextTokenInspectorApplying === true,

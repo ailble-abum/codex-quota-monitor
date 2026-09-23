@@ -26,6 +26,7 @@ from typing import Any, Callable, Mapping, Sequence
 import urllib.error
 import urllib.request
 
+from cdp_transport import CDPClient, devtools_targets, select_target
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_PORT = 9222
@@ -795,21 +796,16 @@ def display_action(
     action: str,
     *,
     port: int | str | None = None,
-    injector_module: Any | None = None,
 ) -> dict[str, Any]:
-    """Apply a local overlay action through the existing CDP helper."""
+    """Apply a local overlay action through the local CDP transport."""
 
     if action not in {"show", "reset-position", "stop"}:
         raise ValueError(f"Unsupported display action: {action}")
     resolved_port = configured_port(port)
     client: Any | None = None
     try:
-        injector = injector_module
-        if injector is None:
-            import context_token_injector as injector  # type: ignore[no-redef]
-
-        target = injector.select_target(injector.devtools_targets(resolved_port))
-        client = injector.CDPClient(str(target["webSocketDebuggerUrl"]))
+        target = select_target(devtools_targets(resolved_port))
+        client = CDPClient(str(target["webSocketDebuggerUrl"]))
         expression = {
             "show": SHOW_EXPRESSION,
             "reset-position": RESET_POSITION_EXPRESSION,
