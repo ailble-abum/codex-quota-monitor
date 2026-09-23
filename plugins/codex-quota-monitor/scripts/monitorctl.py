@@ -163,7 +163,7 @@ def main():
         # even when the launchd load below is refused.
         record_build(runtime.parent)
         config = {'Label': LABEL, 'ProgramArguments': ['/bin/bash', str(runtime/'start_codex_monitor.sh'),
-                  '9222', '--no-reopen-after-quit'], 'RunAtLoad': True, 'KeepAlive': True,
+                  '9222'], 'RunAtLoad': True, 'KeepAlive': True,
                   'ThrottleInterval': 30, 'EnvironmentVariables': {'PATH': '/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin',
                   'PYTHONUNBUFFERED': '1'}, 'StandardOutPath': '/tmp/codex-quota-monitor-service.log',
                   'StandardErrorPath': '/tmp/codex-quota-monitor-service.log'}
