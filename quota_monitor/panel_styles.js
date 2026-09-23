@@ -89,6 +89,15 @@
       #codex-context-token-inspector-root .cti-skin-button { display:grid; place-items:center; width:100%; min-width:0; min-height:64px; padding:3px; }
       #codex-context-token-inspector-root .cti-skin-art { width:38px; height:42px; object-fit:contain; }
       #codex-context-token-inspector-root .cti-skin-button small { min-width:0; max-width:100%; overflow:hidden; text-overflow:ellipsis; }
+      #codex-context-token-inspector-root .cti-mascot-size { display:grid; gap:6px; }
+      #codex-context-token-inspector-root .cti-mascot-size-preview { display:grid; place-items:center; min-height:112px; border:1px solid color-mix(in srgb,CanvasText 15%,transparent); border-radius:8px; }
+      #codex-context-token-inspector-root .cti-size-preview-art { display:block; object-fit:contain; }
+      #codex-context-token-inspector-root [data-mascot-scale] { appearance:none; -webkit-appearance:none; width:100%; height:28px; margin:0; background:transparent; cursor:pointer; }
+      #codex-context-token-inspector-root [data-mascot-scale]::-webkit-slider-runnable-track { height:6px; border-radius:999px; background:color-mix(in srgb,CanvasText 34%,Canvas); }
+      #codex-context-token-inspector-root [data-mascot-scale]::-webkit-slider-thumb { appearance:none; -webkit-appearance:none; width:18px; height:18px; margin-top:-6px; border:2px solid Canvas; border-radius:50%; background:var(--cti-safe); }
+      #codex-context-token-inspector-root [data-mascot-scale]::-moz-range-track { height:6px; border-radius:999px; background:color-mix(in srgb,CanvasText 34%,Canvas); }
+      #codex-context-token-inspector-root [data-mascot-scale]::-moz-range-thumb { width:18px; height:18px; border:2px solid Canvas; border-radius:50%; background:var(--cti-safe); }
+      #codex-context-token-inspector-root .cti-mascot-size-limits { font-size:11px; color:color-mix(in srgb,CanvasText 70%,transparent); }
       #codex-context-token-inspector-root[data-collapsed="true"] .cti-body,
       #codex-context-token-inspector-root[data-collapsed="true"] .cti-unit-group,
       #codex-context-token-inspector-root[data-collapsed="true"] [data-refresh],

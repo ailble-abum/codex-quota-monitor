@@ -43,11 +43,14 @@
           <button type="button" data-layout-preset="large" aria-pressed="false">${text('大', 'Large')}</button>
         </fieldset>
         <label><input type="checkbox" data-edge-dock> ${text('靠边收起', 'Edge docking')}</label>
-        <label>${text('伴宠大小', 'Companion size')}
-          <input type="range" min="75" max="200" step="5" data-mascot-scale>
-          <span data-mascot-scale-value></span>
-        </label>
-        <button type="button" data-mascot-scale-auto aria-pressed="false">${text('自动尺寸', 'Automatic size')}</button>
+        <div class="cti-mascot-size">
+          <div class="cti-line"><label for="cti-mascot-scale">${text('伴宠大小', 'Companion size')}</label>
+            <span data-mascot-scale-value></span>
+            <button type="button" data-mascot-scale-auto aria-pressed="false">${text('恢复自动', 'Reset to auto')}</button></div>
+          <div class="cti-mascot-size-preview" aria-label="${text('屏幕实际大小预览', 'Actual on-screen size preview')}">${mascotMarkup(mascotSkin(), 'cti-size-preview-art')}</div>
+          <input id="cti-mascot-scale" type="range" min="75" max="200" step="5" data-mascot-scale aria-label="${text('伴宠大小', 'Companion size')}">
+          <div class="cti-line cti-mascot-size-limits"><span>75%</span><span>200%</span></div>
+        </div>
         <details data-skins>
           <summary>${text('伴宠皮肤', 'Companion skin')} · <span data-skin-current></span></summary>
           <div class="cti-skin-grid">${skinButtons()}</div>

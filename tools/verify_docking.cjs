@@ -73,6 +73,15 @@ const {chromium, webkit} = require('playwright');
     await slider.focus();await page.keyboard.press('End');
     assert.equal(await mascot.evaluate(node=>node.style.getPropertyValue('--cti-mascot-scale')),'2');
     assert.equal(await page.locator('[data-mascot-scale-value]').textContent(),'200%');
+    const preview=page.locator('.cti-size-preview-art');
+    assert.equal(await preview.evaluate(node=>node.complete && node.naturalWidth>0),true);
+    assert.ok(Math.abs((await preview.boundingBox()).width-96)<2, 'preview should show the on-screen width');
+    await page.locator('[data-skins] summary').click();
+    const previewSource=await preview.getAttribute('src');
+    await page.locator('[data-skin-choice="corgi"]').click();
+    assert.equal(await preview.evaluate((node,previous)=>node.src!==previous,previewSource),true);
+    await page.locator('[data-skin-choice="cat"]').click();
+    await page.locator('[data-skins] summary').click();
     assert.ok((await mascot.boundingBox()).width > manualWidth);
     await page.waitForFunction(()=>{const node=document.querySelector('.cti-hud'),rect=node.getBoundingClientRect();return Math.abs(rect.left-parseFloat(node.style.left))<1 && Math.abs(rect.top-parseFloat(node.style.top))<1;});
     if(process.argv[3]) {

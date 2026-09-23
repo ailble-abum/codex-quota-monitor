@@ -107,6 +107,7 @@
         setMascotSkin(button.dataset.skinChoice);
         applyMascotSkin(panel);
         updateSkinButtons(panel);
+        updateMascotSizeControls(panel);
       } else if (button.hasAttribute('data-mascot-scale-auto')) {
         setMascotScalePreference(null);
         applyStoredHudPosition(panel);

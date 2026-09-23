@@ -26,5 +26,13 @@
     if (slider) slider.value = String(percent);
     const label = root.querySelector('[data-mascot-scale-value]');
     if (label) label.textContent = `${automatic ? (uiLanguage() === 'zh' ? '自动 · ' : 'Auto · ') : ''}${percent}%`;
+    const preview = root.querySelector('.cti-size-preview-art');
+    if (preview) {
+      const source = mascotArt(mascotSkin());
+      if (preview.tagName === 'IMG' && preview.src !== source) preview.src = source;
+      const panelZoom = Number(root.style.getPropertyValue('--cti-scale')) || 1;
+      preview.style.width = `${48 * mascotScale() / panelZoom}px`;
+      preview.style.height = `${52 * mascotScale() / panelZoom}px`;
+    }
     root.querySelector('[data-mascot-scale-auto]')?.setAttribute('aria-pressed', String(automatic));
   }

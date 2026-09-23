@@ -67,12 +67,12 @@
     const mode = hudMode(root);
     const wanted = root.__ctiLayout[mode] || root.__ctiLayout.compact || {};
     const base = hudBase(root);
-    updateMascotSizeControls(root);
     const docked = edgeDockEnabled() && ['left', 'right'].includes(wanted.edge);
     const available = window.innerWidth - (docked ? 52 * mascotScale() + 8 : 16);
     const width = Math.max(160, Math.min(available, wanted.width || base));
     Object.assign(root.style, {width:`${width}px`, maxHeight:`${Math.max(80, window.innerHeight - 80)}px`, right:'auto', bottom:'auto'});
     root.style.setProperty('--cti-scale', String(Math.max(0.55, Math.min(1.65, width / base))));
+    updateMascotSizeControls(root);
     const rect = root.getBoundingClientRect();
     if (docked) return applyDockPosition(root, wanted, wanted.edge);
     if (wanted.edge && root.__ctiLayout[mode]) {

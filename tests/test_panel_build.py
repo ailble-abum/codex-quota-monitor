@@ -71,6 +71,11 @@ class PanelBuildTests(unittest.TestCase):
         self.assertIn('zoom:var(--cti-scale,1)', styles)
         self.assertIn('background:linear-gradient(135deg,transparent 60%', styles)
 
+    def test_companion_size_slider_has_a_visible_track(self):
+        styles = (Path(__file__).parents[1] / 'quota_monitor/panel_styles.js').read_text()
+        self.assertIn('[data-mascot-scale]::-webkit-slider-runnable-track', styles)
+        self.assertIn('[data-mascot-scale]::-moz-range-track', styles)
+
     def test_compact_bar_hover_prefers_time_budget(self):
         shell = (Path(__file__).parents[1] / 'quota_monitor/panel_shell.js').read_text()
         self.assertIn('const hoverBudget = windows.map', shell)
