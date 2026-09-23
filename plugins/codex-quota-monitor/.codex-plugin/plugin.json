@@ -26,6 +26,8 @@
       "Show my current Codex quota.",
       "Reopen Codex with the quota monitor."
     ],
-    "brandColor": "#2563eb"
+    "brandColor": "#2563eb",
+    "composerIcon": "./assets/quota-cat-logo.png",
+    "logo": "./assets/quota-cat-logo.png"
   }
 }
