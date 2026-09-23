@@ -23,6 +23,7 @@ if str(SCRIPT_DIR) not in sys.path:
 import context_token_inspector as inspector
 from cdp_transport import CDPClient, CDPError, devtools_targets, select_target
 from injector_status import write_status
+from page_bridge import read as read_page_state
 from payload_builder import (DETAIL_SESSION_LIMIT, build_payload, normalize_thread_id,
                              session_file_for_thread, thread_keys)
 from platform_paths import runtime_root
@@ -45,41 +46,7 @@ DEFAULT_PORT = 9222
 
 
 def runtime_state(client: CDPClient) -> dict[str, Any]:
-    expression = r"""
-(() => {
-  function attr(el, name) { return el && el.getAttribute ? el.getAttribute(name) : null; }
-  function activeSidebarRow() {
-    return document.querySelector('[data-app-action-sidebar-thread-row][data-app-action-sidebar-thread-active="true"]') ||
-      document.querySelector('[data-app-action-sidebar-thread-row][aria-current="page"]') ||
-      document.querySelector('[data-app-action-sidebar-thread-active="true"]') ||
-      document.querySelector('[data-app-action-sidebar-thread-row][data-app-action-sidebar-thread-active]:not([data-app-action-sidebar-thread-active="false"])');
-  }
-  const activeRow =
-    activeSidebarRow();
-  const activeId =
-    attr(activeRow, 'data-app-action-sidebar-thread-id') ||
-    attr(activeRow && activeRow.querySelector('[data-app-action-sidebar-thread-id]'), 'data-app-action-sidebar-thread-id') ||
-    attr(document.querySelector('[data-conversation-id]'), 'data-conversation-id') ||
-    attr(document.querySelector('[data-above-composer-conversation-id]'), 'data-above-composer-conversation-id') ||
-    null;
-  const refresh = window.__ctiRefreshRequested === true;
-  window.__ctiRefreshRequested = false;
-  // Which selectors landed is what separates "Codex updated its DOM" from
-  // "the overlay stopped updating". A thread list with no marked-active row,
-  // or a page with no thread rows at all, is drift and is reported rather
-  // than silently drawing a smaller panel.
-  const dom = {
-    sidebarRows: document.querySelectorAll('[data-app-action-sidebar-thread-row]').length,
-    activeRow: !!activeRow,
-    conversationId: !!activeId
-  };
-  return { href: location.href, title: document.title, activeThreadId: activeId,
-    dom, refresh, alerts: localStorage.getItem('cti-alerts') === 'true',
-    language: String(document.documentElement.lang || navigator.language || 'en').startsWith('zh') ? 'zh' : 'en' };
-})()
-"""
-    value = client.evaluate(expression)
-    return value if isinstance(value, dict) else {}
+    return read_page_state(client)
 
 
 INJECTION_SCRIPT = r"""
