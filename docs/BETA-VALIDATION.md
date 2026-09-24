@@ -74,3 +74,8 @@
 - 在 V2 新增显式 `status_root`，以 `0600` 私有 JSON 记录短状态码与时间戳；`doctor` 在服务运行且配置有效时核对该标记的新鲜度，只有最近 `updated` 可报告面板发布成功。
 - 使用临时目录和模拟 `launchctl` 测试状态缺失、有效、过期与服务诊断；监督循环测试确认发布与停止状态被写入。真实 Codex 与 LaunchAgent 联合验收仍未完成。
 - Python 3.9 全套 192 项、Swift typecheck 与临时 Chromium 运行链通过。首次目录审计发现源码文件名含发行禁用词 `snapshot`，已改为 `runtime_marker.py` 后重建；最新隔离预览目录 `/Users/ailble/Desktop/季二六软件项目-V2验收包-20260924-r4` 经审计通过，67 个文件中 66 个有摘要。
+
+## 2026-09-24 候选归档复核
+
+- `tools/package_candidate.py` 对已审计预览生成确定性 ZIP、候选清单和 SHA-256；测试覆盖两次字节一致、MIT 声明在包内、拒绝覆盖输出。Python 3.9 全套 193 项及 Swift typecheck 通过。
+- 候选包 `codex-quota-monitor-v2.0.0-rc.1-macos.zip` 的 SHA-256 为 `833237b4e964352e97f133f2a561c773213d964fcdcd8b5653dff5c599fb9754`，`shasum -a 256 -c SHA256SUMS` 通过。该归档不构成正式发布或真实 macOS 验收。

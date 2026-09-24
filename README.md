@@ -31,6 +31,8 @@ python3 -m unittest discover -s tests -v
 
 [macOS 正式版验收门槛](docs/mac-release-gate.md) 列出原生安装、恢复、菜单栏和回退的通过标准；当前隔离预览仍待这些检查。
 
+[macOS 发行候选包](docs/candidate-package.md) 已按审计清单确定性打包并附 SHA-256；尚未创建正式 GitHub Release。
+
 [macOS 配额通知](docs/notification-contract.md) 已提供显式配置和面板开关；当前只有合成发送与浏览器控件测试，真实系统通知尚待验收。
 
 [近 7 天采样报告](docs/weekly-report-contract.md) 已按账户显示 UTC 日采样、模型和项目出现次数；项目只记录目录名与路径摘要。

@@ -4,6 +4,9 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+import subprocess
+import sys
+import zipfile
 
 spec = importlib.util.spec_from_file_location('audit_release', Path(__file__).parents[1] / 'tools/audit_release.py')
 audit_release = importlib.util.module_from_spec(spec)
@@ -11,6 +14,28 @@ spec.loader.exec_module(audit_release)
 
 
 class ReleaseAuditTests(unittest.TestCase):
+    def test_candidate_archive_is_reproducible_and_not_labeled_release(self):
+        root = self.make_bundle()
+        with tempfile.TemporaryDirectory() as directory:
+            destinations = [Path(directory, name) for name in ('first', 'second')]
+            command = Path(__file__).parents[1] / 'tools/package_candidate.py'
+            for destination in destinations:
+                result = subprocess.run([sys.executable, str(command), str(root), str(destination),
+                    '--label', 'v2.0.0-rc.1'], capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+            first = destinations[0] / 'codex-quota-monitor-v2.0.0-rc.1-macos.zip'
+            second = destinations[1] / first.name
+            self.assertEqual(first.read_bytes(), second.read_bytes())
+            manifest = json.loads((destinations[0] / 'CANDIDATE.json').read_text())
+            self.assertEqual(manifest['status'], 'candidate-not-release')
+            self.assertEqual(manifest['sha256'], hashlib.sha256(first.read_bytes()).hexdigest())
+            with zipfile.ZipFile(first) as archive:
+                self.assertIn('codex-quota-monitor/renderer/LICENSE', archive.namelist())
+                self.assertIn('codex-quota-monitor/renderer/NOTICE', archive.namelist())
+            repeated = subprocess.run([sys.executable, str(command), str(root), str(destinations[0]),
+                '--label', 'v2.0.0-rc.1'], capture_output=True, text=True)
+            self.assertEqual(repeated.returncode, 2)
+
     def make_bundle(self):
         root = Path(tempfile.mkdtemp())
         self.addCleanup(lambda: __import__('shutil').rmtree(root))
