@@ -10,6 +10,7 @@
   function threadKeys(id) { return id ? [id] : []; }
   function applyAll(data) {
     if (disposed) throw new Error('consumer disposed');
+    ensureStyle();
     if (!data || data !== panelData()) {
       data = {activeThreadId: null, selectedThreadId: null, summaries: [],
         detail: null, detailsByThread: {}, health: null, healthThreadId: null, history: null,

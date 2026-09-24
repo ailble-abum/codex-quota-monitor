@@ -95,6 +95,12 @@ const {chromium, webkit} = require('playwright');
       delete payload.quota; delete payload.health; delete payload.healthThreadId;
       payload.summaries[0].latest_context_percent = 50;
       await publish();
+      // A host head refresh may remove injected styles while leaving the panel mounted.
+      await page.locator('#codex-context-token-inspector-style').evaluate(node => node.remove());
+      assert.equal(await publish(), true);
+      assert.equal(await page.locator('#codex-context-token-inspector-style').count(), 1);
+      assert.equal(await page.locator('.cti-hud').evaluate(node => getComputedStyle(node).position), 'fixed');
+
       payload.notificationsAvailable = true;
       await publish();
       assert.equal(await page.locator('[data-alerts]').isEnabled(), true);

@@ -59,9 +59,11 @@ class Service:
             raise ServiceError('dependency_unavailable') from None
         settings = load_config(config)
         if (settings.get('host') != 'codex-sidebar' or settings.get('panel') is not True or
-                not settings.get('host_app') or not settings.get('consumer')):
+                not settings.get('consumer')):
             raise ServiceError('service_config_incomplete')
-        HostFollower(settings['host_app'], local_origin(settings['origin'])[1])
+        port = local_origin(settings['origin'])[1]
+        if settings.get('host_app') is not None:
+            HostFollower(settings['host_app'], port)
         load_consumer(settings['consumer'])
         return settings
 

@@ -39,7 +39,12 @@
     return ok;
   }
   function ensureStyle() {
-    if (mountedStyle) return;
+    if (mountedStyle) {
+      const current = document.getElementById(STYLE_ID);
+      if (current && current !== mountedStyle) throw new Error('style ownership lost');
+      if (!mountedStyle.isConnected) document.head.append(mountedStyle);
+      return;
+    }
     if (document.getElementById(STYLE_ID)) throw new Error('style occupied');
     const node = document.createElement('style');
     node.id = STYLE_ID;

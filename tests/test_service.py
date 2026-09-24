@@ -113,6 +113,16 @@ class ServiceTests(unittest.TestCase):
             self.assertEqual(service.uninstall(), 'uninstalled')
             self.assertFalse(service.path.exists())
             self.assertEqual(calls[-1][1:3], ['bootout', 'gui/501/' + LABEL])
+            # Manual launch mode must install without opting into host relaunch.
+            manual = json.loads(config.read_text())
+            del manual['host_app']
+            config.write_text(json.dumps(manual))
+            self.assertEqual(service.install(config), 'installed')
+            self.assertEqual(service.doctor()['config'], 'valid')
+            from quota_monitor.live import load_config
+            from quota_monitor.runtime import UpdateLoop
+            self.assertIsNone(UpdateLoop(**load_config(config)).host_follower)
+            self.assertEqual(service.uninstall(), 'uninstalled')
             service.runner = lambda *_args, **_kw: Result(5)
             with self.assertRaisesRegex(ServiceError, 'bootstrap_failed'):
                 service.install(config)
