@@ -426,6 +426,13 @@ const {chromium, webkit} = require('playwright');
       assert.ok((await page.locator('[data-build]').textContent()).includes('<b>test</b>'));
       assert.ok((await page.locator('[data-dom]').textContent()).includes('未提供'));
       assert.equal(await page.locator('[data-update] a').getAttribute('href'), 'https://example.test/release');
+      assert.equal(await page.locator('[data-update-check]').isEnabled(), true);
+      await page.locator('[data-update-check]').evaluate(node => node.click());
+      assert.equal(await call({...base, action:'updateCheck'}), true);
+      assert.equal(await call({...base, action:'updateCheck'}), false);
+      payload.update = {status:'checking'};
+      await publish();
+      assert.equal(await page.locator('[data-update-check]').isDisabled(), true);
       if(process.argv[3]) {
         await page.addStyleTag({content: ':root{color-scheme:light dark}body{background:Canvas}'});
         for(const colorScheme of ['light','dark']) {
@@ -435,7 +442,7 @@ const {chromium, webkit} = require('playwright');
       }
       delete payload.build; delete payload.update;
       await publish();
-      assert.equal(await page.locator('[data-update]').textContent(), '');
+      assert.equal(await page.locator('[data-update-check]').isDisabled(), true);
       await page.locator('[data-cti-unit="raw"]').click();
       assert.equal(await page.evaluate(() => localStorage.getItem('codex-context-token-inspector-unit')), 'raw');
       assert.equal(await page.locator('[data-context] [role="meter"]').getAttribute('aria-valuenow'), '50');

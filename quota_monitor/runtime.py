@@ -218,7 +218,9 @@ class UpdateLoop:
             if self.history is not None and payload.get('quota') is not None:
                 payload['quota'] = self.history.enrich_quota(payload['quota'])
             payload['build'] = {'pluginVersion': self.update.current}
-            payload['update'] = self.update.snapshot()
+            update_requested = await self.client.evaluate(page_expression(
+                action='updateCheck', expected=self.page_url, key=key, host=self.host))
+            payload['update'] = self.update.snapshot(force=update_requested is True)
             payload['notificationsAvailable'] = self.notifier is not None and sys.platform == 'darwin'
             if self.history is not None:
                 selected = {}

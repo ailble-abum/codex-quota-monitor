@@ -94,7 +94,7 @@ print(json.dumps({'id':request['id'],'error':{'code':-1}}),flush=True)
         loop.account.close = AsyncMock()
         client = AsyncMock()
         client.endpoint = 'ws://127.0.0.1:9222/devtools/page/one'
-        client.evaluate.side_effect = ['one', False, True]
+        client.evaluate.side_effect = ['one', False, False, True]
         loop.client = client
         with patch('quota_monitor.runtime.list_pages', return_value=[]), patch('quota_monitor.runtime.select_page', return_value=client.endpoint):
             self.assertEqual(await loop.step(), 'updated')

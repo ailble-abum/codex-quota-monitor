@@ -16,7 +16,7 @@
 
     const current = body.querySelector('[data-update]');
     if (current) {
-      const next = current.cloneNode(false), update = payload.update || {};
+      const next = current.cloneNode(false), update = payload.update || {status:'not_configured'};
       if (update.status === 'update_available' && typeof update.latestSemver === 'string' && update.latestSemver) {
         const row = document.createElement('div'); row.className = 'cti-update-row';
         const badge = document.createElement('span'); badge.className = 'cti-update-badge';
@@ -36,6 +36,12 @@
         const label = document.createElement('span'); label.className = 'cti-muted';
         label.textContent = text('已是最新版本', 'Up to date'); next.append(label);
       }
+      const check = document.createElement('button');
+      check.type = 'button'; check.className = 'cti-text-button'; check.dataset.updateCheck = '';
+      check.disabled = update.status === 'checking' || update.status === 'not_configured';
+      check.textContent = update.status === 'checking' ? text('检测中…', 'Checking…')
+        : text('检测更新', 'Check for updates');
+      next.append(check);
       if (!current.isEqualNode(next)) current.replaceChildren(...next.childNodes);
     }
 

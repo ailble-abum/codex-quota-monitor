@@ -1,5 +1,6 @@
 import asyncio
 import unittest
+from unittest.mock import patch
 
 from quota_monitor.update_state import UpdateSource, project
 
@@ -18,6 +19,24 @@ class UpdateStateTests(unittest.TestCase):
         async def check():
             source = UpdateSource()
             self.assertEqual(source.snapshot(), {'status': 'not_configured'})
+            await source.close()
+        asyncio.run(check())
+
+    def test_manual_request_bypasses_interval_without_duplicate_task(self):
+        async def check():
+            source = UpdateSource('https://example.invalid/manifest', interval=3600, clock=lambda: 100)
+            calls = []
+            async def fake_read(_):
+                calls.append(1)
+                return {'status': 'up_to_date'}
+            with patch('quota_monitor.update_state.read_manifest', fake_read):
+                self.assertEqual(source.snapshot()['status'], 'checking')
+                await source.task
+                self.assertEqual(source.snapshot()['status'], 'up_to_date')
+                self.assertEqual(len(calls), 1)
+                self.assertEqual(source.snapshot(force=True)['status'], 'checking')
+                await source.task
+                self.assertEqual(len(calls), 2)
             await source.close()
         asyncio.run(check())
 

@@ -96,9 +96,11 @@ class UpdateSource:
             value['currentSemver'] = '.'.join(map(str, current[:3]))
         self.value = value
 
-    def snapshot(self):
-        if self.url is not None and self.clock() >= self.next_read and (self.task is None or self.task.done()):
+    def snapshot(self, force=False):
+        if (self.url is not None and (force or self.clock() >= self.next_read) and
+                (self.task is None or self.task.done())):
             self.next_read = self.clock() + self.interval
+            self.value = {'status': 'checking'}
             self.task = asyncio.create_task(self.refresh())
         return dict(self.value)
 

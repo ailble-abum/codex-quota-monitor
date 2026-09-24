@@ -53,7 +53,7 @@ class LoopTests(unittest.IsolatedAsyncioTestCase):
         loop.history.record.return_value = {'samples': 1}
         client = AsyncMock()
         client.endpoint = 'ws://127.0.0.1:9222/devtools/page/one'
-        client.evaluate.side_effect = ['active', True]
+        client.evaluate.side_effect = ['active', False, True]
         loop.client = client
         with patch.object(runtime, 'list_pages', return_value=[]), \
                 patch.object(runtime, 'select_page', return_value=client.endpoint):
@@ -61,7 +61,7 @@ class LoopTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(loop.history.record.call_args.args[1]['thread_id'], 'active')
         self.assertEqual(loop.history.record.call_args.args[3], 'right')
         payload['selectedThreadId'] = 'other'
-        client.evaluate.side_effect = ['active', True]
+        client.evaluate.side_effect = ['active', False, True]
         with patch.object(runtime, 'list_pages', return_value=[]), \
                 patch.object(runtime, 'select_page', return_value=client.endpoint):
             self.assertEqual(await loop.step(), 'updated')

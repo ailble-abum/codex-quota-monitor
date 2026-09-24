@@ -124,6 +124,10 @@
         window.__quotaMonitorV2RefreshRequested = true;
         button.setAttribute('aria-busy', 'true');
         queueMicrotask(() => button.removeAttribute('aria-busy'));
+      } else if (button.hasAttribute('data-update-check')) {
+        window.__quotaMonitorV2UpdateCheckRequested = true;
+        button.disabled = true;
+        button.textContent = uiLanguage() === 'zh' ? '检测中…' : 'Checking…';
       } else if (button.hasAttribute('data-cti-unit')) {
         event.preventDefault();
         event.stopPropagation();
