@@ -79,3 +79,4 @@
 
 - `tools/package_candidate.py` 对已审计预览生成确定性 ZIP、候选清单和 SHA-256；测试覆盖两次字节一致、MIT 声明在包内、拒绝覆盖输出。Python 3.9 全套 193 项及 Swift typecheck 通过。
 - 候选包 `codex-quota-monitor-v2.0.0-rc.1-macos.zip` 的 SHA-256 为 `833237b4e964352e97f133f2a561c773213d964fcdcd8b5653dff5c599fb9754`，`shasum -a 256 -c SHA256SUMS` 通过。该归档不构成正式发布或真实 macOS 验收。
+- 将该 ZIP 解压到独立临时目录后，包内 `audit_release.py` 审计、`run.py --help` 与 `QuotaMenu.swift` 类型检查通过；以解压后的运行目录执行 `verify_live.cjs`，合成 Chromium 双次重启、同 PID 等待、单消费者及退出清理通过。解压后的 `renderer/consumer.js` 在 Chromium/WebKit 的 `verify_mount.cjs` 通过。以上核对的是归档实际内容，仍未覆盖真实 Codex 与 LaunchAgent 联合验收。
