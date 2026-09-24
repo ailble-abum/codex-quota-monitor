@@ -31,7 +31,7 @@
 | 1. 展示文案与指标辅助 | tr、shortDuration、durationPhrase、windowLabel、nearestResetText、quotaTone、accountTone、contextTone、contextMeterValue、remainingContext、toneLabel、gaugeReading/gaugeColor | 从已记录的数据契约与双语展示需求独立实现；覆盖未知值、零值、过期、边界及文案，不逐行改写旧函数 |
 | 2. 布局交互 | hudMode/hudBase、presetWidth、applyStoredHudPosition、clampHud、installHudDrag、resizeGeometry、dockCandidate、applyDockPosition、undockHud、revealDock、scheduleDockHide 等 | 保留展开/折叠、拖动、缩放、停靠和偏好兼容；以指针操作、视口变化、卸载清理的合成验证驱动独立实现 |
 | 3. 模板、样式与伴宠装配 | panelCSS、panelHeader、panelBodyTemplate 的旧模板提取；createRetainedMascot、mascotMarkup/mascotSvg、applyMascotSkin、companionStep/companionReact 等 | 按产品规格独立创建 DOM/CSS 与装配；保留用户功能与视觉方向，深浅主题 Chromium/WebKit 验证。先追溯自有插画与新增伴宠代码；不得把它们误删为上游贡献 |
-| 4. 独立构建和发行清单 | 发行清单、资源来源复核、浏览器/原生验收未完成 | 已移除新构建对旧仓库脚本和字符串裁剪链的依赖，并内建现有 WebP 资源；下一步更新安装清单，逐项审查发行文件后才决定归因调整 |
+| 4. 独立构建和发行清单 | 素材来源逐项复核、完整功能对照、原生/Windows/正式发行验收未完成 | 发布候选已从 V2 模块直接构建，预览安装器生成逐文件哈希清单；`audit_release.py` 精确校验清单覆盖全部包内文件并拒绝目录外路径。素材来源与权属仍待复核，继续保留 LICENSE/NOTICE |
 
 已有 V2 日志读取、身份核对、快照时效、额度读取、页面桥及控件模块优先复用。布局使用浏览器标准 DOM/CSS/Pointer Events 能力；不为来源替换引入新的 UI 框架。具体模块开工时按 AGENTS.md 完成针对性复用核查，不预先声称某个库能完整覆盖。
 
@@ -50,3 +50,7 @@
 ## 后续验证记录（2026-09-23）
 
 当前 Playwright 运行时已可用：V2 独立候选已完成 Chromium/WebKit 明暗主题的挂载隔离回归，以及 Chromium 的真实 CDP 运行循环回归；这只提升了行为证据，不改变视觉资源来源和归因仍待复核的结论。`beta-20260923-r20` 的安装目录审查通过，稳定版安装和真实宿主退出重开仍未切换或宣称通过。
+
+## 发行清单复核（2026-09-24）
+
+新增安装清单完整性校验后，Python 3.9 全套 180 项通过；新生成的隔离预览包含 62 个文件、61 个清单哈希，静态审计通过。Chromium/WebKit 挂载隔离测试和临时 Chromium CLI 重启/恢复测试通过。该复核不代表素材权属、真实 Codex 重启、Windows 或正式发行验收。

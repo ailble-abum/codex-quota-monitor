@@ -45,6 +45,21 @@ class ReleaseAuditTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             audit_release.audit(root)
 
+    def test_rejects_unmanifested_release_files(self):
+        root = self.make_bundle()
+        (root / 'unexpected.txt').write_text('not part of the audited bundle')
+        with self.assertRaises(ValueError):
+            audit_release.audit(root)
+
+    def test_rejects_manifest_paths_outside_the_release_tree(self):
+        root = self.make_bundle()
+        manifest_path = root / 'install-manifest.json'
+        manifest = json.loads(manifest_path.read_text())
+        manifest['files']['../outside.txt'] = '0' * 64
+        manifest_path.write_text(json.dumps(manifest))
+        with self.assertRaises(ValueError):
+            audit_release.audit(root)
+
 
 if __name__ == '__main__':
     unittest.main()

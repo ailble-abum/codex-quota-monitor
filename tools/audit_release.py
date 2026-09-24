@@ -62,6 +62,8 @@ def audit(root):
     hashes = install.get('files')
     if not isinstance(hashes, dict):
         raise ValueError('missing install file hashes')
+    if set(hashes) != files - {'install-manifest.json'}:
+        raise ValueError('install file inventory mismatch')
     mismatched = []
     for path, expected in hashes.items():
         candidate = root / path

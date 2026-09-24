@@ -25,3 +25,10 @@
 - `tools/verify_runtime_panel.cjs` 使用 V2 独立候选在 Chromium 明暗主题通过真实 CDP、追加、任务切换、缺失、自动过期、重载和单实例；`tools/verify_panel.cjs --bridge` 在 Chromium/WebKit 明暗主题通过。侧栏只保留 V2 自有摘要属性，宿主文字与状态不变。
 - 预览目录 `beta-20260923-r20` 的独立构建、12 个视觉资源哈希、安装清单和 `audit_release.py` 均通过。该目录仍是隔离预览，不替换稳定版安装。
 - 以上补齐了合成浏览器证据，不等同于真实 Codex 整应用退出重开、LaunchAgent 切换、Windows、签名/公证或最终来源/权属审查。
+
+## 2026-09-24 发行门槛复核
+
+- Python 3.9 全套 180 项通过；新增发行审计测试拒绝清单外文件和指向发行目录外的清单路径。`audit_release.py` 现在要求安装清单恰好覆盖预览目录内除清单自身外的全部文件。
+- 使用新临时目录执行 `build_panel.py` → `install_preview.py` → `audit_release.py`，62 个文件中 61 个均有摘要，状态为 `audited`；`run.py --help` 通过。consumer 摘要为 `f07d910fdf7d11aa57baabf0358ad3a910b181596759f5de2df02b6d830d5444`。
+- 新构建候选在 Chromium/WebKit 通过挂载隔离及控件、键盘、单位切换、拖动点击抑制和外部节点替换保护测试；临时 Chromium CLI 通过双次浏览器重启恢复、同 PID 等待、单消费者、会话目录歧义、信号清理和无宿主数据测试。
+- 以上仍是合成测试和隔离预览。未修改稳定安装或 LaunchAgent；真实 Codex 整应用退出重开、Windows、签名/公证以及素材来源/权属审查均未验收。
