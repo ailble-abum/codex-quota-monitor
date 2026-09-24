@@ -6,6 +6,7 @@ import plistlib
 import tempfile
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 import zipfile
 
 from quota_monitor import self_update
@@ -13,7 +14,17 @@ from quota_monitor.service import LABEL, MENU_LABEL, Service
 
 
 class SelfUpdateTests(unittest.TestCase):
-    def bundle(self, version='2.0.2'):
+    def test_github_metadata_uses_json_accept_header(self):
+        seen = []
+        def opened(request, timeout):
+            seen.append(request.get_header('Accept'))
+            return BytesIO(b'{}')
+        with patch.object(self_update, 'urlopen', opened):
+            self.assertEqual(self_update._fetch(self_update.RELEASE_API, 100), b'{}')
+            self.assertEqual(self_update._fetch('https://example.invalid/file.zip', 100), b'{}')
+        self.assertEqual(seen, ['application/vnd.github+json', 'application/octet-stream'])
+
+    def bundle(self, version='2.0.3'):
         files = {
             'run.py': b'pass\n',
             'QuotaMenu': b'\xca\xfe\xba\xbe' + b'menu',
@@ -36,7 +47,7 @@ class SelfUpdateTests(unittest.TestCase):
         return output.getvalue()
 
     def test_official_release_download_and_extract(self):
-        version = '2.0.2'
+        version = '2.0.3'
         archive = self.bundle(version)
         name = 'codex-quota-monitor-v{}-macos.zip'.format(version)
         base = 'https://github.com/ailble-abum/codex-quota-monitor/releases/download/v{}/'.format(version)
@@ -79,13 +90,13 @@ class SelfUpdateTests(unittest.TestCase):
                     stream.writestr(name, data)
                 stream.writestr('codex-quota-monitor/../escape', b'bad')
             with self.assertRaises(self_update.UpdateError):
-                self_update._extract(output.getvalue(), Path(directory, 'bundle'), '2.0.2')
+                self_update._extract(output.getvalue(), Path(directory, 'bundle'), '2.0.3')
             broken = BytesIO()
             with zipfile.ZipFile(broken, 'w') as stream:
                 for name, data in values:
                     stream.writestr(name, b'tampered' if name.endswith('/run.py') else data)
             with self.assertRaises(self_update.UpdateError):
-                self_update._extract(broken.getvalue(), Path(directory, 'broken'), '2.0.2')
+                self_update._extract(broken.getvalue(), Path(directory, 'broken'), '2.0.3')
 
     def test_service_switch_and_rollback(self):
         with tempfile.TemporaryDirectory() as directory:

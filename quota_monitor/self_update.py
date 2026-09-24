@@ -26,8 +26,9 @@ class UpdateError(ValueError):
 
 
 def _fetch(url, limit):
+    accept = 'application/vnd.github+json' if url == RELEASE_API else 'application/octet-stream'
     with urlopen(Request(url, headers={'User-Agent': 'codex-quota-monitor-v2',
-                                       'Accept': 'application/octet-stream'}), timeout=30) as response:
+                                       'Accept': accept}), timeout=30) as response:
         data = response.read(limit + 1)
     if len(data) > limit:
         raise UpdateError('download_too_large')
