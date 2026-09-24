@@ -80,3 +80,9 @@
 - `tools/package_candidate.py` 对已审计预览生成确定性 ZIP、候选清单和 SHA-256；测试覆盖两次字节一致、MIT 声明在包内、拒绝覆盖输出。Python 3.9 全套 193 项及 Swift typecheck 通过。
 - 候选包 `codex-quota-monitor-v2.0.0-rc.1-macos.zip` 的 SHA-256 为 `833237b4e964352e97f133f2a561c773213d964fcdcd8b5653dff5c599fb9754`，`shasum -a 256 -c SHA256SUMS` 通过。该归档不构成正式发布或真实 macOS 验收。
 - 将该 ZIP 解压到独立临时目录后，包内 `audit_release.py` 审计、`run.py --help` 与 `QuotaMenu.swift` 类型检查通过；以解压后的运行目录执行 `verify_live.cjs`，合成 Chromium 双次重启、同 PID 等待、单消费者及退出清理通过。解压后的 `renderer/consumer.js` 在 Chromium/WebKit 的 `verify_mount.cjs` 通过。以上核对的是归档实际内容，仍未覆盖真实 Codex 与 LaunchAgent 联合验收。
+
+## 2026-09-24 `rc.2` 原生验收准备
+
+- 修复 `doctor` 在没有面板状态字段时仍返回成功退出码的问题；现在仅 `service=running`、`config=valid`、`panel=updated` 同时成立才返回 0。新增缺失、未更新、已更新三种退出码测试；Python 3.9 全套 194 项及 Swift typecheck 通过。
+- 重建隔离预览 `季二六软件项目-V2验收包-20260924-r5` 并审计通过（67 个文件、66 个摘要）；生成 `v2.0.0-rc.2` ZIP，SHA-256 为 `04a3804d99f70342bc80fddfed938110531ce2288872bea80c45c2d46193f291`。ZIP 完整性、解压后审计、CLI 帮助、Swift 类型检查及合成 Chromium 双次重启运行链通过。
+- `rc.1` 已被 `rc.2` 替换，不再用于原生验收。真实 Codex、LaunchAgent 和菜单栏的联合验收仍待普通终端完成。

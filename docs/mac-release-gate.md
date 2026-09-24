@@ -4,9 +4,9 @@
 
 ## 已完成的离线证据
 
-- Python 3.9 全套 193 项、Swift typecheck、Chromium/WebKit 面板挂载和临时 Chromium 双次重启运行链通过；候选 ZIP 解压后也完成包内审计与上述运行链复核。
-- 最新独立包位于 `/Users/ailble/Desktop/季二六软件项目-V2验收包-20260924-r4`；`tools/audit_release.py` 验证文件清单与摘要通过。包内不含认证、会话或用户配置。
-- 已用该目录生成确定性 `v2.0.0-rc.1` 候选 ZIP 和 `SHA256SUMS`；[候选包记录](candidate-package.md)保留校验值。它仍明确标记为候选，不等于正式发布。
+- Python 3.9 全套 194 项、Swift typecheck、Chromium/WebKit 面板挂载和临时 Chromium 双次重启运行链通过；最新 `rc.2` 候选 ZIP 解压后也完成包内审计与运行链复核。
+- 最新独立包位于 `/Users/ailble/Desktop/季二六软件项目-V2验收包-20260924-r5`；`tools/audit_release.py` 验证文件清单与摘要通过。包内不含认证、会话或用户配置。
+- 已用该目录生成确定性 `v2.0.0-rc.2` 候选 ZIP 和 `SHA256SUMS`；[候选包记录](candidate-package.md)保留校验值。`rc.1` 已被替换；`rc.2` 仍明确标记为候选，不等于正式发布。
 - V2 已有显式服务与菜单栏管理、官方账户读取、可选系统通知、七天采样与离线报告、更新检查，以及可检查真实发布状态的 `doctor`。
 
 ## 普通终端原生验收
