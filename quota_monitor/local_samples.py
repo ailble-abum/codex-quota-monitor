@@ -28,6 +28,11 @@ def _windows(value):
     return result[:4]
 
 
+def _account_key(quota):
+    value = quota.get('accountKey') if isinstance(quota, dict) else None
+    return value if isinstance(value, str) and len(value) == 64 and all(c in '0123456789abcdef' for c in value) else None
+
+
 class LocalSampleStore:
     """Persist bounded, privacy-minimal samples when explicitly configured."""
 
@@ -61,11 +66,12 @@ class LocalSampleStore:
     def record(self, quota, context, health, model=None):
         now = self.clock()
         if not _number(now, 0) or now - self.last < 30:
-            return self.summary()
+            return self.summary(_account_key(quota))
         self.last = now
         context = context if isinstance(context, dict) else {}
         row = {
             'at': now,
+            'accountKey': _account_key(quota),
             'windows': _windows(quota.get('windows') if isinstance(quota, dict) else None),
             'context': {
                 'latest_context_percent': context.get('latest_context_percent')
@@ -83,7 +89,7 @@ class LocalSampleStore:
             row['model'] = name
         self.rows = self._clean(self.rows + [row], now)
         self._write()
-        return self.summary()
+        return self.summary(_account_key(quota))
 
     def _write(self):
         self.root.mkdir(parents=True, exist_ok=True)
@@ -100,8 +106,8 @@ class LocalSampleStore:
             except FileNotFoundError:
                 pass
 
-    def summary(self):
-        rows = self.rows
+    def summary(self, account_key=None):
+        rows = [row for row in self.rows if row.get('accountKey') == account_key]
         times = [row['at'] for row in rows if _number(row.get('at'), 0)]
         remaining = [window['remaining'] for row in rows
                      for window in (row.get('windows') if isinstance(row.get('windows'), list) else [])
@@ -138,6 +144,7 @@ class LocalSampleStore:
             return quota
         now = self.clock() if now is None else now
         result = dict(quota)
+        account_key = _account_key(quota)
         windows, budgets = [], []
         sources = quota.get('windows') if isinstance(quota.get('windows'), list) else []
         for source in sources:
@@ -146,6 +153,8 @@ class LocalSampleStore:
             item, key = dict(source), source.get('key')
             series = []
             for row in self.rows:
+                if account_key is None or row.get('accountKey') != account_key:
+                    continue
                 samples = row.get('windows') if isinstance(row.get('windows'), list) else []
                 for sample in samples:
                     if (isinstance(sample, dict) and sample.get('key') == key and

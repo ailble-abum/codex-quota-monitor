@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import json
 import sys
 import tempfile
@@ -10,11 +11,13 @@ from quota_monitor import account
 
 class AccountTests(unittest.IsolatedAsyncioTestCase):
     def test_projection(self):
-        result = account.project({'rateLimits': {'primary': {'usedPercent': 25,
+        result = account.project({'accountId': 'private-account', 'rateLimits': {'primary': {'usedPercent': 25,
             'windowDurationMins': 300, 'resetsAt': 2000}, 'secondary': None,
             'planType': 'pro', 'credits': {'secret': 'hidden'}}}, now=1000)
         self.assertEqual(result['windows'], [{'key': 'primary', 'remaining': 75, 'duration': 300, 'resetsAt': 2000}])
         self.assertEqual(result['status'], 'live')
+        self.assertEqual(result['accountKey'], hashlib.sha256(b'private-account').hexdigest())
+        self.assertNotIn('private-account', json.dumps(result))
         self.assertNotIn('secret', json.dumps(result))
 
     def test_bucket_selection_and_invalid_data(self):

@@ -1,5 +1,6 @@
 """Read-only app-server quota client; never sends model, login or reset requests."""
 import asyncio
+import hashlib
 import json
 import math
 import time
@@ -43,6 +44,9 @@ def project(raw, *, now):
         windows.append(window)
     result = {'status': 'live', 'updatedAt': now, 'windows': windows,
               'windowStatus': 'reported' if windows else 'not_reported'}
+    account_id = raw.get('accountId')
+    if isinstance(account_id, str) and 0 < len(account_id) <= 256:
+        result['accountKey'] = hashlib.sha256(account_id.encode('utf-8')).hexdigest()
     plan = limits.get('planType')
     if isinstance(plan, str) and len(plan) <= 64:
         result['planType'] = plan

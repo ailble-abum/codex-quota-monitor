@@ -39,15 +39,34 @@ class HistoryStoreTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             now = [2000.0]
             store = LocalSampleStore(directory, clock=lambda: now[0])
-            quota = {'windows': [{'key': 'primary', 'remaining': 50, 'duration': 300,
+            quota = {'accountKey': 'a' * 64, 'windows': [{'key': 'primary', 'remaining': 50, 'duration': 300,
                                   'resetsAt': 2300}]}
-            store.record({'windows': [{'key': 'primary', 'remaining': 80}]}, {}, {}, None)
+            store.record({'accountKey': 'a' * 64, 'windows': [{'key': 'primary', 'remaining': 80}]}, {}, {}, None)
             now[0] += 100
-            store.record({'windows': [{'key': 'primary', 'remaining': 50}]}, {}, {}, None)
+            store.record({'accountKey': 'a' * 64, 'windows': [{'key': 'primary', 'remaining': 50}]}, {}, {}, None)
             result = store.enrich_quota(quota, now=now[0])
             self.assertEqual(result['budget']['kind'], 'exhaust')
             self.assertGreater(result['windows'][0]['exhaustInSec'], 0)
             self.assertIn('paceDelta', result['windows'][0])
+
+    def test_account_switch_does_not_mix_history_or_pace(self):
+        with tempfile.TemporaryDirectory() as directory:
+            now = [2000.0]
+            store = LocalSampleStore(directory, clock=lambda: now[0])
+            one = {'accountKey': 'a' * 64, 'windows': [{'key': 'primary', 'remaining': 80}]}
+            two = {'accountKey': 'b' * 64, 'windows': [{'key': 'primary', 'remaining': 50}]}
+            store.record(one, {'latest_context_percent': 90}, {}, 'first-model')
+            now[0] += 60
+            summary = store.record(two, {'latest_context_percent': 20}, {}, 'second-model')
+            self.assertEqual(summary['samples'], 1)
+            self.assertEqual(summary['models'], ['second-model'])
+            self.assertEqual(summary['peakContext'], 20)
+            self.assertNotIn('exhaustInSec', store.enrich_quota(two)['windows'][0])
+            now[0] += 60
+            two['windows'][0]['remaining'] = 40
+            store.record(two, {}, {}, None)
+            self.assertIn('exhaustInSec', store.enrich_quota(two)['windows'][0])
+            self.assertEqual(store.summary('a' * 64)['samples'], 1)
 
 
 if __name__ == '__main__':
