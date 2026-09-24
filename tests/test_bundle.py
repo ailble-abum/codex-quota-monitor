@@ -28,11 +28,13 @@ class BundleTests(unittest.TestCase):
             ('manifest-null', None),
             ('manifest-string', 'not-an-object'),
             ('manifest-integer', 17),
-            ('consumer-missing', {'status': 'derived-isolated-candidate'}),
-            ('consumer-null', {'status': 'derived-isolated-candidate', 'consumer': None}),
-            ('consumer-list', {'status': 'derived-isolated-candidate', 'consumer': []}),
+            ('derived-candidate', {'status': 'derived-isolated-candidate',
+                                   'consumer': {'sha256': hashlib.sha256(b'(() => {})()').hexdigest()}}),
+            ('consumer-missing', {'status': 'independent-v2-candidate'}),
+            ('consumer-null', {'status': 'independent-v2-candidate', 'consumer': None}),
+            ('consumer-list', {'status': 'independent-v2-candidate', 'consumer': []}),
             ('consumer-missing-sha256', {
-                'status': 'derived-isolated-candidate', 'consumer': {},
+                'status': 'independent-v2-candidate', 'consumer': {},
             }),
         )
         with tempfile.TemporaryDirectory() as temp:
@@ -62,7 +64,7 @@ class BundleTests(unittest.TestCase):
             root = Path(temp); candidate = root / 'candidate'; candidate.mkdir()
             data = b'(() => {})()'
             (candidate / 'consumer.js').write_bytes(data)
-            (candidate / 'manifest.json').write_text(json.dumps({'status': 'derived-isolated-candidate',
+            (candidate / 'manifest.json').write_text(json.dumps({'status': 'independent-v2-candidate',
                 'consumer': {'sha256': hashlib.sha256(data).hexdigest()}}))
             for name in ('LICENSE', 'NOTICE'):
                 (candidate / name).write_text('Synthetic attribution')

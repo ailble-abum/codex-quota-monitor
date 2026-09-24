@@ -4,7 +4,7 @@
 
 ## 当前事实
 
-旧的 `tools/build_panel_candidate.py` 仍保留为带归因的行为对照。发布路线新增 `tools/build_panel.py`：它从仓库内 V2 shell、模块和 `assets/companions` 视觉资源直接装配 renderer，不再读取旧仓库的四个 Python 文件，产物标记为 `independent-v2-candidate`。构建继续携带原 LICENSE/NOTICE；视觉资源的逐项来源复核尚未完成。
+旧的 `tools/build_panel_candidate.py` 曾作为带归因的行为对照，现已从当前源码移除；历史提交仍可查看。发布路线使用 `tools/build_panel.py`：它从仓库内 V2 shell、模块和 `assets/companions` 视觉资源直接装配 renderer，不读取旧仓库的四个 Python 文件，产物标记为 `independent-v2-candidate`。构建继续携带原 LICENSE/NOTICE；视觉资源的逐项来源复核尚未完成。
 
 本次从旧仓库 Git 对象读取固定输入到临时目录，通过现有构建器的全部 SHA256 校验，仅在内存生成候选，未执行 renderer。候选 UTF-8 大小 384824 字节。用具名函数声明扫描并排除 V2 JS 已定义函数，检出 59 个残留名称（含通用局部函数）；该清单用于定位，不是 AST 审计、上游归属判定或原创证明。旧文件同时含本项目新增部分，需要分别追溯。
 

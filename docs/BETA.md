@@ -65,7 +65,7 @@ python3 -m venv .venv
 .venv/bin/python preview/run.py --help
 ```
 
-构建器只使用仓库内 V2 模块和 `assets/companions`，生成的 manifest 标记为 `independent-v2-candidate`。生成的 preview 继续保留来源声明，默认只是技术预览。运行包的生成基于这个入口，不以拷贝本机现用安装、虚拟环境、用户配置或会话数据制作包。旧 `build_panel_candidate.py` 仅用于带归因的行为对照，不是发行入口。
+构建器只使用仓库内 V2 模块和 `assets/companions`，生成的 manifest 标记为 `independent-v2-candidate`。生成的 preview 继续保留来源声明，默认只是技术预览。运行包的生成基于这个入口，不以拷贝本机现用安装、虚拟环境、用户配置或会话数据制作包。预览安装器只接受独立 V2 候选；旧版拼接构建器已从当前源码移除，历史提交仍可供行为对照。
 
 `audit_release.py` 是发行前静态门槛：核对必需文件、consumer/安装清单摘要、独立构建状态，并拒绝旧 renderer 入口、认证/会话材料、日志和快照文件。它不能替代人工来源与权属审查。
 

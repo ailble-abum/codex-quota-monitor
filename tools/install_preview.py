@@ -16,8 +16,7 @@ def install(candidate, destination):
             or 'sha256' not in manifest['consumer']):
         raise ValueError('invalid_candidate')
     script = (candidate / 'consumer.js').read_bytes()
-    if (len(script) > 8 * 1024 * 1024 or manifest.get('status') not in {
-            'derived-isolated-candidate', 'independent-v2-candidate'}
+    if (len(script) > 8 * 1024 * 1024 or manifest.get('status') != 'independent-v2-candidate'
             or hashlib.sha256(script).hexdigest() != manifest['consumer']['sha256']):
         raise ValueError('invalid_candidate')
     # Read required attribution before creating anything at the destination.
