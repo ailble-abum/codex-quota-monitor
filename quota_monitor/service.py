@@ -30,7 +30,7 @@ class Service:
         self.menu_path = self.agent_dir / (MENU_LABEL + '.plist')
         self.runner, self.uid = runner, uid
         self.python = str(Path(python or sys.executable).resolve())
-        self.domain = 'gui/{}'.format(uid)
+        self.domain = 'gui/{}'.format(uid() if callable(uid) else uid)
 
     def _launchctl(self, *args):
         try:

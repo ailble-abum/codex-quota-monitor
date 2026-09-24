@@ -1,5 +1,6 @@
 import hashlib
 import json
+import os
 from pathlib import Path
 import plistlib
 import sys
@@ -17,6 +18,11 @@ class Result:
 
 
 class ServiceTests(unittest.TestCase):
+    def test_default_launch_domain_uses_numeric_user_id(self):
+        with tempfile.TemporaryDirectory() as directory:
+            service = Service(root=directory, agent_dir=directory)
+            self.assertEqual(service.domain, 'gui/{}'.format(os.getuid()))
+
     def test_doctor_requires_reported_panel_update(self):
         for panel, expected in [(None, 2), ('missing', 2), ('updated', 0)]:
             result = {'service': 'running', 'config': 'valid'}
