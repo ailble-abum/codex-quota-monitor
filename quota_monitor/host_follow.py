@@ -65,14 +65,15 @@ class HostFollower:
         return self._pid() != pid
 
     def ensure(self):
+        pid = self._pid()
+        if pid is None:
+            return 'waiting_host'
         now = self.clock()
         if self.last_attempt is not None and now - self.last_attempt < self.cooldown:
             return 'backoff'
         self.last_attempt = now
-        pid = self._pid()
-        if pid is not None:
-            if not self._quit() or not self._wait_exit(pid):
-                return 'quit_failed'
+        if not self._quit() or not self._wait_exit(pid):
+            return 'quit_failed'
         args = ('open', '-a', str(self.app_path), '--args',
                 '--remote-debugging-address=127.0.0.1',
                 f'--remote-debugging-port={self.port}',

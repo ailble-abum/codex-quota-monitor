@@ -34,12 +34,26 @@ class HostFollowTests(unittest.TestCase):
         self.temp.cleanup()
 
     def test_relaunches_known_app_with_local_debug_flags_once(self):
+        self.running[0] = 1234
         follower = HostFollower(str(self.app), 9222, runner=self.run, sleeper=lambda _: None,
                                 clock=lambda: self.now[0], cooldown=30)
         self.assertEqual(follower.ensure(), 'launch_requested')
+        self.running[0] = 5678
         self.assertEqual(follower.ensure(), 'backoff')
         self.assertEqual(self.calls[0], ['pgrep', '-x', 'Codex'])
-        self.assertEqual(self.calls[-1][-1], '--remote-allow-origins=http://127.0.0.1:9222')
+        self.assertEqual(next(call for call in self.calls if call[0] == 'open')[-1],
+                         '--remote-allow-origins=http://127.0.0.1:9222')
+
+    def test_waits_after_user_quit_until_app_is_opened_again(self):
+        follower = HostFollower(str(self.app), 9222, runner=self.run, sleeper=lambda _: None,
+                                clock=lambda: self.now[0], cooldown=30)
+        self.assertEqual(follower.ensure(), 'waiting_host')
+        self.assertEqual([call for call in self.calls if call[0] in ('open', 'osascript')], [])
+        self.running[0] = 1234
+        self.assertEqual(follower.ensure(), 'launch_requested')
+        self.running[0] = None
+        self.assertEqual(follower.ensure(), 'waiting_host')
+        self.assertEqual(len([call for call in self.calls if call[0] == 'open']), 1)
 
     def test_rejects_untrusted_or_incomplete_app(self):
         with self.assertRaises(HostFollowError):
