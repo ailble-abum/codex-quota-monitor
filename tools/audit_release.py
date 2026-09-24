@@ -12,6 +12,7 @@ FORBIDDEN_NAMES = {'auth', 'authentication', 'session.jsonl', 'snapshot', 'histo
 REQUIRED = {'run.py', 'requirements-cdp.txt', 'config.example.json', 'PREVIEW.txt',
             'renderer/consumer.js', 'renderer/manifest.json', 'renderer/LICENSE',
             'renderer/NOTICE', 'install-manifest.json'}
+RELEASE_REQUIRED = (REQUIRED - {'PREVIEW.txt'}) | {'RELEASE.txt', 'QuotaMenu'}
 VISUAL_RESOURCES = {
     'assets/companions/web/candy.webp', 'assets/companions/web/cat.webp',
     'assets/companions/web/corgi.webp', 'assets/companions/web/frost.webp',
@@ -35,18 +36,21 @@ def _files(root):
 def audit(root):
     root = Path(root).absolute()
     files = _files(root)
-    missing = sorted(REQUIRED - files)
     suspicious = sorted(path for path in files if any(marker in path.lower() for marker in FORBIDDEN_NAMES)
                         or path.endswith(('.jsonl', '.log')) or '__pycache__' in path)
-    if missing or suspicious:
-        raise ValueError({'missing': missing, 'suspicious': suspicious})
     try:
         manifest = json.loads((root / 'renderer/manifest.json').read_text())
         install = json.loads((root / 'install-manifest.json').read_text())
     except (OSError, ValueError) as error:
         raise ValueError('invalid release manifests') from error
-    if manifest.get('status') != 'independent-v2-candidate':
-        raise ValueError('renderer is not an independent V2 candidate')
+    release = install.get('status') == 'release'
+    required = RELEASE_REQUIRED if release else REQUIRED
+    missing = sorted(required - files)
+    if missing or suspicious or (release and 'PREVIEW.txt' in files):
+        raise ValueError({'missing': missing, 'suspicious': suspicious})
+    if (manifest.get('status') != ('independent-v2-release' if release else 'independent-v2-candidate')
+            or (not release and install.get('status') not in (None, 'preview-not-release'))):
+        raise ValueError('renderer and install status mismatch')
     visual_hashes = manifest.get('visualResourceSHA256')
     if (not isinstance(visual_hashes, dict) or set(visual_hashes) != VISUAL_RESOURCES or
             any(not isinstance(value, str) or len(value) != 64 or
@@ -79,7 +83,8 @@ def audit(root):
             mismatched.append(path)
     if mismatched:
         raise ValueError({'install_hash_mismatch': sorted(mismatched)})
-    return {'status': 'audited', 'files': len(files), 'hashedFiles': len(hashes),
+    return {'status': 'audited', 'kind': 'release' if release else 'preview',
+            'files': len(files), 'hashedFiles': len(hashes),
             'consumer': manifest['consumer']['sha256']}
 
 

@@ -21,6 +21,8 @@ def package(preview, destination, label):
             destination.exists() or destination.is_symlink() or preview in destination.parents):
         raise ValueError('invalid candidate output')
     result = audit(preview)
+    if result['kind'] != 'preview':
+        raise ValueError('candidate input must be a preview')
     files = sorted(path for path in preview.rglob('*') if path.is_file())
     name = 'codex-quota-monitor-{}-macos.zip'.format(label)
     destination.parent.mkdir(parents=True, exist_ok=True)

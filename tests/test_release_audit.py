@@ -14,6 +14,34 @@ spec.loader.exec_module(audit_release)
 
 
 class ReleaseAuditTests(unittest.TestCase):
+    def test_release_archive_is_audited_reproducible_and_keeps_menu_executable(self):
+        root = self.make_bundle()
+        with tempfile.TemporaryDirectory() as directory:
+            directory = Path(directory)
+            menu = directory / 'QuotaMenu'
+            menu.write_bytes(b'\xca\xfe\xba\xbe' + b'menu')
+            menu.chmod(0o755)
+            command = Path(__file__).parents[1] / 'tools/package_release.py'
+            destinations = [directory / name for name in ('first', 'second')]
+            for destination in destinations:
+                result = subprocess.run([sys.executable, str(command), str(root), str(menu),
+                    str(destination), '--version', '2.0.0', '--source-commit', 'a' * 40],
+                    capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+            first = destinations[0] / 'codex-quota-monitor-v2.0.0-macos.zip'
+            self.assertEqual(first.read_bytes(), (destinations[1] / first.name).read_bytes())
+            release = json.loads((destinations[0] / 'RELEASE.json').read_text())
+            self.assertEqual(release['status'], 'release')
+            self.assertEqual(release['sha256'], hashlib.sha256(first.read_bytes()).hexdigest())
+            with zipfile.ZipFile(first) as archive:
+                self.assertNotIn('codex-quota-monitor/PREVIEW.txt', archive.namelist())
+                self.assertIn('codex-quota-monitor/RELEASE.txt', archive.namelist())
+                self.assertEqual(archive.getinfo('codex-quota-monitor/QuotaMenu').external_attr >> 16,
+                                 0o100755)
+                archive.extractall(directory / 'unpacked')
+            self.assertEqual(audit_release.audit(directory / 'unpacked/codex-quota-monitor')['kind'],
+                             'release')
+
     def test_candidate_archive_is_reproducible_and_not_labeled_release(self):
         root = self.make_bundle()
         with tempfile.TemporaryDirectory() as directory:
