@@ -51,10 +51,13 @@
 
   function hostMessageNodes() {
     for (const selector of HOST_MESSAGE_SELECTORS) {
-      const nodes = Array.from(document.querySelectorAll(selector), node =>
-        node.closest('[data-content-search-assistant-turn-key]') ||
-        node.closest('[data-chatgpt-conversation-turn="true"]') || node);
-      if (nodes.length) return [...new Set(nodes)].filter(node => !node.closest(`#${ROOT_ID}`));
+      const found = new Set();
+      for (const node of document.querySelectorAll(selector)) {
+        const turn = node.closest('[data-content-search-assistant-turn-key], [data-chatgpt-conversation-turn="true"]');
+        const target = turn || node;
+        if (!target.closest(`#${ROOT_ID}`)) found.add(target);
+      }
+      if (found.size) return Array.from(found);
     }
     return [];
   }
@@ -69,19 +72,19 @@
     return String(value || '').replace(/\s+/g, ' ').trim();
   }
 
-  function hostMatch(node, items, used, index) {
-    const text = hostPlainText(node.textContent);
-    for (let itemIndex = 0; itemIndex < items.length; itemIndex += 1) {
-      if (used.has(itemIndex)) continue;
-      const prefix = hostPlainText(items[itemIndex]?.textPrefix);
-      if (prefix && text.includes(prefix)) { used.add(itemIndex); return items[itemIndex]; }
-    }
-    const fallback = items[Math.max(0, items.length - nodesForHostMatchCount() + index)];
-    if (fallback) return fallback;
-    return null;
+  function hostAssignments(nodes, items) {
+    const available = items.map((item, index) => ({item, index, prefix: hostPlainText(item?.textPrefix)}));
+    const assigned = new Set();
+    return nodes.map((node, position) => {
+      const body = hostPlainText(node.textContent);
+      const match = available.find(entry => entry.prefix && !assigned.has(entry.index) && body.includes(entry.prefix));
+      if (match) {
+        assigned.add(match.index);
+        return match.item;
+      }
+      return items[Math.max(0, items.length - nodes.length + position)] || null;
+    });
   }
-
-  function nodesForHostMatchCount() { return hostMessageNodes().length || 1; }
 
   function hostChipText(item, index) {
     const usage = item?.tokenUsage || {};
@@ -160,10 +163,11 @@
   }
 
   function projectMessageChips(payload) {
-    const nodes = hostMessageNodes(), items = hostItems(payload), used = new Set();
+    const nodes = hostMessageNodes();
+    const assignments = hostAssignments(nodes, hostItems(payload));
     const kept = new Set();
     nodes.forEach((node, index) => {
-      const item = hostMatch(node, items, used, index);
+      const item = assignments[index];
       const row = hostActionRow(node);
       if (!item || !row) return;
       const parent = row.parentElement || node;

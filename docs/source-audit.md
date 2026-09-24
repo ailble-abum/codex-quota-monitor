@@ -8,7 +8,7 @@
 
 ## V2 源码复核（2026-09-24）
 
-补充词法复核：把上游 `56b2ea3` 的 `context_token_injector.py` 与 V2 模块按标识符、数字和符号切分，再找连续 25 token 的相同窗口。先前的“四行相同为零”没有覆盖行内紧凑代码。正式包仍命中 `panel_shell.js` 的双语词典、`panel_host_details.js` 的宿主消息处理、`panel_styles.js` 的消息 chip 样式，以及 `page_bridge.js` 的宿主属性选择器。上游 `git blame` 把相应词典和样式行归于 KevinKE。已删除 V2 中未使用的继承词典项，按 V2 控件语义重写面板开合文案、侧栏线程 ID 读取和 tooltip 样式，并补宿主节点检查；Python 3.9 全套 198 项、Node 宿主节点与语言偏好检查、Swift typecheck、consumer 构建及 JS 语法检查通过。剩余相同窗口包含兼容所需的 DOM ID/属性和仍待进一步审查的宿主匹配及 chip 样式；不能据本轮修改移除上游归因。已发布 v2.0.0 包未改变。
+补充词法复核：把上游 `56b2ea3` 的 `context_token_injector.py` 与 V2 模块按标识符、数字和符号切分，再找连续 25 token 的相同窗口。先前的“四行相同为零”没有覆盖行内紧凑代码。正式包仍命中 `panel_shell.js` 的双语词典、`panel_host_details.js` 的宿主消息处理、`panel_styles.js` 的消息 chip 样式，以及 `page_bridge.js` 的宿主属性选择器。上游 `git blame` 把相应词典和样式行归于 KevinKE。已删除 V2 中未使用的继承词典项，按 V2 控件语义重写面板开合文案、侧栏线程 ID 读取、消息节点归并与候选分配、tooltip 和 chip 样式，并补宿主节点检查；Python 3.9 全套 198 项、Node 宿主节点与语言偏好检查、Swift typecheck、consumer 构建及 JS 语法检查、Chromium/WebKit 挂载与控件回归通过。剩余相同窗口包含兼容所需的 DOM ID/属性与通用语法；词法扫描本身不能证明独立著作权，不能据本轮修改移除上游归因。已发布 v2.0.0 包未改变。
 
 以 [KevinKE93/Codex-Monitor](https://github.com/KevinKE93/Codex-Monitor) 的 `56b2ea3602cf8395bdc9d0513a8088f8e38d657e` 为固定上游基线，逐文件对比 V2 当前 `quota_monitor` 与 `tools` 的 Python、JavaScript/CJS 源码和上游 Python、JavaScript、Shell、Swift、PowerShell、CSS、HTML 源码。使用 `difflib.SequenceMatcher(autojunk=False)` 定位连续相同文本行；只记录至少 4 行、其中至少 3 行非空的块。初扫发现 `panel_metrics.js` 中三个未被产品调用的文案辅助函数，以及 `panel_host_details.js` 的一小段宿主节点筛选流程。前者已删除；后者按当前 V2 选择器契约改为取首个非空匹配组、保持顺序去重并排除自有面板节点，附独立 Node 回归检查。
 

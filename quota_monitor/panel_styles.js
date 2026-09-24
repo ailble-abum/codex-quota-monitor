@@ -202,11 +202,10 @@
         font:13px/1.45 ui-monospace,monospace; pointer-events:none;
       }
       .cti-v2-message-chip {
-        display:block; width:max-content; max-width:100%; margin-top:4px;
-        padding:2px 6px; border-radius:6px; background:color-mix(in srgb,CanvasText 9%,transparent);
-        color:color-mix(in srgb,CanvasText 72%,transparent);
-        font:11px/1.25 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-        overflow-wrap:anywhere;
+        display:inline-block; max-width:100%; margin-block-start:.25rem;
+        padding:.2rem .45rem; border-radius:.45rem;
+        background:color-mix(in srgb,CanvasText 10%,Canvas); color:CanvasText;
+        font:600 11px/1.3 system-ui,sans-serif; overflow-wrap:anywhere;
       }
       @media (prefers-reduced-motion:reduce) {
         #codex-context-token-inspector-root { transition:none; }
