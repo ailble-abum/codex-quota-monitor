@@ -1,0 +1,22 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+
+const assistant = '[data-content-search-assistant-turn-key]';
+const chat = '[data-chatgpt-conversation-turn="true"]';
+const root = '#codex-context-token-inspector-root';
+const turn = {closest: selector => selector === assistant ? turn : null};
+const child = {closest: selector => selector === assistant ? turn : null};
+const own = {closest: selector => selector === assistant || selector === root ? own : null};
+const fallback = {closest: selector => selector === chat ? fallback : null};
+let rows = {[assistant]: [child, turn, own]};
+const context = vm.createContext({document: {querySelectorAll: selector => rows[selector] || []}});
+vm.runInContext("const ROOT_ID = 'codex-context-token-inspector-root'", context);
+vm.runInContext(fs.readFileSync(path.join(__dirname, '../quota_monitor/panel_host_details.js'), 'utf8'), context);
+assert.deepEqual(Array.from(context.hostMessageNodes()), [turn]);
+rows = {[chat]: [fallback]};
+assert.deepEqual(Array.from(context.hostMessageNodes()), [fallback]);
+rows = {};
+assert.deepEqual(Array.from(context.hostMessageNodes()), []);
+console.log('host message selection: deduplication, fallback and own-root exclusion passed');

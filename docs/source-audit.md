@@ -1,5 +1,11 @@
 # 最小替换范围审计
 
+## V2 源码复核（2026-09-24）
+
+以 [KevinKE93/Codex-Monitor](https://github.com/KevinKE93/Codex-Monitor) 的 `56b2ea3602cf8395bdc9d0513a8088f8e38d657e` 为固定上游基线，逐文件对比 V2 当前 `quota_monitor` 与 `tools` 的 Python、JavaScript/CJS 源码和上游 Python、JavaScript、Shell、Swift、PowerShell、CSS、HTML 源码。使用 `difflib.SequenceMatcher(autojunk=False)` 定位连续相同文本行；只记录至少 4 行、其中至少 3 行非空的块。初扫发现 `panel_metrics.js` 中三个未被产品调用的文案辅助函数，以及 `panel_host_details.js` 的一小段宿主节点筛选流程。前者已删除；后者按当前 V2 选择器契约改为取首个非空匹配组、保持顺序去重并排除自有面板节点，附独立 Node 回归检查。
+
+修改后同口径重扫，符合上述门槛的相同块为 0；Python 3.9 全套 172 项、指标与宿主节点 Node 检查通过，V2 consumer 构建及 Node 语法检查通过。该扫描只定位逐行相同文本，不覆盖改写表达、短于门槛的片段、图像或第三方来源，也不是独立著作权证明。伴宠资源和正式发行内容仍须分别复核；现有 LICENSE/NOTICE 继续保留。
+
 日期：2026-09-20。当前版本基线：`2213aeb`（检查时工作区干净）。上游基线：`56b2ea3602cf8395bdc9d0513a8088f8e38d657e`。这是工程来源排查，不是著作权鉴定或所有历史版本的穷尽审查。
 
 ## 结论

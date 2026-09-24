@@ -3,14 +3,6 @@
     const table = I18N[uiLanguage()] || I18N.en;
     return table[key] || I18N.en[key] || key;
   }
-  function labeled(key, value) {
-    return uiLanguage() === 'zh' ? `${tr(key)}：${value}` : `${tr(key)}: ${value}`;
-  }
-  function parenthesized(value) {
-    return uiLanguage() === 'zh' ? `（${value}）` : `(${value})`;
-  }
-  function joined(values) { return values.join(uiLanguage() === 'zh' ? '，' : ', '); }
-
   function quotaTone(remaining) {
     if (!Number.isFinite(remaining)) return 'unknown';
     if (remaining <= 20) return 'low';

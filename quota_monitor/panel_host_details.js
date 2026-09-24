@@ -49,16 +49,13 @@
   }
 
   function hostMessageNodes() {
-    const seen = new Set(), nodes = [];
     for (const selector of HOST_MESSAGE_SELECTORS) {
-      document.querySelectorAll(selector).forEach(node => {
-        const current = node.closest('[data-content-search-assistant-turn-key]') ||
-          node.closest('[data-chatgpt-conversation-turn="true"]') || node;
-        if (!seen.has(current)) { seen.add(current); nodes.push(current); }
-      });
-      if (nodes.length) break;
+      const nodes = Array.from(document.querySelectorAll(selector), node =>
+        node.closest('[data-content-search-assistant-turn-key]') ||
+        node.closest('[data-chatgpt-conversation-turn="true"]') || node);
+      if (nodes.length) return [...new Set(nodes)].filter(node => !node.closest(`#${ROOT_ID}`));
     }
-    return nodes.filter(node => !node.closest(`#${ROOT_ID}`));
+    return [];
   }
 
   function hostActionRow(node) {
