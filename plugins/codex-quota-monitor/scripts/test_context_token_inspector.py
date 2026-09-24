@@ -26,6 +26,13 @@ def run_js(source: str, expression: str):
 
 
 class InspectorTests(unittest.TestCase):
+    def test_panel_drag_saves_after_pointer_release(self):
+        move = block("const move=event=>{\n      const g=root.__ctiGesture", "window.addEventListener('pointermove',move,true)")
+        end = block("function end(event) {\n      const g=root.__ctiGesture", "window.addEventListener('pointerup',end,true)")
+        self.assertNotIn("saveLayout(root)", move)
+        self.assertIn("root.style.left=`${x}px`", move)
+        self.assertIn("saveLayout(root)", end)
+
     def test_docked_companion_drag_moves_vertically_without_stealing_clicks(self):
         """A short pointer wobble stays a click; a drag clamps to the dock range."""
         self.assertIn("function mascotDragGeometry", INJECTION_SCRIPT)

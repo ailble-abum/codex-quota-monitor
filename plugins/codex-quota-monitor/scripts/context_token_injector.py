@@ -55,7 +55,7 @@ INJECTION_SCRIPT = r"""
   // new script: stacked observers and timers are torn down, and the companion
   // bitmap is rebuilt from the new data URIs. A renderer may still contain an
   // observer from an older plugin release.
-  const RUNTIME_VERSION = 38;
+  const RUNTIME_VERSION = 39;
   const ROOT_ID = 'codex-context-token-inspector-root';
   const STYLE_ID = 'codex-context-token-inspector-style';
   const FOOTER_ATTR = 'data-context-token-footer';
@@ -1159,7 +1159,7 @@ INJECTION_SCRIPT = r"""
       if(!resize && isOverScrollbar(root,event))return;
       if(!resize && root.dataset.docked==='true')undockHud(root);
       const rect=root.getBoundingClientRect();
-      root.__ctiGesture={resize,x:event.clientX,y:event.clientY,left:rect.left,top:rect.top,right:rect.right,width:rect.width,moved:false};
+      root.__ctiGesture={resize,x:event.clientX,y:event.clientY,left:rect.left,top:rect.top,right:rect.right,width:rect.width,height:rect.height,moved:false};
       root.setPointerCapture(event.pointerId);
     },true);
     const move=event=>{
@@ -1170,13 +1170,16 @@ INJECTION_SCRIPT = r"""
       root.dataset.dragging='true';
       if(g.resize) {
         const resized=resizeGeometry(g,event.clientX,event.clientY,g.resize,window.innerWidth);
-        persist(resized.left,g.top,resized.width);
+        const mode=hudMode(root);
+        root.__ctiLayout[mode]={...(root.__ctiLayout[mode]||{}),x:resized.left,y:g.top,width:resized.width};
+        root.__ctiGesture=null;applyStoredHudPosition(root);root.__ctiGesture=g;
       } else {
-        const x=g.left+dx,y=g.top+dy;persist(x,y);
-        g.candidate=dockCandidate(x,y,g.width,root.getBoundingClientRect().height);
+        const x=Math.max(8,Math.min(innerWidth-g.width-8,g.left+dx));
+        const y=Math.max(dockSafeTop(),Math.min(innerHeight-g.height-8,g.top+dy));
+        root.style.left=`${x}px`;root.style.top=`${y}px`;
+        g.candidate=dockCandidate(x,y,g.width,g.height);
         if(g.candidate)root.dataset.snapEdge=g.candidate;else delete root.dataset.snapEdge;
       }
-      root.__ctiGesture=null;applyStoredHudPosition(root);root.__ctiGesture=g;
     };
     window.addEventListener('pointermove',move,true);
     function end(event) {
@@ -1185,6 +1188,11 @@ INJECTION_SCRIPT = r"""
       delete root.dataset.snapEdge;
       if(g.moved)root.__ctiSuppressClickUntil=performance.now()+400;
       try{root.releasePointerCapture(event.pointerId);}catch{}
+      if(g.moved){
+        const mode=hudMode(root),rect=root.getBoundingClientRect();
+        root.__ctiLayout[mode]={...(root.__ctiLayout[mode]||{}),x:rect.left,y:rect.top};
+        saveLayout(root);
+      }
       applyStoredHudPosition(root);
       // A compact move is the user's canonical anchor. Keep the expanded
       // detail panel attached to that point instead of reviving an older
