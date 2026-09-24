@@ -92,3 +92,9 @@
 - 先通过现用 `monitorctl.py stop` 停止旧版服务和菜单栏，确认两者均未运行，再用独立 `CodexQuotaMonitorV2QA` 虚拟环境与私有配置运行 `rc.2` 的 V2 副本。真实 Codex 调试端口已在运行，V2 前台报告 `status=updated`，私有状态标记为 `updated`，并在独立测试目录生成历史文件；SIGINT 退出报告 `cleanup=released`。
 - 以该历史文件调用编译后的 `QuotaMenu --report`，命令成功且返回非空摘要。此项不证明菜单栏实际可见。尝试注册 V2 LaunchAgent 时仍返回 `service_error`；临时 plist 已由安装器清理，`launchctl print` 确认 V2 标签不存在。用模拟 runner 生成同一 plist 后，`plutil -lint` 通过，但不能据此判定加载成功。
 - 测试结束后用旧版 `monitorctl.py start` 恢复原服务和菜单栏，状态均为 `running`。本会话不再次尝试 V2 bootstrap；真实服务、菜单栏显示、退出重开及重新登录恢复仍未通过，不能创建正式发布。
+
+## 2026-09-24 `rc.4` 服务加载复核
+
+- 普通终端用 `rc.2` 测试仍返回 `service_error`，旧版被自动恢复。随后捕获 `launchctl` 的安全错误字段，确认 V2 将默认用户域误写成了函数对象；修正为数值用户 ID，并补测试。`rc.3` 已能加载服务，但后台进程未持续运行；检查发现安装器把虚拟环境 Python 的符号链接解析成系统解释器，导致缺少依赖。修正后补虚拟环境路径测试。
+- Python 3.9 全套 196 项及 Swift typecheck 通过。用新隔离预览 `季二六软件项目-V2验收包-20260924-r7` 生成 `rc.4` ZIP，SHA-256 为 `dc9004e8f4aab5a92e353ac08e5af1310f9018f7498efb6ba9b5feca6f92b26d`；预览审计、ZIP 完整性通过。
+- 本机停止旧版后，`rc.4` 的 LaunchAgent 成功注册并保持 `running`，`doctor` 返回 `service=running`、`config=valid`、`panel=updated`，菜单栏 LaunchAgent 注册并报告 `running`。当前 V2 正在运行，旧版服务和菜单栏均停止。菜单栏实际可见性、Codex 正常退出重开、重新登录恢复和完整回退仍待核对；当前不能标记正式发布。

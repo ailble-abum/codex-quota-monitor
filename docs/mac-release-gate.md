@@ -4,9 +4,9 @@
 
 ## 已完成的离线证据
 
-- Python 3.9 全套 194 项、Swift typecheck、Chromium/WebKit 面板挂载和临时 Chromium 双次重启运行链通过；最新 `rc.2` 候选 ZIP 解压后也完成包内审计与运行链复核。
-- 最新独立包位于 `/Users/ailble/Desktop/季二六软件项目-V2验收包-20260924-r5`；`tools/audit_release.py` 验证文件清单与摘要通过。包内不含认证、会话或用户配置。
-- 已用该目录生成确定性 `v2.0.0-rc.2` 候选 ZIP 和 `SHA256SUMS`；[候选包记录](candidate-package.md)保留校验值。`rc.1` 已被替换；`rc.2` 仍明确标记为候选，不等于正式发布。
+- Python 3.9 全套 196 项、Swift typecheck、Chromium/WebKit 面板挂载和临时 Chromium 双次重启运行链通过。
+- 最新独立包位于 `/Users/ailble/Desktop/季二六软件项目-V2验收包-20260924-r7`；`tools/audit_release.py` 验证文件清单与摘要通过。包内不含认证、会话或用户配置。
+- 已用该目录生成确定性 `v2.0.0-rc.4` 候选 ZIP 和 `SHA256SUMS`；[候选包记录](candidate-package.md)保留校验值。`rc.1` 至 `rc.3` 已被替换；`rc.4` 仍明确标记为候选，不等于正式发布。
 - V2 已有显式服务与菜单栏管理、官方账户读取、可选系统通知、七天采样与离线报告、更新检查，以及可检查真实发布状态的 `doctor`。
 
 ## 普通终端原生验收
@@ -14,6 +14,8 @@
 仓库维护说明禁止本任务修改现用监视器安装、真实认证和会话文件。本会话用合成应用尝试 `launchctl bootstrap` 时返回 `bootstrap_failed`，已清理临时 plist；不要在同一受限会话重复尝试。以下步骤由有权操作该 Mac 的测试者在普通终端、独立预览目录执行：
 
 2026-09-24 又用真实 Codex 对 `rc.2` 完成前台 `updated` 与 SIGINT `cleanup=released` 验证；V2 LaunchAgent 加载仍被本会话拒绝。旧版服务和菜单栏已恢复运行。剩余原生门槛仍需普通终端完成，不能把前台成功视为服务验收。
+
+后续已修正默认用户域和虚拟环境解释器路径；`rc.4` 的 V2 服务与菜单栏 LaunchAgent 现均为 `running`，`doctor` 报告 `panel=updated`。V2 当前运行、旧版已停止；仍需确认菜单栏实际显示、Codex 退出重开、重新登录恢复和回退，才能发布正式版。
 
 1. 确认稳定版监视器已通过其原有控制命令停止。不要在同一 Codex 页面同时运行两个监视器。
 2. 在独立预览目录创建 Python 3.9+ 虚拟环境、安装 `requirements-cdp.txt`，复制 `config.example.json` 为私有 `config.json`。按本机实际环境填写 `origin`、`page_url`、授权的 `session_root`、`session_layout=codex-rollout`、`host_app` 和需要的 `account_cli`。保留 renderer 摘要；设置 `history_root` 与已有 `status_root`。不得把私有配置提交或加入发行包。
