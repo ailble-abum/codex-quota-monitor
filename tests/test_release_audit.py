@@ -60,6 +60,30 @@ class ReleaseAuditTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             audit_release.audit(root)
 
+    def test_rejects_renderer_paths_outside_the_release_tree(self):
+        root = self.make_bundle()
+        manifest_path = root / 'renderer/manifest.json'
+        manifest = json.loads(manifest_path.read_text())
+        manifest['consumer']['path'] = '../../outside.js'
+        manifest_path.write_text(json.dumps(manifest))
+        with self.assertRaises(ValueError):
+            audit_release.audit(root)
+
+    def test_rejects_release_symlinks(self):
+        root = self.make_bundle()
+        consumer = root / 'renderer/consumer.js'
+        data = consumer.read_bytes()
+        outside = root.parent / (root.name + '-consumer.js')
+        outside.write_bytes(data)
+        self.addCleanup(lambda: outside.unlink(missing_ok=True))
+        consumer.unlink()
+        try:
+            consumer.symlink_to(outside)
+        except (OSError, NotImplementedError):
+            self.skipTest('symlink creation unavailable')
+        with self.assertRaises(ValueError):
+            audit_release.audit(root)
+
 
 if __name__ == '__main__':
     unittest.main()

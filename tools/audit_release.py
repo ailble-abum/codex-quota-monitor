@@ -25,7 +25,11 @@ VISUAL_RESOURCES = {
 
 
 def _files(root):
-    return {str(path.relative_to(root)) for path in root.rglob('*') if path.is_file()}
+    paths = list(root.rglob('*'))
+    symlinks = sorted(str(path.relative_to(root)) for path in paths if path.is_symlink())
+    if symlinks:
+        raise ValueError({'symlinks': symlinks})
+    return {str(path.relative_to(root)) for path in paths if path.is_file()}
 
 
 def audit(root):
@@ -50,8 +54,12 @@ def audit(root):
                 for value in visual_hashes.values())):
         raise ValueError('visual resource manifest missing or invalid')
     consumer_path = Path(manifest.get('consumer', {}).get('path', ''))
-    consumer = root / (Path('renderer') / consumer_path if consumer_path.parts[:1] != ('renderer',)
-                       else consumer_path)
+    consumer_relative = (consumer_path if consumer_path.parts[:1] == ('renderer',)
+                         else Path('renderer') / consumer_path)
+    if (consumer_relative.is_absolute() or '..' in consumer_relative.parts
+            or str(consumer_relative) not in files):
+        raise ValueError('consumer path outside release inventory')
+    consumer = root / consumer_relative
     data = consumer.read_bytes()
     if hashlib.sha256(data).hexdigest() != manifest.get('consumer', {}).get('sha256'):
         raise ValueError('consumer digest mismatch')
