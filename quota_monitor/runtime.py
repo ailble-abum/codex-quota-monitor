@@ -217,13 +217,14 @@ class UpdateLoop:
             payload['build'] = {'pluginVersion': self.update.current}
             payload['update'] = self.update.snapshot()
             if self.history is not None:
-                selected = payload.get('summaries', [{}])
-                selected = selected[0] if selected else {}
-                if not isinstance(selected, dict):
-                    selected = {}
+                selected = {}
+                if payload.get('selectedThreadId') == key:
+                    selected = next((item for item in payload.get('summaries', [])
+                                     if isinstance(item, dict) and item.get('thread_id') == key), {})
                 try:
                     payload['history'] = self.history.record(
-                        payload.get('quota', {}), selected, payload.get('health'), selected.get('model'))
+                        payload.get('quota', {}), selected,
+                        payload.get('health') if selected else None, selected.get('model'))
                 except OSError:
                     payload['history'] = None
             applied = await self.client.evaluate(page_expression(

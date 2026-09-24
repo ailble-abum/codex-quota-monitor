@@ -5,6 +5,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import unittest
+from unittest.mock import AsyncMock, Mock, patch
 from pathlib import Path
 from quota_monitor import runtime
 
@@ -42,6 +43,30 @@ class SelectionTests(unittest.TestCase):
 
 
 class LoopTests(unittest.IsolatedAsyncioTestCase):
+    async def test_history_uses_verified_active_summary_not_first_sidebar_row(self):
+        loop = runtime.UpdateLoop('http://127.0.0.1:9222', 'about:blank', {})
+        payload = {'selectedThreadId': 'active', 'summaries': [
+            {'thread_id': 'other', 'model': 'wrong'},
+            {'thread_id': 'active', 'model': 'right'}], 'health': {'count': 2}}
+        loop.source.read = lambda _: payload.copy()
+        loop.history = Mock()
+        loop.history.record.return_value = {'samples': 1}
+        client = AsyncMock()
+        client.endpoint = 'ws://127.0.0.1:9222/devtools/page/one'
+        client.evaluate.side_effect = ['active', True]
+        loop.client = client
+        with patch.object(runtime, 'list_pages', return_value=[]), \
+                patch.object(runtime, 'select_page', return_value=client.endpoint):
+            self.assertEqual(await loop.step(), 'updated')
+        self.assertEqual(loop.history.record.call_args.args[1]['thread_id'], 'active')
+        self.assertEqual(loop.history.record.call_args.args[3], 'right')
+        payload['selectedThreadId'] = 'other'
+        client.evaluate.side_effect = ['active', True]
+        with patch.object(runtime, 'list_pages', return_value=[]), \
+                patch.object(runtime, 'select_page', return_value=client.endpoint):
+            self.assertEqual(await loop.step(), 'updated')
+        self.assertEqual(loop.history.record.call_args.args[1:4], ({}, None, None))
+
     async def test_shutdown_after_initialization_without_publication(self):
         calls = []
         class Client:
