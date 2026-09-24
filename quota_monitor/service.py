@@ -10,6 +10,7 @@ import sys
 from .live import load_config
 from .consumer import load_consumer
 from .host_follow import HostFollower
+from .runtime_marker import StatusStore
 
 
 LABEL = 'local.codex-quota-monitor-v2'
@@ -62,6 +63,7 @@ class Service:
             raise ServiceError('service_config_incomplete')
         HostFollower(settings['host_app'], local_origin(settings['origin'])[1])
         load_consumer(settings['consumer'])
+        return settings
 
     def install(self, config):
         config = Path(config).resolve()
@@ -101,12 +103,18 @@ class Service:
             return {'service': state, 'config': 'unchecked'}
         with self.path.open('rb') as stream:
             value = plistlib.load(stream)
+        panel = None
         try:
-            self._validate_config(value['ProgramArguments'][3])
+            settings = self._validate_config(value['ProgramArguments'][3])
             config = 'valid'
+            if settings.get('status_root') is not None:
+                panel = StatusStore(settings['status_root']).read()
         except (OSError, ValueError, TypeError, KeyError):
             config = 'invalid'
-        return {'service': state, 'config': config}
+        result = {'service': state, 'config': config}
+        if panel is not None:
+            result['panel'] = panel
+        return result
 
     def uninstall(self):
         if not self._owned():
@@ -187,7 +195,8 @@ def main(argv=None):
         print(json.dumps({'status': 'service_error'}))
         return 2
     print(json.dumps(result if isinstance(result, dict) else {'status': result}))
-    return 0 if args.action != 'doctor' or result == {'service': 'running', 'config': 'valid'} else 2
+    return 0 if args.action != 'doctor' or (result.get('service') == 'running' and
+        result.get('config') == 'valid' and result.get('panel', 'updated') == 'updated') else 2
 
 
 if __name__ == '__main__':

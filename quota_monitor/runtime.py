@@ -21,6 +21,7 @@ from .reader import finite_float, reject_constant
 from .host_follow import HostFollower
 from .local_samples import LocalSampleStore
 from .notifications import QuotaNotifier
+from .runtime_marker import StatusStore
 from .update_state import CURRENT_VERSION, UpdateSource
 
 
@@ -115,7 +116,7 @@ class UpdateLoop:
 
     panel=True forwards to an existing consumer or an explicitly pinned initializer.
     """
-    def __init__(self, origin, page_url, paths=None, *, panel=False, host='explicit', session_root=None, consumer=None, account_cli=None, session_layout=None, host_app=None, history_root=None, notification_root=None, update_url=None, version=CURRENT_VERSION):
+    def __init__(self, origin, page_url, paths=None, *, panel=False, host='explicit', session_root=None, consumer=None, account_cli=None, session_layout=None, host_app=None, history_root=None, notification_root=None, status_root=None, update_url=None, version=CURRENT_VERSION):
         local_origin(origin)
         if host not in ('explicit', 'codex-sidebar'):
             raise ValueError('invalid host adapter')
@@ -124,6 +125,7 @@ class UpdateLoop:
         self.account = AccountSource(account_cli) if account_cli is not None else None
         self.history = LocalSampleStore(history_root) if history_root is not None else None
         self.notifier = QuotaNotifier(notification_root) if notification_root is not None else None
+        self.status_store = StatusStore(status_root) if status_root is not None else None
         self.update = UpdateSource(update_url, current=version)
         self.host = host
         if type(panel) is not bool:

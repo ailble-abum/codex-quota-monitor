@@ -36,6 +36,7 @@ def install(candidate, destination):
         (stage / 'run.py').write_text('from quota_monitor.live import main\nraise SystemExit(main())\n')
         config = {'origin': 'http://127.0.0.1:9222', 'page_url': 'REPLACE_WITH_EXPLICIT_PAGE_URL',
                   'session_root': 'REPLACE_WITH_AUTHORIZED_SESSION_DIRECTORY',
+                  'status_root': 'runtime-state',
                   'host': 'codex-sidebar', 'panel': True,
                   'consumer': {'path': 'renderer/consumer.js', 'sha256': manifest['consumer']['sha256']}}
         (stage / 'config.example.json').write_text(json.dumps(config, indent=2) + '\n')

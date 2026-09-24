@@ -7,6 +7,7 @@ import tempfile
 import unittest
 
 from quota_monitor.service import LABEL, MENU_LABEL, Service, ServiceError
+from quota_monitor.runtime_marker import StatusStore
 
 
 class Result:
@@ -68,6 +69,7 @@ class ServiceTests(unittest.TestCase):
             config.write_text(json.dumps({
                 'origin': 'http://127.0.0.1:9222', 'page_url': 'app://-/index.html',
                 'session_root': 'sessions', 'host': 'codex-sidebar', 'panel': True,
+                'status_root': 'runtime-state',
                 'host_app': str(app), 'consumer': {'path': 'consumer.js',
                     'sha256': hashlib.sha256(consumer.read_bytes()).hexdigest()}}))
             calls = []
@@ -81,7 +83,9 @@ class ServiceTests(unittest.TestCase):
             self.assertEqual(agent['Label'], LABEL)
             self.assertEqual(agent['ProgramArguments'][-1], '--wait-for-host')
             self.assertEqual(calls[0][1:3], ['bootstrap', 'gui/501'])
-            self.assertEqual(service.doctor(), {'service': 'running', 'config': 'valid'})
+            self.assertEqual(service.doctor(), {'service': 'running', 'config': 'valid', 'panel': 'missing'})
+            StatusStore(root / 'runtime-state').write('updated')
+            self.assertEqual(service.doctor(), {'service': 'running', 'config': 'valid', 'panel': 'updated'})
             self.assertEqual(service.uninstall(), 'uninstalled')
             self.assertFalse(service.path.exists())
             self.assertEqual(calls[-1][1:3], ['bootout', 'gui/501/' + LABEL])

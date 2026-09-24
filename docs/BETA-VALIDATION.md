@@ -68,3 +68,9 @@
 - 只读检查正式线已提交源码和当前未提交改动，没有修改正式线工作区。V2 适配了手动检查更新按钮及强制刷新入口，并依据正式线离线周报的功能需求，使用 V2 自有采样格式生成当前账户的 `history.html`；菜单栏新增打开该文件的入口。
 - Python 3.9 全套 189 项、Swift typecheck、Chromium/WebKit 面板挂载测试和临时 Chromium 双次浏览器重启运行链通过。离线页测试验证跨账户隔离、HTML 文本转义和 `0600` 文件权限。
 - 新的独立预览包 `/Users/ailble/Desktop/季二六软件项目-V2验收包-20260924-r2` 通过静态审计：66 个文件中 65 个有摘要，consumer 为 `eb907dd5acd5848ebd4fdf0d123984eb3f779d48bcf26d94f0a89dd5eff94e86`。它不含私有配置，也没有启动真实 Codex 或安装 LaunchAgent。
+
+## 2026-09-24 面板状态诊断复核
+
+- 在 V2 新增显式 `status_root`，以 `0600` 私有 JSON 记录短状态码与时间戳；`doctor` 在服务运行且配置有效时核对该标记的新鲜度，只有最近 `updated` 可报告面板发布成功。
+- 使用临时目录和模拟 `launchctl` 测试状态缺失、有效、过期与服务诊断；监督循环测试确认发布与停止状态被写入。真实 Codex 与 LaunchAgent 联合验收仍未完成。
+- Python 3.9 全套 192 项、Swift typecheck 与临时 Chromium 运行链通过。首次目录审计发现源码文件名含发行禁用词 `snapshot`，已改为 `runtime_marker.py` 后重建；最新隔离预览目录 `/Users/ailble/Desktop/季二六软件项目-V2验收包-20260924-r4` 经审计通过，67 个文件中 66 个有摘要。

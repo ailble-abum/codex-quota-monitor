@@ -102,6 +102,16 @@ class LiveCLITests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 load_config(self.config)
 
+    def test_status_root_is_explicit_and_relative_to_config(self):
+        from quota_monitor.live import load_config
+        self.value['status_root'] = 'private-state'
+        self.config.write_text(json.dumps(self.value))
+        self.assertEqual(load_config(self.config)['status_root'], self.config.parent / 'private-state')
+        self.value['status_root'] = ''
+        self.config.write_text(json.dumps(self.value))
+        with self.assertRaises(ValueError):
+            load_config(self.config)
+
     def test_update_settings_are_optional_and_bounded(self):
         from quota_monitor.live import load_config
         self.value['update_url'] = 'https://example.invalid/manifest.json'
@@ -239,6 +249,24 @@ class LiveCLITests(unittest.TestCase):
 
 
 class SupervisorTests(unittest.IsolatedAsyncioTestCase):
+    async def test_supervisor_records_panel_state_and_stop(self):
+        import contextlib
+        import io
+        from quota_monitor.live import supervise
+        values = []
+        class Marker:
+            def write(self, value):
+                values.append(value)
+        class Loop:
+            status_store = Marker()
+            async def step(self):
+                return 'updated'
+            async def shutdown(self):
+                return 'released'
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(await supervise(Loop(), interval=1, max_failures=1, once=True), 0)
+        self.assertEqual(values, ['updated', 'stopped'])
+
     async def test_unexpected_cleanup_error_is_sanitized_and_handlers_restored(self):
         import contextlib
         import io

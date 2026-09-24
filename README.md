@@ -27,6 +27,8 @@ python3 -m unittest discover -s tests -v
 
 [macOS 常驻服务入口](docs/service-contract.md) 已提供独立 LaunchAgent 的显式安装、状态、诊断和卸载命令；目前只有隔离命令测试，真实原生启动恢复仍待验收。
 
+配置 `status_root` 后，`doctor` 还能检查最近一次 V2 面板发布状态，区分服务进程已启动与面板确实收到更新。
+
 [macOS 配额通知](docs/notification-contract.md) 已提供显式配置和面板开关；当前只有合成发送与浏览器控件测试，真实系统通知尚待验收。
 
 [近 7 天采样报告](docs/weekly-report-contract.md) 已按账户显示 UTC 日采样、模型和项目出现次数；项目只记录目录名与路径摘要。

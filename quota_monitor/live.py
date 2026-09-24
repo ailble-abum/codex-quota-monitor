@@ -38,7 +38,7 @@ def load_config(path):
     if len(raw) > 65536:
         raise ValueError('config limit')
     config = json.loads(raw, object_pairs_hook=unique_object, parse_constant=reject_constant)
-    if (not isinstance(config, dict) or set(config) - {'origin', 'page_url', 'journals', 'session_root', 'host', 'panel', 'consumer', 'account_cli', 'session_layout', 'host_app', 'history_root', 'notification_root', 'update_url', 'version'}
+    if (not isinstance(config, dict) or set(config) - {'origin', 'page_url', 'journals', 'session_root', 'host', 'panel', 'consumer', 'account_cli', 'session_layout', 'host_app', 'history_root', 'notification_root', 'status_root', 'update_url', 'version'}
             or not {'origin', 'page_url'} <= set(config)
             or ('journals' in config) == ('session_root' in config)):
         raise ValueError('invalid config fields')
@@ -65,6 +65,11 @@ def load_config(path):
         if not isinstance(root, str) or not root or '\0' in root:
             raise ValueError('invalid notification root')
         config['notification_root'] = path.parent / root
+    if 'status_root' in config:
+        root = config['status_root']
+        if not isinstance(root, str) or not root or '\0' in root:
+            raise ValueError('invalid status root')
+        config['status_root'] = path.parent / root
     if 'update_url' in config:
         root = config['update_url']
         valid = False
@@ -112,6 +117,12 @@ async def supervise(loop, *, interval, max_failures, once, wait_for_host=False):
             previous_handlers[sig] = signal.signal(sig, stop)
         while True:
             status = await loop.step()
+            marker = getattr(loop, 'status_store', None)
+            if marker is not None:
+                try:
+                    marker.write(status)
+                except OSError:
+                    pass
             if status != previous_status:
                 emit('state', status=status)
                 previous_status = status
@@ -141,6 +152,12 @@ async def supervise(loop, *, interval, max_failures, once, wait_for_host=False):
         code = 143 if stopped_by == signal.SIGTERM else 130
     except Exception:
         emit('error', error=True, status='runtime_error')
+        marker = getattr(loop, 'status_store', None)
+        if marker is not None:
+            try:
+                marker.write('runtime_error')
+            except OSError:
+                pass
     finally:
         finishing = True
         try:
@@ -155,6 +172,12 @@ async def supervise(loop, *, interval, max_failures, once, wait_for_host=False):
                 reason = 'sigterm' if stopped_by == signal.SIGTERM else 'sigint'
                 code = 143 if stopped_by == signal.SIGTERM else 130
             emit('stopped', reason=reason, cleanup=cleanup)
+            marker = getattr(loop, 'status_store', None)
+            if marker is not None:
+                try:
+                    marker.write('stopped')
+                except OSError:
+                    pass
         finally:
             for sig, handler in previous_handlers.items():
                 signal.signal(sig, handler)
