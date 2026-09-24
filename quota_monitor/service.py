@@ -196,7 +196,7 @@ def main(argv=None):
         return 2
     print(json.dumps(result if isinstance(result, dict) else {'status': result}))
     return 0 if args.action != 'doctor' or (result.get('service') == 'running' and
-        result.get('config') == 'valid' and result.get('panel', 'updated') == 'updated') else 2
+        result.get('config') == 'valid' and result.get('panel') == 'updated') else 2
 
 
 if __name__ == '__main__':

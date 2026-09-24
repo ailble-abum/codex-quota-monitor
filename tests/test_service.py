@@ -5,8 +5,9 @@ import plistlib
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
-from quota_monitor.service import LABEL, MENU_LABEL, Service, ServiceError
+from quota_monitor.service import LABEL, MENU_LABEL, Service, ServiceError, main
 from quota_monitor.runtime_marker import StatusStore
 
 
@@ -16,6 +17,16 @@ class Result:
 
 
 class ServiceTests(unittest.TestCase):
+    def test_doctor_requires_reported_panel_update(self):
+        for panel, expected in [(None, 2), ('missing', 2), ('updated', 0)]:
+            result = {'service': 'running', 'config': 'valid'}
+            if panel is not None:
+                result['panel'] = panel
+            with self.subTest(panel=panel), patch('quota_monitor.service.Service') as factory, \
+                    patch('builtins.print'):
+                factory.return_value.doctor.return_value = result
+                self.assertEqual(main(['doctor']), expected)
+
     def test_menu_agent_requires_owned_service_and_explicit_history(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
