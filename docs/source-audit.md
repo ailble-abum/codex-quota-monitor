@@ -1,5 +1,11 @@
 # 最小替换范围审计
 
+## macOS v2.0.0 实际发行包复核（2026-09-24）
+
+对本机已发布 ZIP `codex-quota-monitor-v2.0.0-macos.zip`（SHA-256 `963eea8a881f86eb7bd0f35838ddeb4bd9ada94026e3cde71940f71d3dbd6a7f`）解压后运行当前 `tools/audit_release.py`：`kind=release`，共 68 个文件、67 个受安装清单摘要约束，consumer SHA-256 为 `eb907dd5acd5848ebd4fdf0d123984eb3f779d48bcf26d94f0a89dd5eff94e86`。ZIP 未含 `build_panel_candidate.py`、`context_token_injector.py` 或 `companion_art.py`；含 `renderer/LICENSE`、`renderer/NOTICE`。发行资源的固定提交和本机生成记录见 [伴宠来源](asset-provenance.md)。
+
+这个检查确认了发行文件清单、摘要及明确的旧文件缺席；它不能排除改写后的受保护表达，也不能把图像生成记录直接当成著作权证明。当前正式版继续保留 MIT/NOTICE。若以后要调整新版本归因，应以待发行包为对象复核代码表达、图像输入权利和许可范围；已发布的 v2.0.0 包及旧版历史记录不作追溯删除。
+
 ## V2 源码复核（2026-09-24）
 
 以 [KevinKE93/Codex-Monitor](https://github.com/KevinKE93/Codex-Monitor) 的 `56b2ea3602cf8395bdc9d0513a8088f8e38d657e` 为固定上游基线，逐文件对比 V2 当前 `quota_monitor` 与 `tools` 的 Python、JavaScript/CJS 源码和上游 Python、JavaScript、Shell、Swift、PowerShell、CSS、HTML 源码。使用 `difflib.SequenceMatcher(autojunk=False)` 定位连续相同文本行；只记录至少 4 行、其中至少 3 行非空的块。初扫发现 `panel_metrics.js` 中三个未被产品调用的文案辅助函数，以及 `panel_host_details.js` 的一小段宿主节点筛选流程。前者已删除；后者按当前 V2 选择器契约改为取首个非空匹配组、保持顺序去重并排除自有面板节点，附独立 Node 回归检查。
