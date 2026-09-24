@@ -5,6 +5,7 @@ import math
 import os
 import tempfile
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -126,9 +127,19 @@ class LocalSampleStore:
                 cached.append(100 * hit / total)
         by_model = {}
         for row in rows:
-            name = row.get('model')
+            name = _finite_text(row.get('model'))
             if name:
                 by_model[name] = by_model.get(name, 0) + 1
+        today = int(self.clock() // 86400)
+        days = []
+        for day in range(today - 6, today + 1):
+            matching = [row for row in rows if int(row['at'] // 86400) == day]
+            day_contexts = [row['context'].get('latest_context_percent') for row in matching
+                            if isinstance(row.get('context'), dict)]
+            day_contexts = [value for value in day_contexts if _number(value, high=100)]
+            days.append({'date': datetime.fromtimestamp(day * 86400, timezone.utc).strftime('%Y-%m-%d'),
+                         'samples': len(matching),
+                         'peakContext': max(day_contexts) if day_contexts else None})
         return {
             'samples': len(rows),
             'spanSeconds': max(times) - min(times) if len(times) > 1 else 0,
@@ -136,6 +147,9 @@ class LocalSampleStore:
             'peakContext': max(contexts) if contexts else None,
             'averageCachedShare': sum(cached) / len(cached) if cached else None,
             'models': sorted(by_model, key=lambda key: (-by_model[key], key))[:6],
+            'weekly': {'timezone': 'UTC', 'days': days,
+                       'modelCounts': [{'model': name, 'samples': count} for name, count in
+                                       sorted(by_model.items(), key=lambda item: (-item[1], item[0]))[:6]]},
         }
 
     def enrich_quota(self, quota, now=None):

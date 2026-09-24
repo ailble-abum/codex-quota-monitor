@@ -38,6 +38,32 @@
         models.textContent = `${text('模型', 'Models')}：${samples.models.join(' · ')}`;
         next.append(models);
       }
+      const weekly = samples.weekly;
+      if (weekly && Array.isArray(weekly.days) && weekly.days.length === 7) {
+        const heading = document.createElement('p');
+        heading.className = 'cti-muted';
+        heading.textContent = text('近 7 天采样报告（UTC）', 'Last 7 days of samples (UTC)');
+        next.append(heading);
+        for (const day of weekly.days) {
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(day.date) || !Number.isSafeInteger(day.samples)) continue;
+          const line = document.createElement('div');
+          line.className = 'cti-line';
+          const date = document.createElement('span'); date.textContent = day.date;
+          const count = document.createElement('span');
+          count.textContent = `${day.samples} ${text('次采样', 'samples')}`;
+          if (Number.isFinite(day.peakContext))
+            count.textContent += ` · ${text('峰值', 'peak')} ${Math.round(day.peakContext)}%`;
+          line.append(date, count); next.append(line);
+        }
+        if (Array.isArray(weekly.modelCounts) && weekly.modelCounts.length) {
+          const ranking = document.createElement('p');
+          ranking.className = 'cti-muted';
+          ranking.textContent = `${text('模型采样次数', 'Model sample counts')}：` +
+            weekly.modelCounts.filter(item => typeof item.model === 'string' && Number.isSafeInteger(item.samples))
+              .map(item => `${item.model} ${item.samples}`).join(' · ');
+          next.append(ranking);
+        }
+      }
     }
     if (!current.isEqualNode(next)) current.replaceChildren(...next.childNodes);
   }

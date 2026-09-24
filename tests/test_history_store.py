@@ -7,6 +7,26 @@ from quota_monitor.local_samples import LocalSampleStore
 
 
 class HistoryStoreTests(unittest.TestCase):
+    def test_weekly_report_is_account_scoped_and_counts_samples(self):
+        with tempfile.TemporaryDirectory() as directory:
+            now = [7 * 86400 + 1000.0]
+            store = LocalSampleStore(directory, clock=lambda: now[0])
+            one = {'accountKey': 'a' * 64, 'windows': []}
+            two = {'accountKey': 'b' * 64, 'windows': []}
+            store.record(one, {'latest_context_percent': 20}, {}, 'model-one')
+            now[0] += 60
+            store.record(two, {'latest_context_percent': 99}, {}, 'model-two')
+            now[0] += 86400
+            report = store.record(one, {'latest_context_percent': 80}, {}, 'model-one')['weekly']
+            self.assertEqual(report['timezone'], 'UTC')
+            self.assertEqual(len(report['days']), 7)
+            self.assertEqual(sum(day['samples'] for day in report['days']), 2)
+            self.assertEqual(report['modelCounts'], [{'model': 'model-one', 'samples': 2}])
+            self.assertEqual(report['days'][-1]['peakContext'], 80)
+            store.rows.append({'at': now[0], 'accountKey': 'a' * 64, 'model': {'bad': 'row'}})
+            self.assertEqual(store.summary('a' * 64)['weekly']['modelCounts'],
+                             [{'model': 'model-one', 'samples': 2}])
+
     def test_history_is_opt_in_and_numeric_only(self):
         with tempfile.TemporaryDirectory() as directory:
             now = [1000.0]
