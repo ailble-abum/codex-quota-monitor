@@ -97,6 +97,8 @@
       #codex-context-token-inspector-root .cti-skin-art { width:38px; height:42px; object-fit:contain; }
       #codex-context-token-inspector-root .cti-skin-button small { min-width:0; max-width:100%; overflow:hidden; text-overflow:ellipsis; }
       #codex-context-token-inspector-root .cti-mascot-size { display:grid; gap:6px; }
+      #codex-context-token-inspector-root .cti-mascot-size > .cti-line { flex-wrap:wrap; }
+      #codex-context-token-inspector-root [data-mascot-scale-auto] { flex:none; margin-left:auto; }
       #codex-context-token-inspector-root .cti-mascot-size-preview { display:grid; place-items:center; min-height:112px; border:1px solid color-mix(in srgb,CanvasText 15%,transparent); border-radius:8px; }
       #codex-context-token-inspector-root .cti-size-preview-art { display:block; object-fit:contain; }
       #codex-context-token-inspector-root [data-mascot-scale] { appearance:none; -webkit-appearance:none; width:100%; height:28px; margin:0; background:transparent; cursor:pointer; }

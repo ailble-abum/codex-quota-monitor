@@ -308,6 +308,8 @@ const {chromium, webkit} = require('playwright');
         assert.equal(await page.locator('[data-alerts]').isDisabled(), true);
         assert.equal(await page.locator('[data-alerts]').isChecked(), false);
         assert.ok((await page.locator('#cti-quota-alerts-unavailable').textContent()).includes(language === 'en' ? 'local notification directory' : '本地通知目录'));
+        assert.ok(await page.locator('[data-mascot-scale-auto]').evaluate(button =>
+          button.scrollWidth <= button.clientWidth + 1), 'companion size reset label must remain visible');
 
         assert.equal(await page.locator('[data-details]').evaluate(node => node.open), true);
         assert.equal(await page.locator('[data-skins]').evaluate(node => node.open), true);
