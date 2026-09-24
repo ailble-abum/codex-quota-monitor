@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="title description">
+  <title id="title">Codex Quota Monitor</title>
+  <desc id="description">macOS 上的 Codex 额度与上下文监视器。深色背景配有简洁的状态面板示意。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a1224"/>
+      <stop offset="0.58" stop-color="#101e35"/>
+      <stop offset="1" stop-color="#102c35"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#79e7d0"/>
+      <stop offset="1" stop-color="#a4e7ff"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#20334e" stop-opacity="0.92"/>
+      <stop offset="1" stop-color="#172d3b" stop-opacity="0.92"/>
+    </linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#7793a4" stroke-opacity="0.09"/>
+    </pattern>
+    <clipPath id="round"><rect width="1200" height="360" rx="24"/></clipPath>
+  </defs>
+  <g clip-path="url(#round)">
+    <rect width="1200" height="360" fill="url(#bg)"/>
+    <rect width="1200" height="360" fill="url(#grid)"/>
+    <circle cx="1108" cy="-42" r="275" fill="#67d3c8" fill-opacity="0.06"/>
+    <circle cx="570" cy="420" r="300" fill="#87baff" fill-opacity="0.045"/>
+    <path d="M0 1H1200V359H0Z" fill="none" stroke="#70d6c7" stroke-opacity="0.22" stroke-width="2"/>
+
+    <rect x="65" y="54" width="42" height="42" rx="13" fill="#85e4d2" fill-opacity="0.12" stroke="#85e4d2" stroke-opacity="0.65"/>
+    <path d="M77 78h7l5-13 7 21 5-10h7" fill="none" stroke="url(#accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="121" y="80" fill="#b9d5df" font-size="15" font-weight="600" letter-spacing="3" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif">LOCAL · CLEAR · QUIET</text>
+    <text x="65" y="170" fill="#f3fbff" font-size="54" font-weight="700" letter-spacing="-2" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif">Codex Quota Monitor</text>
+    <text x="67" y="218" fill="#c6d9e4" font-size="24" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif">额度、上下文和使用节奏，一眼看清。</text>
+    <rect x="65" y="265" width="158" height="38" rx="19" fill="#81e3d0" fill-opacity="0.14" stroke="#84e6d4" stroke-opacity="0.5"/>
+    <text x="86" y="290" fill="#a8f1de" font-size="16" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif">macOS · v2.0.0</text>
+    <text x="244" y="290" fill="#9db8c6" font-size="16" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif">本机运行 · 手动安装</text>
+
+    <rect x="794" y="54" width="348" height="252" rx="20" fill="url(#card)" stroke="#93c8ca" stroke-opacity="0.25"/>
+    <circle cx="822" cy="82" r="4" fill="#79e7d0"/>
+    <circle cx="838" cy="82" r="4" fill="#a3c4d4" fill-opacity="0.45"/>
+    <circle cx="854" cy="82" r="4" fill="#a3c4d4" fill-opacity="0.45"/>
+    <text x="815" y="122" fill="#e8f6f8" font-size="17" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif">当前状态</text>
+    <path d="M814 138H1122" stroke="#a3cbd2" stroke-opacity="0.19"/>
+    <text x="815" y="173" fill="#adc8d5" font-size="15" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif">账户额度</text>
+    <rect x="957" y="160" width="151" height="10" rx="5" fill="#6a8e9b" fill-opacity="0.28"/>
+    <rect x="957" y="160" width="106" height="10" rx="5" fill="url(#accent)"/>
+    <text x="815" y="217" fill="#adc8d5" font-size="15" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif">上下文</text>
+    <rect x="957" y="204" width="151" height="10" rx="5" fill="#6a8e9b" fill-opacity="0.28"/>
+    <rect x="957" y="204" width="71" height="10" rx="5" fill="#98c6fb"/>
+    <text x="815" y="261" fill="#adc8d5" font-size="15" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif">近 7 天</text>
+    <path d="M957 259l22-8 20 5 21-20 18 9 22-25 21 8 25-17" fill="none" stroke="#8de2d4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="1123" y="290" text-anchor="end" fill="#7399a7" font-size="11" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif">示意图</text>
+  </g>
+</svg>

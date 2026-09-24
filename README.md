@@ -1,34 +1,58 @@
-# Codex Quota Monitor V2
+<div align="center">
+  <img src="assets/readme-hero.svg" alt="Codex Quota Monitor：额度、上下文和使用节奏，一眼看清" width="100%">
+</div>
 
-[macOS v2.0.0 正式版](https://github.com/ailble-abum/codex-quota-monitor/releases/tag/v2.0.0) 已发布。Windows 留待后续真机测试。本仓库默认分支为 `v2`；旧版 `main` 的历史和代码保留，未被覆盖。
+<p align="center">
+  <a href="https://github.com/ailble-abum/codex-quota-monitor/releases/tag/v2.0.0"><strong>下载 macOS 正式版</strong></a>
+  &nbsp;·&nbsp;
+  <a href="#快速开始">快速开始</a>
+  &nbsp;·&nbsp;
+  <a href="docs/RELEASE-v2.0.0.md">发行说明</a>
+</p>
 
-V2 提供 Codex 侧栏面板、账户额度、本地上下文和七天采样报告、可选系统通知、macOS 菜单栏、手动检查更新，以及可核对服务和面板状态的 `doctor`。运行链使用本仓库的 V2 会话读取、CDP 通信和 renderer；发行内容保留 MIT `LICENSE` 与 `NOTICE`。
+把 Codex 的账户额度、当前任务上下文和近 7 天的使用采样放在你看得见的地方：侧栏里有面板，菜单栏里有简要状态。数据主要在本机处理；不需要为这个项目再注册一个账号。
 
-## 下载与使用
+> 这是第三方工具，不是 OpenAI 官方插件。当前正式版面向 macOS；Windows 留到单独测试后再发布。
 
-从[发布页](https://github.com/ailble-abum/codex-quota-monitor/releases/tag/v2.0.0)下载 `codex-quota-monitor-v2.0.0-macos.zip` 和 `SHA256SUMS`，先运行 `shasum -a 256 -c SHA256SUMS`。解压后阅读包内 `RELEASE.txt`，在新目录建立 Python 3.9+ 虚拟环境、安装 `requirements-cdp.txt`，并填写私有 `config.json`。先停止旧版监视器，避免两个实例同时写入同一 Codex 页面。
+## 能看到什么
+
+| 位置 | 内容 |
+| --- | --- |
+| Codex 侧栏 | 当前账户额度、重置时间、活动任务的上下文与健康提示；面板可切换单位、语言和伴宠。 |
+| macOS 菜单栏 | 额度简况，点击可查看本地 7 天采样摘要并打开离线报告。 |
+| 本地报告 | 按当前账户整理每日采样、常见模型和项目。它反映采样记录，不是完整账单或逐请求用量。 |
+| 提醒与诊断 | 可选的额度通知；`doctor` 检查服务、配置和最近一次面板发布状态。 |
+
+额度来自你本机已授权的 Codex CLI；任务数据来自本机 Codex 会话。历史与通知写在你指定的私有目录，不上传到本项目的服务器。手动检查更新只有在你配置更新地址后才会请求该地址。
+
+## 快速开始
+
+1. 从 [v2.0.0 发布页](https://github.com/ailble-abum/codex-quota-monitor/releases/tag/v2.0.0)下载 macOS ZIP 和 `SHA256SUMS`。在下载目录运行 `shasum -a 256 -c SHA256SUMS`，通过后解压到新目录。
+2. 停止旧版监视器。进入解压后的目录，创建 Python 3.9+ 虚拟环境、安装依赖，复制并填写私有配置：
 
 ```sh
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-cdp.txt
 cp config.example.json config.json
-# 编辑 config.json：填写 page_url、session_root、host_app；菜单栏另需 history_root
-.venv/bin/python run.py --config "$PWD/config.json" --wait-for-host
+# 填写 Codex 页面地址、授权的会话目录和应用路径；菜单栏另需 history_root
 ```
 
-前台验证通过后按 Ctrl+C 停止，再显式安装服务和菜单栏：
+3. 先在前台确认面板能显示，再按 Ctrl+C 停止，显式安装服务：
 
 ```sh
+.venv/bin/python run.py --config "$PWD/config.json" --wait-for-host
 .venv/bin/python -m quota_monitor.service install --config "$PWD/config.json"
 .venv/bin/python -m quota_monitor.service doctor
 .venv/bin/python -m quota_monitor.service menu-install --config "$PWD/config.json"
-.venv/bin/python -m quota_monitor.service menu-status
 ```
 
-`doctor` 应同时报告 `service=running`、`config=valid`、`panel=updated`。回退时先执行 `menu-uninstall`，再执行 `uninstall`，然后按旧版原有方式恢复。V2 不会自动替换旧版安装；只有显式配置 `host_app` 时才会在调试端口不可用且宿主仍运行时请求重开 Codex。
+`doctor` 应报告 `service=running`、`config=valid`、`panel=updated`。包内 `RELEASE.txt` 说明了配置、菜单栏和回退顺序。升级时先在新目录验证，不要同时运行两个监视器。
 
-## 范围与验证
+## 现在的边界
 
-发行 ZIP 含 arm64/x86_64 双架构菜单栏程序，但真实界面验收在 Apple Silicon Mac 上完成；Intel Mac 尚未真机验收。此包为手动安装，未签名或公证，也不是 Codex 官方插件。Python 3.9 全套 198 项测试、Swift 类型检查、Chromium/WebKit 合成挂载、真实 Codex 的服务、菜单栏、退出重开、重新登录与回退已核对。详见[发行说明](docs/RELEASE-v2.0.0.md)和[验证记录](docs/BETA-VALIDATION.md)。
+- 安装仍需终端和手动配置；还没有一键安装器。ZIP 未签名或公证。
+- 菜单栏程序包含 Apple Silicon 与 Intel 架构，真实界面验收目前只在 Apple Silicon Mac 上完成。
+- 7 天报告是本地采样摘要。没有采到的时段不会补成“完整用量”；系统通知的实际弹出仍受 macOS 权限影响。
+- V2 已替换本项目的运行链，但伴宠原图的最初来源仍在补证。发行包保留 Kevin Ke 与 Ailble 的 MIT `LICENSE` 和 `NOTICE`。
 
-伴宠资源和上游 MIT 来源继续按[资源来源记录](docs/asset-provenance.md)保留归因，不声称初始创作权属已完成独立鉴定。Beta 阶段的设计、契约和历史证据仍在 `docs/` 与 Git 历史中。
+[发行说明](docs/RELEASE-v2.0.0.md) · [验证记录](docs/BETA-VALIDATION.md) · [资源来源](docs/asset-provenance.md)
