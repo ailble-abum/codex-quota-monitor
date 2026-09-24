@@ -6,3 +6,7 @@ config.json
 frozen-source/
 candidate/
 preview/
+
+# Local development dependencies and verification artifacts
+node_modules/
+.local/

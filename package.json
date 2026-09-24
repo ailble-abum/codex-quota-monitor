@@ -1,0 +1,10 @@
+{
+  "name": "codex-quota-monitor-dev",
+  "private": true,
+  "scripts": {
+    "test:live": "node tools/verify_live.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.57.0"
+  }
+}
