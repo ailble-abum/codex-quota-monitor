@@ -413,6 +413,31 @@ const {chromium, webkit} = require('playwright');
       await page.evaluate(()=>{Storage.prototype.setItem=skinSetItem;});
       await page.locator('[data-skin-choice="cat"]').click();
       assert.equal(await page.locator('#codex-context-token-inspector-mascot').getAttribute('data-skin'),'cat');
+      const nova = page.locator('#codex-context-token-inspector-mascot');
+      assert.ok((await nova.getAttribute('aria-label')).includes('Nova Cat'));
+      await page.evaluate(() => {
+        const root = document.querySelector('.cti-hud');
+        root.__ctiLayout.compact = {edge:'left', y:120, width:292};
+        root.__ctiLayout.expanded = {edge:'left', y:120, width:292};
+        root.__ctiApplyPosition();
+      });
+      await publish();
+      assert.equal(await page.locator('.cti-hud').getAttribute('data-docked'),'true');
+      assert.equal(await nova.getAttribute('data-visible'),'true');
+      assert.deepEqual(await nova.locator('img').evaluate(async image => {
+        await image.decode();
+        return [image.naturalWidth, image.naturalHeight];
+      }), [320,320]);
+      const novaBox = await nova.boundingBox();
+      assert.ok(novaBox && novaBox.x >= 0 && novaBox.x < 2 && novaBox.width >= 48);
+      if (process.argv[3]) await nova.screenshot({path:path.join(process.argv[3],`${engine.name()}-nova-docked.png`)});
+      await page.evaluate(() => {
+        const root = document.querySelector('.cti-hud');
+        root.__ctiLayout.compact = {x:14,y:120,width:292};
+        root.__ctiLayout.expanded = {x:14,y:120,width:292};
+        root.__ctiApplyPosition();
+      });
+      await publish();
       await page.evaluate(()=>localStorage.setItem('cti-mascot-skin','constructor'));
       assert.equal(await publish(),true);
       assert.equal(await page.locator('#codex-context-token-inspector-mascot').getAttribute('data-skin'),'cat');
