@@ -104,3 +104,4 @@
 - 用户确认面板和菜单栏实际可见，正常退出并重开 Codex、重新登录 Mac 后均正常。回退测试卸载 V2 的菜单栏与主服务，确认两标签未安装，再核对旧版服务、菜单栏、面板与 injector 正常；随后重新安装 V2，`doctor` 与菜单栏服务状态再次通过。
 - Python 3.9 全套 198 项、Swift 类型检查、正式 ZIP 解压审计、CLI 帮助、菜单栏双架构检查、合成 Chromium 运行链和 Chromium/WebKit 面板挂载通过。发行 ZIP SHA-256：`963eea8a881f86eb7bd0f35838ddeb4bd9ada94026e3cde71940f71d3dbd6a7f`。
 - GitHub [v2.0.0 正式 Release](https://github.com/ailble-abum/codex-quota-monitor/releases/tag/v2.0.0) 已发布，下载资产与本地构建逐字节一致，SHA256SUMS 校验通过。仓库默认分支为 `v2`，旧版 `main` 保留。Intel Mac、Windows、签名与公证未验收。
+- 将从 GitHub 下载并审计通过的正式 ZIP 安装到本机独立 V2 运行目录；确认运行源码 `CURRENT_VERSION=2.0.0`，重新加载主服务与菜单栏。最终状态为主服务 `running`、菜单栏 `running`、`doctor` 的 `config=valid` 与 `panel=updated`；旧版服务保持停止。
