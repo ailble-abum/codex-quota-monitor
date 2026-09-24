@@ -26,7 +26,12 @@ def _windows(value):
         remaining = item.get('remaining')
         if not _number(remaining, high=100):
             continue
-        result.append({'key': item['key'], 'remaining': remaining})
+        window = {'key': item['key'], 'remaining': remaining}
+        if _number(item.get('duration'), low=1, high=5256000):
+            window['duration'] = item['duration']
+        if _number(item.get('resetsAt')):
+            window['resetsAt'] = item['resetsAt']
+        result.append(window)
     return result[:4]
 
 

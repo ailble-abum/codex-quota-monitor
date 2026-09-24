@@ -61,6 +61,19 @@ class HistoryStoreTests(unittest.TestCase):
             self.assertNotIn('/private', repr(saved))
             self.assertEqual(saved[0]['windows'][0], {'key': 'primary', 'remaining': 75})
 
+    def test_window_timing_is_saved_without_untrusted_fields(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store = LocalSampleStore(directory, clock=lambda: 1000.0)
+            store.record({'windows': [
+                {'key': 'primary', 'remaining': 75, 'duration': 300,
+                 'resetsAt': 2000, 'secret': 'drop'},
+                {'key': 'secondary', 'remaining': 40, 'duration': -1,
+                 'resetsAt': 'invalid'}]}, {}, {}, None)
+            windows = json.loads(Path(directory, 'history.json').read_text())[0]['windows']
+            self.assertEqual(windows, [
+                {'key': 'primary', 'remaining': 75, 'duration': 300, 'resetsAt': 2000},
+                {'key': 'secondary', 'remaining': 40}])
+
     def test_writes_are_throttled_and_old_rows_expire(self):
         with tempfile.TemporaryDirectory() as directory:
             now = [1000.0]

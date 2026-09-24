@@ -30,6 +30,38 @@ struct LocalReport {
             return value
         }.min()
         title = recent && remaining != nil ? "Codex · \(Int(remaining!.rounded()))%" : "Codex · —"
+        var current = [String]()
+        if recent, let latest {
+            let windows = latest["windows"] as? [[String: Any]] ?? []
+            for window in windows.prefix(4) {
+                guard let key = window["key"] as? String,
+                      let value = window["remaining"] as? Double,
+                      value.isFinite && (0...100).contains(value) else { continue }
+                let duration = window["duration"] as? Double
+                let label: String
+                if let duration, duration.isFinite, duration > 0 {
+                    label = duration >= 1440 && duration.truncatingRemainder(dividingBy: 1440) == 0
+                        ? "\(Int(duration / 1440)) 天额度" : duration >= 60 && duration.truncatingRemainder(dividingBy: 60) == 0
+                        ? "\(Int(duration / 60)) 小时额度" : "\(Int(duration)) 分钟额度"
+                } else {
+                    label = key == "primary" ? "主要额度" : key == "secondary" ? "次要额度" : "其他额度"
+                }
+                var line = "\(label)：剩余 \(Int(value.rounded()))%"
+                if let reset = window["resetsAt"] as? Double, reset.isFinite,
+                   reset >= 0 && reset <= 8.64e12 {
+                    let formatter = DateFormatter()
+                    formatter.dateFormat = "M月d日 HH:mm"
+                    line += " · \(formatter.string(from: Date(timeIntervalSince1970: reset))) 重置"
+                }
+                current.append(line)
+            }
+            if let context = latest["context"] as? [String: Any],
+               let value = context["latest_context_percent"] as? Double,
+               value.isFinite && (0...100).contains(value) {
+                current.append("当前上下文：\(Int(value.rounded()))%")
+            }
+        }
+        if current.isEmpty { current = ["当前数据：暂无有效采样"] }
         var models: [String: Int] = [:]
         var projects: [String: Int] = [:]
         for row in selected {
@@ -45,7 +77,7 @@ struct LocalReport {
             values.sorted { $0.value == $1.value ? $0.key < $1.key : $0.value > $1.value }
                 .prefix(3).map { "\($0.key) \($0.value)" }.joined(separator: " · ")
         }
-        lines = ["本地 7 天采样：\(selected.count)",
+        lines = current + ["本地 7 天采样：\(selected.count)",
                  "主要模型：\(leaders(models).isEmpty ? "—" : leaders(models))",
                  "主要项目：\(leaders(projects).isEmpty ? "—" : leaders(projects))"]
     }
@@ -72,7 +104,7 @@ final class MenuApp: NSObject {
         let menu = NSMenu()
         for line in report.lines {
             let row = NSMenuItem(title: line, action: nil, keyEquivalent: "")
-            row.isEnabled = false
+            row.isEnabled = true
             menu.addItem(row)
         }
         let openReport = NSMenuItem(title: "打开本地七天报告", action: #selector(showReport), keyEquivalent: "")
