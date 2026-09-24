@@ -13,6 +13,8 @@
 
 仓库维护说明禁止本任务修改现用监视器安装、真实认证和会话文件。本会话用合成应用尝试 `launchctl bootstrap` 时返回 `bootstrap_failed`，已清理临时 plist；不要在同一受限会话重复尝试。以下步骤由有权操作该 Mac 的测试者在普通终端、独立预览目录执行：
 
+2026-09-24 又用真实 Codex 对 `rc.2` 完成前台 `updated` 与 SIGINT `cleanup=released` 验证；V2 LaunchAgent 加载仍被本会话拒绝。旧版服务和菜单栏已恢复运行。剩余原生门槛仍需普通终端完成，不能把前台成功视为服务验收。
+
 1. 确认稳定版监视器已通过其原有控制命令停止。不要在同一 Codex 页面同时运行两个监视器。
 2. 在独立预览目录创建 Python 3.9+ 虚拟环境、安装 `requirements-cdp.txt`，复制 `config.example.json` 为私有 `config.json`。按本机实际环境填写 `origin`、`page_url`、授权的 `session_root`、`session_layout=codex-rollout`、`host_app` 和需要的 `account_cli`。保留 renderer 摘要；设置 `history_root` 与已有 `status_root`。不得把私有配置提交或加入发行包。
 3. 先以前台模式运行 `run.py --config /absolute/config.json --wait-for-host`，打开并切换真实 Codex 任务，核对面板与菜单相关数据。停止后确认本实例的页面节点释放；断连时出现 `lease_pending` 不能算清理完成。

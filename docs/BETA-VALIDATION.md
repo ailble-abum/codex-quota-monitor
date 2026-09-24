@@ -86,3 +86,9 @@
 - 修复 `doctor` 在没有面板状态字段时仍返回成功退出码的问题；现在仅 `service=running`、`config=valid`、`panel=updated` 同时成立才返回 0。新增缺失、未更新、已更新三种退出码测试；Python 3.9 全套 194 项及 Swift typecheck 通过。
 - 重建隔离预览 `季二六软件项目-V2验收包-20260924-r5` 并审计通过（67 个文件、66 个摘要）；生成 `v2.0.0-rc.2` ZIP，SHA-256 为 `04a3804d99f70342bc80fddfed938110531ce2288872bea80c45c2d46193f291`。ZIP 完整性、解压后审计、CLI 帮助、Swift 类型检查及合成 Chromium 双次重启运行链通过。
 - `rc.1` 已被 `rc.2` 替换，不再用于原生验收。真实 Codex、LaunchAgent 和菜单栏的联合验收仍待普通终端完成。
+
+## 2026-09-24 本机真实前台验证
+
+- 先通过现用 `monitorctl.py stop` 停止旧版服务和菜单栏，确认两者均未运行，再用独立 `CodexQuotaMonitorV2QA` 虚拟环境与私有配置运行 `rc.2` 的 V2 副本。真实 Codex 调试端口已在运行，V2 前台报告 `status=updated`，私有状态标记为 `updated`，并在独立测试目录生成历史文件；SIGINT 退出报告 `cleanup=released`。
+- 以该历史文件调用编译后的 `QuotaMenu --report`，命令成功且返回非空摘要。此项不证明菜单栏实际可见。尝试注册 V2 LaunchAgent 时仍返回 `service_error`；临时 plist 已由安装器清理，`launchctl print` 确认 V2 标签不存在。用模拟 runner 生成同一 plist 后，`plutil -lint` 通过，但不能据此判定加载成功。
+- 测试结束后用旧版 `monitorctl.py start` 恢复原服务和菜单栏，状态均为 `running`。本会话不再次尝试 V2 bootstrap；真实服务、菜单栏显示、退出重开及重新登录恢复仍未通过，不能创建正式发布。
