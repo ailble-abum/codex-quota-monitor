@@ -23,6 +23,13 @@ class ServiceTests(unittest.TestCase):
             service = Service(root=directory, agent_dir=directory)
             self.assertEqual(service.domain, 'gui/{}'.format(os.getuid()))
 
+    def test_virtual_environment_python_path_is_preserved(self):
+        with tempfile.TemporaryDirectory() as directory:
+            python = Path(directory) / 'python'
+            python.symlink_to(sys.executable)
+            service = Service(root=directory, agent_dir=directory, python=python)
+            self.assertEqual(service.python, str(python))
+
     def test_doctor_requires_reported_panel_update(self):
         for panel, expected in [(None, 2), ('missing', 2), ('updated', 0)]:
             result = {'service': 'running', 'config': 'valid'}
