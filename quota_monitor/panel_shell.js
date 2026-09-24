@@ -34,7 +34,7 @@
   const MASCOT_ART = __COMPANION_ART__;
   const MASCOT_EXPRESSIONS = __COMPANION_EXPRESSIONS__;
   const MASCOT_SKINS = {
-    cat:{zh:'薄荷黑猫',en:'Mint Cat',accent:'#62efc2',ring:[18,23,44]},
+    cat:{zh:'星瞳诺瓦',en:'Nova Cat',accent:'#62efc2',ring:[25,25,48]},
     candy:{zh:'软糖女孩',en:'Candy Girl',accent:'#ff9fc5',ring:[15,18,28]},
     corgi:{zh:'柯基助手',en:'Corgi Helper',accent:'#f2ae62',ring:[18,20,34]},
     mint:{zh:'薄荷萌男',en:'Mint Boy',accent:'#70d4a6',ring:[14.5,16,27]},

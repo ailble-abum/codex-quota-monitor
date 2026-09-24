@@ -1,4 +1,5 @@
 import importlib.util
+import hashlib
 from pathlib import Path
 import unittest
 
@@ -34,6 +35,20 @@ class PanelBuildTests(unittest.TestCase):
             'assets/companions/expressions/cat-pet.webp',
             'assets/companions/expressions/cat-waiting.webp'})
         self.assertTrue(all(len(value) == 64 for value in hashes.values()))
+
+    def test_nova_replaces_the_archived_cat_pixels(self):
+        root = Path(__file__).parents[1] / 'assets/companions'
+        self.assertEqual(hashlib.sha256((root / 'sources/nova-atlas.png').read_bytes()).hexdigest(),
+                         'e7690812503f47b6916f1fed22999843bd744ea7b6a79295899c282d77183e0e')
+        self.assertEqual(hashlib.sha256((root / 'sources/nova-notice.png').read_bytes()).hexdigest(),
+                         'ca99d508dd9b3787c12f6724ed6a4d8ab9f253bb40f79f20cc46626fb087ab59')
+        hashes = panel_build.resource_hashes()
+        self.assertNotEqual(hashes['assets/companions/web/cat.webp'],
+                            'd2a93051be5be8f4ee215d142d73dc3745b1c1acac77ef4f890b10b0a6987814')
+        self.assertNotEqual(hashes['assets/companions/expressions/cat-notice.webp'],
+                            'a5d4c30ca4eace725471fd775af51b4176430f8e9e0b9da303d0b41272825176')
+        self.assertEqual(len({hashes['assets/companions/expressions/cat-' + name + '.webp']
+                              for name in ('idle', 'happy', 'concerned', 'notice', 'waiting', 'pet')}), 6)
 
     def test_shell_owns_remaining_runtime_entry_points(self):
         shell = (Path(__file__).parents[1] / 'quota_monitor/panel_shell.js').read_text()
