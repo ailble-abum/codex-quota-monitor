@@ -60,6 +60,14 @@ struct LocalReport {
                value.isFinite && (0...100).contains(value) {
                 current.append("当前上下文：\(Int(value.rounded()))%")
             }
+            let activity = latest["activity"] as? [String: Any] ?? [:]
+            let daily = activity["latestDailyTokens"] as? Double
+            let total = activity["lifetimeTokens"] as? Double
+            let count = { (value: Double?) -> String in
+                guard let value, value.isFinite, value >= 0, value <= 8.64e12 else { return "—" }
+                return NumberFormatter.localizedString(from: NSNumber(value: value), number: .decimal)
+            }
+            current.append("Token 活动：最近日用量 \(count(daily)) · 累计 \(count(total))")
         }
         if current.isEmpty { current = ["当前数据：暂无有效采样"] }
         var models: [String: Int] = [:]

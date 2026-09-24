@@ -49,7 +49,8 @@ class MenuTests(unittest.TestCase):
                 'windows': [{'key': 'primary', 'remaining': 35, 'duration': 300,
                              'resetsAt': now + 3600},
                             {'key': 'secondary', 'remaining': 80, 'duration': 10080}],
-                'context': {'latest_context_percent': 42}}]))
+                'context': {'latest_context_percent': 42},
+                'activity': {'latestDailyTokens': 1234, 'lifetimeTokens': 5678}}]))
             result = subprocess.run([str(binary), '--report', str(history)],
                                     capture_output=True, text=True, timeout=5)
             self.assertEqual(result.returncode, 0, result.stderr)
@@ -57,6 +58,7 @@ class MenuTests(unittest.TestCase):
             self.assertIn('7 天额度：剩余 80%', result.stdout)
             self.assertIn('重置', result.stdout)
             self.assertIn('当前上下文：42%', result.stdout)
+            self.assertIn('Token 活动：最近日用量 1,234 · 累计 5,678', result.stdout)
 
             history.write_text(json.dumps([{'at': now - 180, 'accountKey': 'a' * 64,
                 'windows': [{'key': 'primary', 'remaining': 35}],
@@ -65,6 +67,7 @@ class MenuTests(unittest.TestCase):
                                    capture_output=True, text=True, timeout=5)
             self.assertIn('当前数据：暂无有效采样', stale.stdout)
             self.assertNotIn('当前上下文：42%', stale.stdout)
+            self.assertNotIn('Token 活动：最近日用量', stale.stdout)
 
 
 if __name__ == '__main__':

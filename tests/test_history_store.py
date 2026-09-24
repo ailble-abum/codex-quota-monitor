@@ -74,6 +74,24 @@ class HistoryStoreTests(unittest.TestCase):
                 {'key': 'primary', 'remaining': 75, 'duration': 300, 'resetsAt': 2000},
                 {'key': 'secondary', 'remaining': 40}])
 
+    def test_account_token_activity_uses_only_live_numeric_usage(self):
+        with tempfile.TemporaryDirectory() as directory:
+            now = [1000.0]
+            store = LocalSampleStore(directory, clock=lambda: now[0])
+            quota = {'status': 'live', 'accountKey': 'a' * 64, 'usage': {
+                'dailyUsageBuckets': [{'tokens': 1234, 'startDate': 'private'}],
+                'summary': {'lifetimeTokens': 4567, 'secret': 'drop'}}}
+            store.record(quota, {}, {}, None)
+            now[0] += 60
+            store.record({'status': 'unavailable', 'accountKey': 'b' * 64,
+                          'usage': quota['usage']}, {}, {}, None)
+            rows = json.loads(Path(directory, 'history.json').read_text())
+            self.assertEqual(rows[0]['activity'], {'latestDailyTokens': 1234,
+                                                   'lifetimeTokens': 4567})
+            self.assertNotIn('activity', rows[1])
+            self.assertNotIn('private', repr(rows))
+            self.assertNotIn('secret', repr(rows))
+
     def test_writes_are_throttled_and_old_rows_expire(self):
         with tempfile.TemporaryDirectory() as directory:
             now = [1000.0]

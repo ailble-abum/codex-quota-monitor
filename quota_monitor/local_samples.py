@@ -91,6 +91,19 @@ class LocalSampleStore:
             'health': {'count': health.get('count') if isinstance(health, dict) and
                        type(health.get('count')) is int and health.get('count') >= 0 else 0},
         }
+        if isinstance(quota, dict) and quota.get('status') == 'live':
+            usage = quota.get('usage')
+            if isinstance(usage, dict):
+                activity = {}
+                buckets = usage.get('dailyUsageBuckets')
+                last = buckets[-1].get('tokens') if isinstance(buckets, list) and buckets and isinstance(buckets[-1], dict) else None
+                total = usage.get('summary', {}).get('lifetimeTokens') if isinstance(usage.get('summary'), dict) else None
+                if _number(last):
+                    activity['latestDailyTokens'] = last
+                if _number(total):
+                    activity['lifetimeTokens'] = total
+                if activity:
+                    row['activity'] = activity
         name = _finite_text(model)
         if name:
             row['model'] = name
