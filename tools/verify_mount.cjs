@@ -397,6 +397,7 @@ const {chromium, webkit} = require('playwright');
       });
       await page.locator('[data-skin-choice="candy"]').click();
       assert.equal(await page.locator('#codex-context-token-inspector-mascot').getAttribute('data-skin'),'candy');
+      assert.match(await page.locator('#codex-context-token-inspector-mascot').getAttribute('data-expression'), /^(idle|concerned|waiting|happy|notice|pet)$/);
       assert.equal(await page.locator('[data-skin-choice="candy"]').getAttribute('aria-pressed'),'true');
       assert.equal(await page.evaluate(()=>localStorage.getItem('cti-mascot-skin')),'cat');
       await page.locator('[data-language]').selectOption('en');

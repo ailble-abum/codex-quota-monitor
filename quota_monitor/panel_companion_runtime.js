@@ -60,10 +60,10 @@
   function applyCompanionExpression(mascot) {
     const image = mascot.querySelector('img');
     const frames = MASCOT_EXPRESSIONS[mascot.dataset.skin];
-    if (!image || !frames) return;
+    if (!image) return;
     const expression = companionExpression(mascot.dataset.reaction, mascot.dataset.mood);
     mascot.dataset.expression = expression;
-    if (image.getAttribute('src') !== frames[expression]) image.src = frames[expression];
+    if (frames && image.getAttribute('src') !== frames[expression]) image.src = frames[expression];
   }
 
   function companionReact(root, action) {

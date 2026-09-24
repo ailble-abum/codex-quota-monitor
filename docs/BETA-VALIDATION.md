@@ -57,3 +57,8 @@
 
 - 确认当前用户域没有 `local.codex-quota-monitor-v2` 后，用独立临时目录、合成 `.app` 和空会话目录执行一次真实 `Service.install`；`launchctl bootstrap` 返回 `bootstrap_failed`。安装器移除了刚创建的 plist，后续只读 `launchctl print` 确认该标签不存在。
 - 按仓库维护说明，本会话不重复尝试注册。需要在用户的普通终端对隔离预览包执行服务加载/`doctor`，并分别核对菜单栏、真实 Codex 面板与退出恢复；此处不能把模拟命令通过当作原生验收。
+
+## 2026-09-24 伴宠状态回退
+
+- 其余五款没有独立表情帧的伴宠现在也会应用 `idle`、`concerned`、`waiting`、`happy`、`notice`、`pet` 状态，使用现有单帧素材的 CSS 明暗/饱和度/轻微位移；`prefers-reduced-motion` 禁用位移过渡。猫仍使用原有六帧。
+- Python 3.9 全套 187 项与 Chromium/WebKit 挂载测试通过；这不是新增表情插画或实际原生视觉验收。

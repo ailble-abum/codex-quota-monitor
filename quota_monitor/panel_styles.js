@@ -157,6 +157,12 @@
       }
       #codex-context-token-inspector-mascot[data-visible="true"] { display:block; }
       #codex-context-token-inspector-mascot .cti-mascot-art { width:48px; height:52px; object-fit:contain; }
+      #codex-context-token-inspector-mascot:not([data-skin="cat"]) .cti-mascot-art { transition:transform .25s ease,filter .25s ease; }
+      #codex-context-token-inspector-mascot:not([data-skin="cat"])[data-expression="happy"] .cti-mascot-art { filter:brightness(1.12) saturate(1.18); }
+      #codex-context-token-inspector-mascot:not([data-skin="cat"])[data-expression="concerned"] .cti-mascot-art { filter:saturate(.8); }
+      #codex-context-token-inspector-mascot:not([data-skin="cat"])[data-expression="waiting"] .cti-mascot-art { filter:grayscale(.4); }
+      #codex-context-token-inspector-mascot:not([data-skin="cat"])[data-expression="notice"] .cti-mascot-art { filter:brightness(1.14); }
+      #codex-context-token-inspector-mascot:not([data-skin="cat"])[data-motion="true"][data-expression="pet"] .cti-mascot-art { transform:translateY(-3px) rotate(-5deg); }
       #codex-context-token-inspector-mascot [data-gauge] {
         position:absolute; top:50%; transform:translateY(-50%); display:flex;
         flex-direction:column; gap:4px; width:7px;
@@ -205,6 +211,7 @@
       }
       @media (prefers-reduced-motion:reduce) {
         #codex-context-token-inspector-root { transition:none; }
+        #codex-context-token-inspector-mascot .cti-mascot-art { transition:none; transform:none !important; }
       }
     `;
   }
