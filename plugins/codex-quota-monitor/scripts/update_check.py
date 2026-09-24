@@ -158,9 +158,12 @@ class UpdateChecker:
         self.busy = False
         self.lock = threading.Lock()
 
-    def snapshot(self):
+    def snapshot(self, force=False):
         with self.lock:
-            if not self.busy and time.monotonic() >= self.next_check:
+            due = time.monotonic() >= self.next_check
+            if force and not self.busy:
+                self.value = {"status": "checking"}
+            if not self.busy and (force or due):
                 self.busy = True
                 threading.Thread(target=self._refresh, daemon=True).start()
             return dict(self.value)

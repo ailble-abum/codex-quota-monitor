@@ -15,7 +15,7 @@ Codex Quota Monitor is a local, read-only monitor for Codex quota, token usage, 
 - Context occupancy and cached-input share trends are included when local records provide them.
 - Soft edge docking tucks the overlay behind a companion on the left or right wall. Six selectable companions are included, all six shipping illustrated artwork. A docked companion carries no card or plate -- just the character against the window edge, with the account gauge beside it. The gauge draws one cell per quota window the account reports, so a plan reporting a weekly window alone shows one cell while a plan reporting a short and a weekly window shows both.
 - The installed build is named in the settings panel and by `monitorctl.py status`: the declared plugin version, the cachebuster Codex keys its cache directory on, the injected runtime version, and when the last install landed. A plugin cache does not refresh on its own, so this is what distinguishes "the update did not apply" from "there was no update".
-- At most once a day, the monitor reads the public `plugin.json` on GitHub and shows a notice when a newer build exists. It sends no local version, account data, or conversation content; failures stay silent and offline operation continues.
+- At most once a day, the monitor reads the public `plugin.json` on GitHub and shows a notice when a newer build exists. The right-side button can force a fresh check; when the installed build is current, that button briefly confirms `Up to date`. It sends no local version, account data, or conversation content; failures stay silent and offline operation continues.
 - The settings panel also probes the page elements the overlay reads the active thread from, and names the miss instead of quietly drawing a smaller panel when a Codex update moves them. The same footer states the privacy posture in one line: read-only, local, never uploaded.
 - Trust badges distinguish official account reads, local-session observations, and estimates. Message details are sent only for the active task; injector failures surface in the menu bar and `doctor`. The offline history page starts with a local seven-day report card.
 - macOS menu bar support is available.
@@ -34,7 +34,7 @@ Codex Quota Monitor 是一个本地只读的 Codex 配额监视器，用于查�
 - 本地记录具备相应字段时，会展示上下文占用和缓存输入占比趋势。
 - 左右边缘软吸附可把悬浮层收成角色伴宠，提供六款角色，六款均带插画。位图伴宠不套卡片边框，直接浮在窗口边缘，旁边是账户配额计。账户上报几个配额窗口就画几格：只上报每周窗口的套餐显示一格，同时上报短周期与每周窗口的套餐两格都显示。
 - 设置面板与 `monitorctl.py status` 都会标出当前安装的版本：声明的插件版本、Codex 用来命名缓存目录的 cachebuster、注入脚本的运行时版本，以及最近一次安装时间。插件缓存不会自行刷新，因此这一行正是「更新没生效」与「根本没有更新」的分界。
-- 监视器每天最多一次读取 GitHub 上的公开 `plugin.json`，有新版本时显示提示。请求不携带本地版本、账户信息或会话内容；失败时保持静默，离线功能继续工作。
+- 监视器每天最多一次读取 GitHub 上的公开 `plugin.json`，有新版本时显示提示。右侧「检测更新」按钮可强制重新检测；当前已是最新版时，按钮会短暂显示「已是最新版」。请求不携带本地版本、账户信息或会话内容；失败时保持静默，离线功能继续工作。
 - 设置面板同时探测悬浮层读取活动会话所依赖的页面元素，Codex 改版导致选择器失配时会点名未命中项，而不是悄悄少画一部分。同一处页脚还用一行写明隐私立场：只读、本机、不上传。
 - 信任微标区分官方账户读取、本地会话观测与估算。消息详情只下发当前活动任务；注入失败会在菜单栏和 `doctor` 中显示。离线历史页顶部是本地 7 天周报卡。
 - 已支持 macOS 菜单栏。

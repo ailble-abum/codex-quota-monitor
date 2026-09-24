@@ -62,6 +62,8 @@ def runtime_state(client: CDPClient) -> dict[str, Any]:
     null;
   const refresh = window.__ctiRefreshRequested === true;
   window.__ctiRefreshRequested = false;
+  const checkUpdate = window.__ctiUpdateCheckRequested === true;
+  window.__ctiUpdateCheckRequested = false;
   // Which selectors landed is what separates "Codex updated its DOM" from
   // "the overlay stopped updating". A thread list with no marked-active row,
   // or a page with no thread rows at all, is drift and is reported rather
@@ -72,7 +74,7 @@ def runtime_state(client: CDPClient) -> dict[str, Any]:
     conversationId: !!activeId
   };
   return { href: location.href, title: document.title, activeThreadId: activeId,
-    dom, refresh, alerts: localStorage.getItem('cti-alerts') === 'true',
+    dom, refresh, checkUpdate, alerts: localStorage.getItem('cti-alerts') === 'true',
     language: String(document.documentElement.lang || navigator.language || 'en').startsWith('zh') ? 'zh' : 'en' };
 })()
 """
@@ -86,7 +88,7 @@ INJECTION_SCRIPT = r"""
   // new script: stacked observers and timers are torn down, and the companion
   // bitmap is rebuilt from the new data URIs. A renderer may still contain an
   // observer from an older plugin release.
-  const RUNTIME_VERSION = 27;
+  const RUNTIME_VERSION = 31;
   const ROOT_ID = 'codex-context-token-inspector-root';
   const STYLE_ID = 'codex-context-token-inspector-style';
   const FOOTER_ATTR = 'data-context-token-footer';
@@ -515,21 +517,30 @@ INJECTION_SCRIPT = r"""
          The 90-degree opening faces the gauge and leaves the artwork free to
          keep "holding" it. The same geometry is mirrored at the left wall. */
       .cti-edge-mascot [data-context-ring] {
-        position:absolute; z-index:0; top:3px; left:50%; width:42px; height:42px;
+        position:absolute; z-index:0; top:var(--cti-context-ring-top,3px); left:50%;
+        width:var(--cti-context-ring-size,42px); height:var(--cti-context-ring-size,42px);
         border-radius:50%; pointer-events:none; opacity:.16; filter:blur(.45px);
         background:conic-gradient(from 315deg,var(--cti-context-color) 0 var(--cti-context-sweep),transparent var(--cti-context-sweep) 360deg);
         -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 2px),#000 calc(100% - 1.5px));
         mask:radial-gradient(farthest-side,transparent calc(100% - 2px),#000 calc(100% - 1.5px));
         transform:translateX(-50%); transition:opacity .2s ease,filter .2s ease;
       }
+      .cti-edge-mascot[data-skin="candy"] { --cti-context-ring-size:44px; --cti-context-ring-top:-6px; }
+      .cti-edge-mascot[data-skin="corgi"] { --cti-context-ring-size:46px; --cti-context-ring-top:-6px; }
+      .cti-edge-mascot[data-skin="mint"],.cti-edge-mascot[data-skin="frost"] { --cti-context-ring-size:42px; --cti-context-ring-top:-6px; }
+      .cti-edge-mascot[data-skin="tea"] { --cti-context-ring-size:44px; --cti-context-ring-top:-7px; }
       .cti-edge-mascot[data-edge="left"] [data-context-ring] { transform:translateX(-50%) scaleX(-1); }
       .cti-edge-mascot [data-context-ring][data-tone="watch"] { opacity:.62; filter:none; }
       .cti-edge-mascot [data-context-ring][data-tone="high"] { opacity:1; filter:drop-shadow(0 0 3px color-mix(in srgb,var(--cti-context-color) 58%,transparent)); }
       .cti-edge-mascot [data-context-ring][data-tone="unknown"] { display:none; }
       .cti-hud, .cti-hud * { -webkit-app-region:no-drag !important; }
       .cti-hud-head, .cti-hud-body { zoom:var(--cti-scale,1); }
-      .cti-hud [data-resize] { position:absolute;right:2px;bottom:2px;width:16px;height:16px;cursor:nwse-resize;touch-action:none;z-index:5;opacity:.4;background:linear-gradient(135deg,transparent 60%,CanvasText 60%,CanvasText 65%,transparent 65%,transparent 78%,CanvasText 78%,CanvasText 83%,transparent 83%);border-radius:4px; }
-      .cti-hud [data-resize]:hover,.cti-hud [data-resize]:focus-visible {opacity:.8;outline:1px solid currentColor;}
+      .cti-hud [data-resize] { position:absolute;width:18px;height:18px;touch-action:none;z-index:5;background:none;border:0; }
+      .cti-hud [data-resize="nw"] { left:0;top:0;cursor:nwse-resize; }
+      .cti-hud [data-resize="ne"] { right:0;top:0;cursor:nesw-resize; }
+      .cti-hud [data-resize="sw"] { left:0;bottom:0;cursor:nesw-resize; }
+      .cti-hud [data-resize="se"] { right:0;bottom:0;cursor:nwse-resize; }
+      .cti-hud [data-resize]:focus-visible { outline:2px solid currentColor;outline-offset:-4px; }
       .cti-hud button {
         display: inline-grid;
         place-items: center;
@@ -578,8 +589,9 @@ INJECTION_SCRIPT = r"""
       .cti-hud [data-settings] { border-top:1px solid color-mix(in srgb,CanvasText 8%,transparent); padding-top:10px; }
       .cti-setting { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:10px 0; font-size:11px; }
       .cti-setting input { accent-color:var(--cti-safe); width:14px; height:14px; }
-      [data-update] { margin:8px 0; }
-      .cti-update-row { display:flex; align-items:center; gap:7px; font-size:11px; }
+      [data-update] { margin:10px 0 0; padding-top:10px; border-top:1px solid color-mix(in srgb,CanvasText 8%,transparent); }
+      .cti-update-row { display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:11px; }
+      .cti-update-main { display:flex; align-items:center; gap:7px; min-width:0; }
       .cti-update-row strong { font-weight:650; }
       .cti-update-badge {
         display:inline-flex; align-items:center; gap:5px;
@@ -956,6 +968,7 @@ INJECTION_SCRIPT = r"""
     mascot.style.top=`${y}px`;
     root.style.left=edge==='left'?(revealed?`${gap}px`:`${-rect.width-2}px`):(revealed?`${innerWidth-rect.width-gap}px`:`${innerWidth+2}px`);
     root.style.top=`${y}px`;
+    root.__ctiPositionHint?.();
   }
   function applyStoredHudPosition(root) {
     if(root.__ctiGesture) return;
@@ -988,8 +1001,8 @@ INJECTION_SCRIPT = r"""
     const y=Number.isFinite(wanted.y)?wanted.y:window.innerHeight-rect.height-16;
     root.style.left=Math.max(8,Math.min(window.innerWidth-rect.width-8,x))+'px';
     root.style.top=Math.max(topMin,Math.min(window.innerHeight-rect.height-8,y))+'px';
-    const handle=root.querySelector('[data-resize]');
-    if(handle)handle.setAttribute('aria-valuenow',String(Math.round(width)));
+    root.__ctiPositionHint?.();
+    root.querySelectorAll('[data-resize]').forEach(handle=>handle.setAttribute('aria-valuenow',String(Math.round(width))));
   }
   function layoutPreset() {
     const value=localStorage.getItem(LAYOUT_PRESET_KEY);
@@ -1023,11 +1036,13 @@ INJECTION_SCRIPT = r"""
     root.__ctiDragInstalled=true;
     root.__ctiApplyPosition=()=>applyStoredHudPosition(root);
     root.__ctiRevealDock=()=>{root.dataset.dockPinned='true';revealDock(root,true);};
-    const handle=document.createElement('div');
-    handle.dataset.resize='true';handle.tabIndex=0;handle.setAttribute('role','slider');
-    handle.setAttribute('aria-label',uiLanguage()==='zh'?'调整面板大小':'Resize panel');
-    handle.setAttribute('aria-valuemin','180');handle.setAttribute('aria-valuemax','600');
-    root.appendChild(handle);
+    const handles=['nw','ne','sw','se'].map(corner=>{
+      const handle=document.createElement('div');
+      handle.dataset.resize=corner;handle.tabIndex=corner==='se'?0:-1;handle.setAttribute('role','slider');
+      handle.setAttribute('aria-label',uiLanguage()==='zh'?'调整面板大小':'Resize panel');
+      handle.setAttribute('aria-valuemin','180');handle.setAttribute('aria-valuemax','600');
+      root.appendChild(handle);return handle;
+    });
     root.addEventListener('pointerenter',()=>clearDockHide(root));
     root.addEventListener('pointerleave',()=>scheduleDockHide(root));
     root.addEventListener('keydown',event=>{
@@ -1049,7 +1064,7 @@ INJECTION_SCRIPT = r"""
     }
     root.addEventListener('pointerdown',event=>{
       if(event.button!==0)return;
-      const resize=!!event.target.closest('[data-resize]');
+      const resize=event.target.closest('[data-resize]')?.dataset.resize || false;
       // The panel body drags the panel too, not just the title row, so the
       // gesture has to skip every control that owns the pointer itself.
       const control=event.target.closest('button,input,select,textarea,summary,a,label');
@@ -1057,7 +1072,7 @@ INJECTION_SCRIPT = r"""
       if(!resize && isOverScrollbar(root,event))return;
       if(!resize && root.dataset.docked==='true')undockHud(root);
       const rect=root.getBoundingClientRect();
-      root.__ctiGesture={resize,x:event.clientX,y:event.clientY,left:rect.left,top:rect.top,width:rect.width,moved:false};
+      root.__ctiGesture={resize,x:event.clientX,y:event.clientY,left:rect.left,top:rect.top,width:rect.width,height:rect.height,moved:false};
       root.setPointerCapture(event.pointerId);
     },true);
     const move=event=>{
@@ -1067,14 +1082,26 @@ INJECTION_SCRIPT = r"""
       g.moved=true;event.preventDefault();
       root.dataset.dragging='true';
       if(g.resize) {
-        const width=Math.max(180,Math.min(600,window.innerWidth-g.left-8,g.width+dx));
-        persist(g.left,g.top,width);
+        const west=g.resize.includes('w'),north=g.resize.includes('n');
+        const horizontal=west?-dx:dx,vertical=north?-dy:dy;
+        const delta=Math.abs(dx)>=Math.abs(dy)?horizontal:vertical;
+        const maxWidth=west?g.left+g.width-8:window.innerWidth-g.left-8;
+        const width=Math.max(180,Math.min(600,maxWidth,g.width+delta));
+        const x=west?g.left+g.width-width:g.left;
+        root.__ctiLayout[hudMode(root)]={...(root.__ctiLayout[hudMode(root)]||{}),x,y:g.top,width};
+        root.__ctiGesture=null;applyStoredHudPosition(root);
+        if(north){
+          const resized=root.getBoundingClientRect();
+          root.__ctiLayout[hudMode(root)].y=g.top+g.height-resized.height;applyStoredHudPosition(root);
+        }
+        root.__ctiGesture=g;
       } else {
-        const x=g.left+dx,y=g.top+dy;persist(x,y);
-        g.candidate=dockCandidate(x,y,g.width,root.getBoundingClientRect().height);
+        const x=Math.max(8,Math.min(innerWidth-g.width-8,g.left+dx));
+        const y=Math.max(dockSafeTop(),Math.min(innerHeight-g.height-8,g.top+dy));
+        root.style.left=`${x}px`;root.style.top=`${y}px`;
+        g.candidate=dockCandidate(x,y,g.width,g.height);
         if(g.candidate)root.dataset.snapEdge=g.candidate;else delete root.dataset.snapEdge;
       }
-      root.__ctiGesture=null;applyStoredHudPosition(root);root.__ctiGesture=g;
     };
     window.addEventListener('pointermove',move,true);
     function end(event) {
@@ -1083,6 +1110,11 @@ INJECTION_SCRIPT = r"""
       delete root.dataset.snapEdge;
       if(g.moved)root.__ctiSuppressClickUntil=performance.now()+400;
       try{root.releasePointerCapture(event.pointerId);}catch{}
+      if(g.moved){
+        const mode=hudMode(root),rect=root.getBoundingClientRect();
+        root.__ctiLayout[mode]={...(root.__ctiLayout[mode]||{}),x:rect.left,y:rect.top};
+        saveLayout(root);
+      }
       applyStoredHudPosition(root);
       // A compact move is the user's canonical anchor. Keep the expanded
       // detail panel attached to that point instead of reviving an older
@@ -1102,7 +1134,7 @@ INJECTION_SCRIPT = r"""
     }
     window.addEventListener('pointerup',end,true);
     window.addEventListener('pointercancel',end,true);
-    handle.addEventListener('keydown',event=>{
+    handles[3].addEventListener('keydown',event=>{
       if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key))return;
       event.preventDefault();
       const r=root.getBoundingClientRect();
@@ -1531,9 +1563,9 @@ INJECTION_SCRIPT = r"""
             <span class="cti-status" data-tone="safe">&gt;50%</span><span class="cti-status" data-tone="watch">20–50%</span><span class="cti-status" data-tone="low">≤20%</span>
           </div>
           <div class="cti-muted" data-build></div>
-          <div data-update></div>
           <div class="cti-muted" data-dom></div>
           <div class="cti-muted">${zh?'只读 · 本机 · 不上传':'Read-only · local · never uploaded'}</div>
+          <div data-update></div>
         </div>
         <div class="cti-muted" data-freshness></div>`;
       body.querySelector('[data-units]').appendChild(units);
@@ -1697,28 +1729,45 @@ INJECTION_SCRIPT = r"""
     put('[data-build]', stampParts.length ? stampParts.join(' · ') : (zh?'版本信息未记录':'Build information not recorded'));
     // A newer published build is the one thing a local-only monitor cannot see
     // on its own, so the check result rides in with the payload. Only an
-    // available update is spoken aloud; "up to date" is a muted line and a
-    // failed or in-flight check stays silent rather than nagging.
+    // available update is spoken aloud. The manual button remains on the right
+    // in every state and bypasses the daily throttle on the next monitor tick.
     const upd = payload.update || {};
     const updNode = body.querySelector('[data-update]');
     if (updNode) {
-      if (upd.status === 'update_available' && upd.latestSemver) {
-        const updHtml = `<div class="cti-update-row"><span class="cti-update-badge">${zh?'新版本可用':'Update available'}</span><strong>v${upd.latestSemver}</strong><button type="button" class="cti-text-button" data-update-open>${zh?'查看':'View'}</button></div>`;
-        if (updNode.innerHTML !== updHtml) {
-          updNode.innerHTML = updHtml;
-          updNode.querySelector('[data-update-open]').addEventListener('click', async event => {
-            const url = upd.url || 'https://github.com/ailble-abum/codex-quota-monitor/releases';
-            const opened = window.open(url, '_blank', 'noopener');
-            if (!opened) {
-              try { await navigator.clipboard.writeText(url); event.target.textContent = zh?'链接已复制':'Link copied'; }
-              catch { event.target.textContent = url; }
-            }
-          });
+      const pending = window.__ctiUpdateCheckPending === true;
+      if (pending && upd.status !== 'checking') {
+        window.__ctiUpdateCheckPending = false;
+        if (upd.status === 'up_to_date') {
+          window.__ctiUpdateCheckFeedbackUntil = Date.now() + 2500;
+          setTimeout(() => {
+            const button = body.querySelector('[data-update-check]');
+            if (button && !button.disabled) button.textContent = uiLanguage()==='zh' ? '检测更新' : 'Check for updates';
+          }, 2500);
         }
-      } else if (upd.status === 'up_to_date') {
-        put('[data-update]', `<span class="cti-muted">${zh?'已是最新版本':'Up to date'}</span>`);
-      } else {
-        put('[data-update]', '');
+      }
+      const checking = upd.status === 'checking';
+      const feedback = !checking && Date.now() < (window.__ctiUpdateCheckFeedbackUntil || 0);
+      const status = upd.status === 'update_available' && upd.latestSemver
+        ? `<span class="cti-update-badge">${zh?'新版本可用':'Update available'}</span><strong>v${upd.latestSemver}</strong><button type="button" class="cti-text-button" data-update-open>${zh?'查看':'View'}</button>`
+        : `<span class="cti-muted">${checking?(zh?'正在检测…':'Checking…'):upd.status==='up_to_date'?(zh?'已是最新版本':'Up to date'):(zh?'更新检查不可用':'Update check unavailable')}</span>`;
+      const checkLabel = checking ? (zh?'检测中…':'Checking…') : feedback ? (zh?'已是最新版':'Up to date') : (zh?'检测更新':'Check for updates');
+      const updHtml = `<div class="cti-update-row"><div class="cti-update-main">${status}</div><button type="button" class="cti-text-button" data-update-check ${checking?'disabled':''}>${checkLabel}</button></div>`;
+      if (updNode.innerHTML !== updHtml) {
+        updNode.innerHTML = updHtml;
+        updNode.querySelector('[data-update-check]')?.addEventListener('click', event => {
+          window.__ctiUpdateCheckRequested = true;
+          window.__ctiUpdateCheckPending = true;
+          event.currentTarget.disabled = true;
+          event.currentTarget.textContent = zh?'检测中…':'Checking…';
+        }, {once:true});
+        updNode.querySelector('[data-update-open]')?.addEventListener('click', async event => {
+          const url = upd.url || 'https://github.com/ailble-abum/codex-quota-monitor/releases';
+          const opened = window.open(url, '_blank', 'noopener');
+          if (!opened) {
+            try { await navigator.clipboard.writeText(url); event.target.textContent = zh?'链接已复制':'Link copied'; }
+            catch { event.target.textContent = url; }
+          }
+        }, {once:true});
       }
     }
     // The selectors the overlay relies on to find the active thread can drift
@@ -1740,6 +1789,18 @@ INJECTION_SCRIPT = r"""
     clampHud(root);
   }
   function clampHud(root) { applyStoredHudPosition(root); }
+  function positionContextHint(root, toast) {
+    const mascot=document.getElementById(MASCOT_ID);
+    if(root.dataset.docked==='true' && mascot?.dataset.visible==='true') {
+      const r=mascot.getBoundingClientRect(),right=mascot.dataset.edge==='right';
+      toast.style.left=Math.max(8,Math.min(innerWidth-toast.offsetWidth-8,right?r.left-toast.offsetWidth-8:r.right+8))+'px';
+      toast.style.top=Math.max(68,Math.min(innerHeight-toast.offsetHeight-8,r.top+(r.height-toast.offsetHeight)/2))+'px';
+      return;
+    }
+    const r=root.getBoundingClientRect();
+    toast.style.left=Math.max(8,Math.min(innerWidth-toast.offsetWidth-8,r.left))+'px';
+    toast.style.top=Math.max(68,Math.min(innerHeight-toast.offsetHeight-8,r.bottom+8))+'px';
+  }
   function maybeContextHint(root, selected, health, id) {
     if(!id || !selected || localStorage.getItem('cti-context-reminders')==='false')return;
     const used=selected.latest_context_percent;
@@ -1757,8 +1818,9 @@ INJECTION_SCRIPT = r"""
     const zh=uiLanguage()==='zh';
     toast.textContent=level==='compression'?(zh?'压缩负担较高，可在当前步骤完成后整理交接，换新对话继续。':'Compression overhead is high. Consider a handoff after this step.'):(zh?`上下文已用 ${Math.round(used)}%。可在阶段完成后整理交接；这不是费用上限。`:`Context ${Math.round(used)}% used. Consider a handoff at a task boundary; this is not a pricing limit.`);
     document.body.appendChild(toast);
-    const r=root.getBoundingClientRect();toast.style.left=Math.max(8,Math.min(innerWidth-toast.offsetWidth-8,r.left))+'px';toast.style.top=Math.max(68,Math.min(innerHeight-toast.offsetHeight-8,r.bottom+8))+'px';
-    const timer=setTimeout(()=>toast.remove(),7000);root.__ctiClearHint=()=>{clearTimeout(timer);toast.remove();};
+    root.__ctiPositionHint=()=>positionContextHint(root,toast);root.__ctiPositionHint();
+    const clear=()=>{root.__ctiPositionHint=null;toast.remove();};
+    const timer=setTimeout(clear,7000);root.__ctiClearHint=()=>{clearTimeout(timer);clear();};
   }
   function updateHudTitle(root) {
     const title = root.querySelector('[data-cti-title]');
@@ -2000,7 +2062,7 @@ def inject_once(client: CDPClient, roots: list[str], limit: int, detail_limit: i
     payload = build_payload(roots, limit, state.get("activeThreadId"), detail_limit=detail_limit)
     payload['quota'] = QUOTA_READER.snapshot(force=state.get('refresh', False))
     payload['build'] = BUILD_STAMP
-    payload['update'] = UPDATE_CHECKER.snapshot()
+    payload['update'] = UPDATE_CHECKER.snapshot(force=state.get('checkUpdate', False))
     payload['dom'] = state.get('dom')
     active = normalize_thread_id(state.get('activeThreadId') or payload.get('selectedThreadId') or '')
     selected = next((s for s in payload['summaries'] if normalize_thread_id(s.get('thread_id') or '') == active), None)

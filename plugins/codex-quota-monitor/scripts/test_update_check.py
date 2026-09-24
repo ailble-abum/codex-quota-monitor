@@ -108,6 +108,14 @@ class UpdateCheckerTests(unittest.TestCase):
             self.assertEqual(thread.call_count, 1)
         check.assert_called_once_with()
 
+    def test_force_bypasses_the_daily_throttle(self):
+        checker = update_check.UpdateChecker()
+        checker.value = {"status": "up_to_date"}
+        checker.next_check = float("inf")
+        with mock.patch.object(update_check.threading, "Thread") as thread:
+            self.assertEqual(checker.snapshot(force=True), {"status": "checking"})
+        thread.return_value.start.assert_called_once_with()
+
 
 if __name__ == "__main__":
     unittest.main()

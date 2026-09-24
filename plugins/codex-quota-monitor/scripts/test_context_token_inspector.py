@@ -92,6 +92,15 @@ class InspectorTests(unittest.TestCase):
         self.assertIn("isOverScrollbar(root,event)", handler)
         self.assertIn("function isOverScrollbar(node,event)", INJECTION_SCRIPT)
 
+    def test_resize_handles_are_invisible_and_cover_all_four_corners(self):
+        for corner in ("nw", "ne", "sw", "se"):
+            self.assertIn(f'[data-resize="{corner}"]', INJECTION_SCRIPT)
+        handles = block("const handles=['nw','ne','sw','se']", "root.addEventListener('pointerenter'")
+        self.assertIn("handle.dataset.resize=corner", handles)
+        self.assertNotIn("linear-gradient", block(".cti-hud [data-resize]", ".cti-hud button"))
+        self.assertIn("const west=g.resize.includes('w'),north=g.resize.includes('n');", INJECTION_SCRIPT)
+        self.assertIn("g.top+g.height-resized.height", INJECTION_SCRIPT)
+
     def test_the_skin_picker_collapses(self):
         picker = block("<details data-skins>", "</details>")
         self.assertIn("cti-skin-group", picker)
@@ -138,6 +147,19 @@ class InspectorTests(unittest.TestCase):
         self.assertIn('conic-gradient(from 315deg', INJECTION_SCRIPT)
         self.assertIn('[data-context-ring][data-tone="unknown"] { display:none; }', INJECTION_SCRIPT)
         self.assertNotIn("data-context-ring", block("function applyMascotGauge", "function applyMascotContext"))
+
+    def test_context_ring_is_centered_on_each_companion_head(self):
+        for skin in ("candy", "corgi", "mint", "frost", "tea"):
+            self.assertIn(f'[data-skin="{skin}"]', INJECTION_SCRIPT)
+        self.assertIn("--cti-context-ring-size", INJECTION_SCRIPT)
+        self.assertIn("--cti-context-ring-top", INJECTION_SCRIPT)
+
+    def test_context_hint_follows_the_docked_companion(self):
+        position = block("function positionContextHint", "function maybeContextHint")
+        self.assertIn("mascot.getBoundingClientRect()", position)
+        self.assertIn("mascot.dataset.edge==='right'", position)
+        self.assertIn("root.__ctiPositionHint=()=>positionContextHint(root,toast)", INJECTION_SCRIPT)
+        self.assertIn("root.__ctiPositionHint?.();", block("function applyDockPosition", "function applyStoredHudPosition"))
 
     def test_the_gauge_never_shows_a_full_bar_it_cannot_vouch_for(self):
         # A full default would report a healthy account while the plugin knows
@@ -210,6 +232,14 @@ class InspectorTests(unittest.TestCase):
         self.assertIn("data-build", settings)
         self.assertIn("payload.build", INJECTION_SCRIPT)
         self.assertIn("put('[data-build]'", INJECTION_SCRIPT)
+
+    def test_update_check_is_the_last_setting_and_can_be_forced(self):
+        settings = block("<div data-settings hidden>", "data-freshness")
+        self.assertGreater(settings.rfind("data-update"), settings.rfind("never uploaded"))
+        self.assertIn("data-update-check", INJECTION_SCRIPT)
+        self.assertIn("检测更新", INJECTION_SCRIPT)
+        self.assertIn("已是最新版", INJECTION_SCRIPT)
+        self.assertIn("__ctiUpdateCheckRequested", INJECTION_SCRIPT)
 
     def test_the_reported_runtime_version_is_the_one_being_pushed(self):
         # Read back out of the script rather than restated beside it, so the
