@@ -62,3 +62,9 @@
 
 - 其余五款没有独立表情帧的伴宠现在也会应用 `idle`、`concerned`、`waiting`、`happy`、`notice`、`pet` 状态，使用现有单帧素材的 CSS 明暗/饱和度/轻微位移；`prefers-reduced-motion` 禁用位移过渡。猫仍使用原有六帧。
 - Python 3.9 全套 187 项与 Chromium/WebKit 挂载测试通过；这不是新增表情插画或实际原生视觉验收。
+
+## 2026-09-24 正式线功能迁入复核
+
+- 只读检查正式线已提交源码和当前未提交改动，没有修改正式线工作区。V2 适配了手动检查更新按钮及强制刷新入口，并依据正式线离线周报的功能需求，使用 V2 自有采样格式生成当前账户的 `history.html`；菜单栏新增打开该文件的入口。
+- Python 3.9 全套 189 项、Swift typecheck、Chromium/WebKit 面板挂载测试和临时 Chromium 双次浏览器重启运行链通过。离线页测试验证跨账户隔离、HTML 文本转义和 `0600` 文件权限。
+- 新的独立预览包 `/Users/ailble/Desktop/季二六软件项目-V2验收包-20260924-r2` 通过静态审计：66 个文件中 65 个有摘要，consumer 为 `eb907dd5acd5848ebd4fdf0d123984eb3f779d48bcf26d94f0a89dd5eff94e86`。它不含私有配置，也没有启动真实 Codex 或安装 LaunchAgent。

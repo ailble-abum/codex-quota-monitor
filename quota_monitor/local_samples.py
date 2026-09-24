@@ -6,6 +6,7 @@ import os
 import tempfile
 import time
 from datetime import datetime, timezone
+from .report import render_report
 from pathlib import Path
 
 
@@ -96,7 +97,21 @@ class LocalSampleStore:
             row['projectLabel'] = project_label
         self.rows = self._clean(self.rows + [row], now)
         self._write()
+        self._write_report(_account_key(quota))
         return self.summary(_account_key(quota))
+
+    def _write_report(self, account_key):
+        fd, raw = tempfile.mkstemp(prefix='.report-', dir=str(self.root))
+        try:
+            with os.fdopen(fd, 'w', encoding='utf-8') as stream:
+                stream.write(render_report(self.summary(account_key)))
+            os.chmod(raw, 0o600)
+            os.replace(raw, self.root / 'history.html')
+        finally:
+            try:
+                os.unlink(raw)
+            except FileNotFoundError:
+                pass
 
     def _write(self):
         self.root.mkdir(parents=True, exist_ok=True)

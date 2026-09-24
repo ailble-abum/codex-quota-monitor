@@ -53,6 +53,7 @@ struct LocalReport {
 
 final class MenuApp: NSObject {
     private let path: String
+    private var reportURL: URL { URL(fileURLWithPath: path).deletingLastPathComponent().appendingPathComponent("history.html") }
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private var timer: Timer?
 
@@ -74,6 +75,10 @@ final class MenuApp: NSObject {
             row.isEnabled = false
             menu.addItem(row)
         }
+        let openReport = NSMenuItem(title: "打开本地七天报告", action: #selector(showReport), keyEquivalent: "")
+        openReport.target = self
+        openReport.isEnabled = FileManager.default.fileExists(atPath: reportURL.path)
+        menu.addItem(openReport)
         menu.addItem(.separator())
         let quit = NSMenuItem(title: "退出 V2 菜单栏", action: #selector(quitApp), keyEquivalent: "q")
         quit.target = self
@@ -82,6 +87,7 @@ final class MenuApp: NSObject {
     }
 
     @objc private func quitApp() { NSApplication.shared.terminate(nil) }
+    @objc private func showReport() { NSWorkspace.shared.open(reportURL) }
 }
 
 guard CommandLine.arguments.count == 3,

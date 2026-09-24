@@ -25,10 +25,26 @@ class HistoryStoreTests(unittest.TestCase):
             self.assertEqual(report['modelCounts'], [{'model': 'model-one', 'samples': 2}])
             self.assertEqual(report['projectCounts'], [{'project': 'My Project', 'samples': 2}])
             self.assertNotIn('/private/', Path(directory, 'history.json').read_text())
+            page = Path(directory, 'history.html').read_text()
+            self.assertIn('My Project', page)
+            self.assertNotIn('model-two', page)
+            self.assertNotIn('/private/', page)
+            self.assertEqual(Path(directory, 'history.html').stat().st_mode & 0o777, 0o600)
             self.assertEqual(report['days'][-1]['peakContext'], 80)
             store.rows.append({'at': now[0], 'accountKey': 'a' * 64, 'model': {'bad': 'row'}})
             self.assertEqual(store.summary('a' * 64)['weekly']['modelCounts'],
                              [{'model': 'model-one', 'samples': 2}])
+
+    def test_offline_report_escapes_project_and_model_text(self):
+        with tempfile.TemporaryDirectory() as directory:
+            now = [1000.0]
+            store = LocalSampleStore(directory, clock=lambda: now[0])
+            store.record({'windows': []}, {'projectKey': 'a' * 64,
+                         'projectLabel': '<script>alert(1)</script>'}, {}, '<b>model</b>')
+            page = Path(directory, 'history.html').read_text()
+            self.assertNotIn('<script>', page)
+            self.assertNotIn('<b>model</b>', page)
+            self.assertIn('&lt;script&gt;', page)
 
     def test_history_is_opt_in_and_numeric_only(self):
         with tempfile.TemporaryDirectory() as directory:

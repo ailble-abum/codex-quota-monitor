@@ -12,6 +12,8 @@ swiftc quota_monitor/QuotaMenu.swift -o QuotaMenu
 
 `--report` 只打印合成报告，便于无 UI 验证；`--run` 创建系统菜单栏项目，菜单中的退出项只退出该程序。实现依据 [Apple NSStatusBar 文档](https://developer.apple.com/documentation/appkit/nsstatusbar/system)。已通过 Swift typecheck、临时 JSON 的命令模式测试及合成目录中的启动检查；尚未在真实 Codex 安装中验收菜单栏展示。
 
+本地历史生成 `history.html` 后，菜单提供“打开本地七天报告”，由系统默认浏览器打开该离线文件。报告不存在时该菜单项禁用。
+
 V2 主服务已安装、私有配置包含 `history_root`、`QuotaMenu` 可执行文件已编译时，可显式注册独立菜单栏 LaunchAgent：
 
 ```sh
