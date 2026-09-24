@@ -19,4 +19,8 @@ rows = {[chat]: [fallback]};
 assert.deepEqual(Array.from(context.hostMessageNodes()), [fallback]);
 rows = {};
 assert.deepEqual(Array.from(context.hostMessageNodes()), []);
+const tagged = {dataset: {appActionSidebarThreadId: 'thread-1'}};
+assert.equal(context.hostThreadId({matches: () => true, dataset: tagged.dataset}), 'thread-1');
+assert.equal(context.hostThreadId({matches: () => false, querySelector: () => tagged}), 'thread-1');
+assert.equal(context.hostThreadId({matches: () => false, querySelector: () => null}), null);
 console.log('host message selection: deduplication, fallback and own-root exclusion passed');

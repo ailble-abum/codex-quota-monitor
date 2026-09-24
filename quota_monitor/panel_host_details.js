@@ -19,8 +19,9 @@
   }
 
   function hostThreadId(row) {
-    return row.getAttribute('data-app-action-sidebar-thread-id') ||
-      row.querySelector('[data-app-action-sidebar-thread-id]')?.getAttribute('data-app-action-sidebar-thread-id') || null;
+    const tagged = row.matches('[data-app-action-sidebar-thread-id]')
+      ? row : row.querySelector('[data-app-action-sidebar-thread-id]');
+    return tagged?.dataset.appActionSidebarThreadId || null;
   }
 
   function hostPercent(value) {

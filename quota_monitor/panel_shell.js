@@ -16,25 +16,20 @@
   const SKINS_OPEN_KEY = 'cti-skins-open';
   const MASCOT_ID = 'codex-context-token-inspector-mascot';
   const runtimeChanged = true;
+  // Only labels used by the V2 panel live here; host details own their own copy.
   const I18N = {
-    en: {monitor:'Usage', tokenUnit:'Token unit', rawUnit:'raw', expandMonitor:'Expand Monitor',
-      collapseMonitor:'Collapse Monitor', refreshQuota:'Refresh quota', displaySettings:'Display settings',
-      status:'status', left:'left', context:'context', turn:'Latest request', session:'session',
-      inputShort:'in', cachedShort:'cached', outputShort:'out', reasoningShort:'reason',
-      sessionTotal:'Session total', input:'Input', cachedInput:'Cached input', output:'Output',
-      reasoning:'Reasoning', token:'Token', current:'Current', total:'Total', rounds:'Rounds',
-      user:'User', assistant:'Assistant', contextTitle:'Context', turnTitle:'Turn', sessionTitle:'Session',
-      tokens:'tokens', userRounds:'User rounds', assistantRounds:'Assistant rounds',
-      noRecords:'No token records found.', madeBy:'Made by Ailble', unknown:'UNKNOWN', high:'HIGH', watch:'WATCH', ok:'OK'},
-    zh: {monitor:'用量', tokenUnit:'Token 单位', rawUnit:'原值', expandMonitor:'展开监控',
-      collapseMonitor:'收起监控', refreshQuota:'刷新配额', displaySettings:'显示设置', status:'状态',
-      left:'剩余', context:'上下文', turn:'最近请求', session:'会话', inputShort:'输入',
-      cachedShort:'缓存', outputShort:'输出', reasoningShort:'推理', sessionTotal:'会话总计',
-      input:'输入', cachedInput:'缓存输入', output:'输出', reasoning:'推理', token:'Token',
-      current:'当前', total:'总计', rounds:'轮次', user:'用户', assistant:'助手', contextTitle:'上下文',
-      turnTitle:'本轮', sessionTitle:'会话', tokens:'Token', userRounds:'用户轮次',
-      assistantRounds:'助手轮次', noRecords:'暂无 Token 记录。', madeBy:'Ailble 制作',
-      unknown:'未知', high:'高', watch:'注意', ok:'正常'},
+    en: {monitor:'Usage', tokenUnit:'Token unit', rawUnit:'raw',
+      expandMonitor:'Open usage panel', collapseMonitor:'Minimize usage panel',
+      refreshQuota:'Refresh quota', displaySettings:'Display settings',
+      turn:'Latest request', session:'session', input:'Input', cachedInput:'Cached input',
+      output:'Output', noRecords:'No token records found.', unknown:'UNKNOWN',
+      high:'HIGH', watch:'WATCH', ok:'OK'},
+    zh: {monitor:'用量', tokenUnit:'Token 单位', rawUnit:'原值',
+      expandMonitor:'打开用量面板', collapseMonitor:'收起用量面板',
+      refreshQuota:'刷新配额', displaySettings:'显示设置',
+      turn:'最近请求', session:'会话', input:'输入', cachedInput:'缓存输入',
+      output:'输出', noRecords:'暂无 Token 记录。', unknown:'未知',
+      high:'高', watch:'注意', ok:'正常'},
   };
   const MASCOT_ART = __COMPANION_ART__;
   const MASCOT_EXPRESSIONS = __COMPANION_EXPRESSIONS__;

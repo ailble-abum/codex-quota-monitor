@@ -194,13 +194,12 @@
       #codex-context-token-inspector-mascot[data-art="true"][data-edge="left"] [data-gauge] { right:-10px; }
       #cti-context-hint { position:fixed; z-index:2147483002; max-width:260px; padding:7px 9px; border-radius:8px; color:CanvasText; background:Canvas; box-shadow:0 8px 24px #0004; }
       .cti-v2-sidebar-tooltip {
-        position:fixed; z-index:2147483002; max-width:min(420px,calc(100vw - 24px));
-        padding:10px 12px; border:1px solid color-mix(in srgb,CanvasText 14%,transparent);
-        border-radius:8px; background:color-mix(in srgb,Canvas 96%,transparent);
-        color:CanvasText; box-shadow:0 12px 36px color-mix(in srgb,CanvasText 18%,transparent);
-        backdrop-filter:blur(16px); white-space:pre-wrap; overflow-wrap:anywhere;
-        font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-        pointer-events:none;
+        position:fixed; z-index:2147483002; max-width:min(26rem,calc(100vw - 1rem));
+        padding:.6rem .75rem; border:1px solid color-mix(in srgb,CanvasText 20%,Canvas);
+        border-radius:.65rem; background:Canvas; color:CanvasText;
+        box-shadow:0 .5rem 1.5rem #0003;
+        white-space:pre-wrap; overflow-wrap:anywhere;
+        font:13px/1.45 ui-monospace,monospace; pointer-events:none;
       }
       .cti-v2-message-chip {
         display:block; width:max-content; max-width:100%; margin-top:4px;
