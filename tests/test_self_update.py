@@ -24,7 +24,7 @@ class SelfUpdateTests(unittest.TestCase):
             self.assertEqual(self_update._fetch('https://example.invalid/file.zip', 100), b'{}')
         self.assertEqual(seen, ['application/vnd.github+json', 'application/octet-stream'])
 
-    def bundle(self, version='2.0.3'):
+    def bundle(self, version='2.0.4'):
         files = {
             'run.py': b'pass\n',
             'QuotaMenu': b'\xca\xfe\xba\xbe' + b'menu',
@@ -47,7 +47,7 @@ class SelfUpdateTests(unittest.TestCase):
         return output.getvalue()
 
     def test_official_release_download_and_extract(self):
-        version = '2.0.3'
+        version = '2.0.4'
         archive = self.bundle(version)
         name = 'codex-quota-monitor-v{}-macos.zip'.format(version)
         base = 'https://github.com/ailble-abum/codex-quota-monitor/releases/download/v{}/'.format(version)
@@ -62,6 +62,7 @@ class SelfUpdateTests(unittest.TestCase):
         self.assertEqual(self_update._archive(version, fetch), archive)
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory, 'bundle')
+            root.mkdir()
             digest = self_update._extract(archive, root, version)
             self.assertEqual(digest, hashlib.sha256(b'(() => {})()').hexdigest())
             self.assertTrue((root / 'QuotaMenu').stat().st_mode & 0o100)
@@ -90,13 +91,13 @@ class SelfUpdateTests(unittest.TestCase):
                     stream.writestr(name, data)
                 stream.writestr('codex-quota-monitor/../escape', b'bad')
             with self.assertRaises(self_update.UpdateError):
-                self_update._extract(output.getvalue(), Path(directory, 'bundle'), '2.0.3')
+                self_update._extract(output.getvalue(), Path(directory, 'bundle'), '2.0.4')
             broken = BytesIO()
             with zipfile.ZipFile(broken, 'w') as stream:
                 for name, data in values:
                     stream.writestr(name, b'tampered' if name.endswith('/run.py') else data)
             with self.assertRaises(self_update.UpdateError):
-                self_update._extract(broken.getvalue(), Path(directory, 'broken'), '2.0.3')
+                self_update._extract(broken.getvalue(), Path(directory, 'broken'), '2.0.4')
 
     def test_service_switch_and_rollback(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -113,13 +114,15 @@ class SelfUpdateTests(unittest.TestCase):
             with service.path.open('wb') as stream:
                 plistlib.dump(old_plist, stream)
             calls = []
+            pauses = []
             def success(command, **_):
                 calls.append(command)
                 return SimpleNamespace(returncode=0)
-            self_update._switch(service, config, new, success)
+            self_update._switch(service, config, new, success, settle=pauses.append)
             with service.path.open('rb') as stream:
                 self.assertEqual(plistlib.load(stream)['ProgramArguments'][1], str(new / 'run.py'))
             self.assertEqual([call[1] for call in calls], ['bootout', 'bootstrap'])
+            self.assertEqual(pauses, [0.8])
             with service.path.open('wb') as stream:
                 plistlib.dump(old_plist, stream)
             def fail_new_bootstrap(command, **_):
@@ -128,7 +131,7 @@ class SelfUpdateTests(unittest.TestCase):
                 return SimpleNamespace(returncode=1 if command[1] == 'bootstrap' and
                                        active == str(new) else 0)
             with self.assertRaises(self_update.UpdateError):
-                self_update._switch(service, config, new, fail_new_bootstrap)
+                self_update._switch(service, config, new, fail_new_bootstrap, settle=lambda _: None)
             with service.path.open('rb') as stream:
                 self.assertEqual(plistlib.load(stream), old_plist)
 
@@ -151,7 +154,7 @@ class SelfUpdateTests(unittest.TestCase):
                 return SimpleNamespace(returncode=int(command[1] == 'bootstrap' and
                     command[-1] == str(service.menu_path)))
             with self.assertRaises(self_update.UpdateError):
-                self_update._switch(service, config, new, fail_menu)
+                self_update._switch(service, config, new, fail_menu, settle=lambda _: None)
             for path, expected in ((service.path, old_service), (service.menu_path, old_menu)):
                 with path.open('rb') as stream:
                     self.assertEqual(plistlib.load(stream), expected)

@@ -99,7 +99,11 @@ def _extract(archive, destination, version):
         raise UpdateError('release_content_invalid')
     if files['QuotaMenu'][:4] not in (b'\xca\xfe\xba\xbe', b'\xbe\xba\xfe\xca'):
         raise UpdateError('menu_binary_invalid')
-    destination.mkdir(mode=0o700)
+    if destination.exists():
+        if not destination.is_dir() or any(destination.iterdir()):
+            raise UpdateError('destination_not_empty')
+    else:
+        destination.mkdir(mode=0o700)
     for name, data in files.items():
         path = destination / name
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -129,7 +133,7 @@ def _config(old_path, new_root, version, consumer_digest):
     return target
 
 
-def _switch(service, config, new_root, runner=subprocess.run):
+def _switch(service, config, new_root, runner=subprocess.run, settle=time.sleep):
     if not service._owned():
         raise UpdateError('managed_service_required')
     with service.path.open('rb') as stream:
@@ -169,8 +173,8 @@ def _switch(service, config, new_root, runner=subprocess.run):
     stopped_menu = stopped_service = False
     try:
         if menu:
-            launch('bootout', domain + '/' + MENU_LABEL); stopped_menu = True
-        launch('bootout', domain + '/' + LABEL); stopped_service = True
+            launch('bootout', domain + '/' + MENU_LABEL); stopped_menu = True; settle(0.8)
+        launch('bootout', domain + '/' + LABEL); stopped_service = True; settle(0.8)
         write(service.path, new_service)
         launch('bootstrap', domain, str(service.path))
         if menu:
@@ -182,11 +186,13 @@ def _switch(service, config, new_root, runner=subprocess.run):
             if stopped_service:
                 runner(['/bin/launchctl', 'bootout', domain + '/' + LABEL],
                        capture_output=True, timeout=15, check=False)
+                settle(0.8)
                 write(service.path, old_service)
                 launch('bootstrap', domain, str(service.path))
             if stopped_menu:
                 runner(['/bin/launchctl', 'bootout', domain + '/' + MENU_LABEL],
                        capture_output=True, timeout=15, check=False)
+                settle(0.8)
                 write(service.menu_path, old_menu)
                 launch('bootstrap', domain, str(service.menu_path))
         except (OSError, UpdateError):
