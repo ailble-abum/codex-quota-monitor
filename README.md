@@ -31,7 +31,7 @@ python3 -m unittest discover -s tests -v
 
 [近 7 天采样报告](docs/weekly-report-contract.md) 已按账户显示 UTC 日采样、模型和项目出现次数；项目只记录目录名与路径摘要。
 
-[macOS 菜单栏候选](docs/menu-contract.md) 可从显式本地历史目录显示当前剩余额度和七天采样摘要；目前需手动编译与启动，原生展示和服务集成尚待验收。
+[macOS 菜单栏候选](docs/menu-contract.md) 可从显式本地历史目录显示当前剩余额度和七天采样摘要；已提供独立 LaunchAgent 管理命令，原生展示和加载尚待验收。
 
 [显式消费者初始化](docs/consumer-contract.md) 支持启动前脚本摘要校验、缺失时挂载和刷新恢复；外部 renderer 的来源替换与原生验收仍未完成。
 

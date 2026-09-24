@@ -6,7 +6,7 @@ import sys
 import tempfile
 import unittest
 
-from quota_monitor.service import LABEL, Service, ServiceError
+from quota_monitor.service import LABEL, MENU_LABEL, Service, ServiceError
 
 
 class Result:
@@ -15,6 +15,43 @@ class Result:
 
 
 class ServiceTests(unittest.TestCase):
+    def test_menu_agent_requires_owned_service_and_explicit_history(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'run.py').write_text('pass\n')
+            binary = root / 'QuotaMenu'
+            binary.write_text('#!/bin/sh\n')
+            binary.chmod(0o700)
+            calls = []
+            def run(args, **_):
+                calls.append(args)
+                return Result()
+            service = Service(root, root / 'agents', runner=run, uid=501, python=sys.executable)
+            config = root / 'config.json'
+            config.write_text(json.dumps({'origin': 'http://127.0.0.1:9222',
+                'page_url': 'app://-/index.html', 'session_root': 'sessions',
+                'history_root': 'private-history'}))
+            with self.assertRaisesRegex(ServiceError, 'service_not_owned'):
+                service.menu_install(config)
+            service.agent_dir.mkdir()
+            with service.path.open('wb') as stream:
+                plistlib.dump({'Label': LABEL, 'ProgramArguments': [sys.executable,
+                    str(service.root / 'run.py')]}, stream)
+            self.assertEqual(service.menu_install(config), 'menu_installed')
+            with service.menu_path.open('rb') as stream:
+                agent = plistlib.load(stream)
+            self.assertEqual(agent['Label'], MENU_LABEL)
+            self.assertEqual(agent['ProgramArguments'][-1], str(service.root / 'private-history/history.json'))
+            self.assertEqual(service.menu_status(), 'running')
+            with self.assertRaisesRegex(ServiceError, 'menu_still_installed'):
+                service.uninstall()
+            self.assertEqual(service.menu_uninstall(), 'menu_uninstalled')
+            self.assertEqual(calls[-1][1:3], ['bootout', 'gui/501/' + MENU_LABEL])
+            config.write_text(json.dumps({'origin': 'http://127.0.0.1:9222',
+                'page_url': 'app://-/index.html', 'session_root': 'sessions'}))
+            with self.assertRaisesRegex(ServiceError, 'menu_config_incomplete'):
+                service.menu_install(config)
+
     def test_install_doctor_and_uninstall_only_owned_agent(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

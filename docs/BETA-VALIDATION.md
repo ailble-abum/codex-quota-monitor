@@ -49,4 +49,6 @@
 ## 2026-09-24 菜单栏候选复核
 
 - `swiftc -typecheck quota_monitor/QuotaMenu.swift` 通过；在临时目录编译出的命令模式用合成历史 JSON 验证最新账户选择、余额显示、七天采样和路径不出现在输出中。
-- 未启动菜单栏 UI、未注册 LaunchAgent、未读取真实历史文件；原生菜单显示和服务集成仍需验收。
+- 未注册 LaunchAgent、未读取真实历史文件；原生菜单可见性和服务集成仍需验收。
+- 后续用独立临时目录中的合成 `history.json` 启动 `--run`，进程保持运行 2 秒且无 stderr，然后发送 SIGTERM 退出。此项只确认 AppKit 程序可启动，不包含真实菜单可见性或 Codex 集成验证。
+- 隔离服务测试用临时 plist、合成配置与模拟 `launchctl` 验证菜单栏注册、状态、卸载及主服务卸载顺序；未注册真实 LaunchAgent。

@@ -13,6 +13,7 @@ from .host_follow import HostFollower
 
 
 LABEL = 'local.codex-quota-monitor-v2'
+MENU_LABEL = LABEL + '-menu'
 
 
 class ServiceError(ValueError):
@@ -25,6 +26,7 @@ class Service:
         self.root = Path(root or Path(__file__).resolve().parent.parent).resolve()
         self.agent_dir = Path(agent_dir or Path.home() / 'Library/LaunchAgents')
         self.path = self.agent_dir / (LABEL + '.plist')
+        self.menu_path = self.agent_dir / (MENU_LABEL + '.plist')
         self.runner, self.uid = runner, uid
         self.python = str(Path(python or sys.executable).resolve())
         self.domain = 'gui/{}'.format(uid)
@@ -109,23 +111,78 @@ class Service:
     def uninstall(self):
         if not self._owned():
             raise ServiceError('service_not_owned')
+        if self.menu_path.exists() or self.menu_path.is_symlink():
+            raise ServiceError('menu_still_installed')
         if self.status() in ('running', 'loaded'):
             if self._launchctl('bootout', self.domain + '/' + LABEL).returncode != 0:
                 raise ServiceError('bootout_failed')
         self.path.unlink()
         return 'uninstalled'
 
+    def menu_install(self, config):
+        if not self._owned():
+            raise ServiceError('service_not_owned')
+        if self.menu_path.exists() or self.menu_path.is_symlink():
+            raise ServiceError('menu_exists')
+        settings = load_config(Path(config).resolve())
+        history = settings.get('history_root')
+        binary = self.root / 'QuotaMenu'
+        if history is None or not binary.is_file() or not os.access(binary, os.X_OK):
+            raise ServiceError('menu_config_incomplete')
+        value = {'Label': MENU_LABEL,
+                 'ProgramArguments': [str(binary), '--run', str(history / 'history.json')],
+                 'WorkingDirectory': str(self.root), 'RunAtLoad': True, 'KeepAlive': True}
+        with self.menu_path.open('xb') as stream:
+            plistlib.dump(value, stream)
+        try:
+            if self._launchctl('bootstrap', self.domain, str(self.menu_path)).returncode != 0:
+                raise ServiceError('menu_bootstrap_failed')
+        except BaseException:
+            self.menu_path.unlink(missing_ok=True)
+            raise
+        return 'menu_installed'
+
+    def _menu_owned(self):
+        if self.menu_path.is_symlink():
+            return False
+        try:
+            with self.menu_path.open('rb') as stream:
+                value = plistlib.load(stream)
+            return (value.get('Label') == MENU_LABEL and
+                    value.get('ProgramArguments', [])[:2] == [str(self.root / 'QuotaMenu'), '--run'])
+        except (OSError, ValueError, plistlib.InvalidFileException, AttributeError):
+            return False
+
+    def menu_status(self):
+        if not self._menu_owned():
+            return 'not_installed' if not self.menu_path.exists() else 'foreign_service'
+        result = self._launchctl('print', self.domain + '/' + MENU_LABEL)
+        if result.returncode != 0:
+            return 'not_loaded'
+        return 'running' if 'state = running' in result.stdout else 'loaded'
+
+    def menu_uninstall(self):
+        if not self._menu_owned():
+            raise ServiceError('service_not_owned')
+        if self.menu_status() in ('running', 'loaded'):
+            if self._launchctl('bootout', self.domain + '/' + MENU_LABEL).returncode != 0:
+                raise ServiceError('bootout_failed')
+        self.menu_path.unlink()
+        return 'menu_uninstalled'
+
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=('install', 'status', 'doctor', 'uninstall'))
+    parser.add_argument('action', choices=('install', 'status', 'doctor', 'uninstall',
+                                           'menu-install', 'menu-status', 'menu-uninstall'))
     parser.add_argument('--config', type=Path)
     args = parser.parse_args(argv)
-    if args.action == 'install' and args.config is None:
+    if args.action in ('install', 'menu-install') and args.config is None:
         parser.error('install requires --config')
     service = Service()
     try:
-        result = service.install(args.config) if args.action == 'install' else getattr(service, args.action)()
+        result = getattr(service, args.action.replace('-', '_'))(args.config) if args.action in (
+            'install', 'menu-install') else getattr(service, args.action.replace('-', '_'))()
     except (OSError, ValueError, TypeError):
         print(json.dumps({'status': 'service_error'}))
         return 2
