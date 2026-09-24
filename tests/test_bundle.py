@@ -73,6 +73,7 @@ class BundleTests(unittest.TestCase):
             result = subprocess.run(command, capture_output=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertTrue((target / 'quota_monitor/account.py').exists())
+            self.assertTrue((target / 'quota_monitor/service.py').exists())
             self.assertEqual((target / 'renderer/NOTICE').read_text(), 'Synthetic attribution')
             result = subprocess.run([sys.executable, str(target / 'run.py'), '--help'], cwd=temp, capture_output=True)
             self.assertEqual(result.returncode, 0, result.stderr)

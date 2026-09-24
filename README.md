@@ -23,7 +23,9 @@ python3 -m unittest discover -s tests -v
 
 [页面选择与更新循环](docs/runtime-contract.md) 已提供显式回环目标、增量日志更新与可过期的页面数值桥，通过临时 Chromium 恢复/切换测试。后续 [宿主活动任务与面板更新桥](docs/host-panel-contract.md) 已基于当前宿主资源核对属性，并在隔离 Chromium/WebKit 与外部面板中验证；真实原生窗口与安装接入仍未完成。
 
-[独立前台运行入口](docs/live-contract.md)：`python -m quota_monitor.live --config /absolute/synthetic/config.json`，支持状态变化诊断、失败退避、信号退出与本实例页面释放。需显式目标；日志可选逐文件映射或[受限目录自动关联](docs/directory-index-contract.md)，暂无安装/自启动或真实原生验收。
+[独立前台运行入口](docs/live-contract.md)：`python -m quota_monitor.live --config /absolute/synthetic/config.json`，支持状态变化诊断、失败退避、信号退出与本实例页面释放。需显式目标；日志可选逐文件映射或[受限目录自动关联](docs/directory-index-contract.md)。此前的前台入口阶段没有安装/自启动或真实原生验收。
+
+[macOS 常驻服务入口](docs/service-contract.md) 已提供独立 LaunchAgent 的显式安装、状态、诊断和卸载命令；目前只有隔离命令测试，真实原生启动恢复仍待验收。
 
 [显式消费者初始化](docs/consumer-contract.md) 支持启动前脚本摘要校验、缺失时挂载和刷新恢复；外部 renderer 的来源替换与原生验收仍未完成。
 
