@@ -4,4 +4,8 @@
 
 - 旧样式下英文按钮可见性断言失败；修复后 Chromium/WebKit 的中英文、深浅主题挂载及设置交互通过，已目检截图。
 - Python 3.9 全套 208 项测试、样式检查、布局运行时检查和 Swift 类型检查通过。
-- 通用 macOS 菜单程序、发行包文件清单和 ZIP 摘要将在打包后核对。真实 macOS Codex 窗口、Windows 真机、签名和公证分别保留为未验收项。
+- 通用 macOS 菜单程序包含 arm64 和 x86_64；发行包含 69 个文件，包内清单审计与 SHA-256 校验通过。包内 consumer 的 Chromium/WebKit 挂载回归通过。
+
+发布后从公开 GitHub 发行页重新下载 ZIP、`SHA256SUMS` 和 `RELEASE.json`，摘要校验通过；来源提交为 `bcdb2263504a5c0fb191e75f88eb1bcd027fb934`。正式标签指向该提交，发行页包含三个预期文件。
+
+真实 macOS Codex 窗口、Windows 真机、签名和公证分别保留为未验收项。
