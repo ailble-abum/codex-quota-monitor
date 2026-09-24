@@ -32,3 +32,10 @@
 - 使用新临时目录执行 `build_panel.py` → `install_preview.py` → `audit_release.py`，62 个文件中 61 个均有摘要，状态为 `audited`；`run.py --help` 通过。consumer 摘要为 `f07d910fdf7d11aa57baabf0358ad3a910b181596759f5de2df02b6d830d5444`。
 - 新构建候选在 Chromium/WebKit 通过挂载隔离及控件、键盘、单位切换、拖动点击抑制和外部节点替换保护测试；临时 Chromium CLI 通过双次浏览器重启恢复、同 PID 等待、单消费者、会话目录歧义、信号清理和无宿主数据测试。
 - 以上仍是合成测试和隔离预览。未修改稳定安装或 LaunchAgent；真实 Codex 整应用退出重开、Windows、签名/公证以及素材来源/权属审查均未验收。
+
+## 2026-09-24 通知接线复核
+
+- Python 3.9 全套 182 项通过，包括通知阈值、过期数据、发送失败、跨账户与重置周期去重，以及私有通知目录配置。
+- Chromium/WebKit 的 `verify_mount.cjs` 通过通知开关启用、关闭、持久化与未配置时禁用；临时 Chromium 的 `verify_live.cjs` 通过双次浏览器重启恢复与信号清理。
+- 新临时目录执行 `build_panel.py`、`install_preview.py`、`audit_release.py`，64 个文件中 63 个均有摘要，状态为 `audited`；consumer 摘要为 `2059870aef48a83bfb32f190c612f324f4421048fe6c0108cb5f88ec68e81677`。
+- 未向真实通知中心发送消息，也未改动真实 Codex 或现用监视器。正式版门槛仍有真实原生安装/恢复、素材来源审查、Windows 范围确认及签名/公证决策。

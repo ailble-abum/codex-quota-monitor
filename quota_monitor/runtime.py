@@ -5,6 +5,7 @@ import ipaddress
 import json
 import math
 import socket
+import sys
 import threading
 import uuid
 from urllib.parse import urlsplit
@@ -19,6 +20,7 @@ from .consumer import load_consumer
 from .reader import finite_float, reject_constant
 from .host_follow import HostFollower
 from .local_samples import LocalSampleStore
+from .notifications import QuotaNotifier
 from .update_state import CURRENT_VERSION, UpdateSource
 
 
@@ -113,7 +115,7 @@ class UpdateLoop:
 
     panel=True forwards to an existing consumer or an explicitly pinned initializer.
     """
-    def __init__(self, origin, page_url, paths=None, *, panel=False, host='explicit', session_root=None, consumer=None, account_cli=None, session_layout=None, host_app=None, history_root=None, update_url=None, version=CURRENT_VERSION):
+    def __init__(self, origin, page_url, paths=None, *, panel=False, host='explicit', session_root=None, consumer=None, account_cli=None, session_layout=None, host_app=None, history_root=None, notification_root=None, update_url=None, version=CURRENT_VERSION):
         local_origin(origin)
         if host not in ('explicit', 'codex-sidebar'):
             raise ValueError('invalid host adapter')
@@ -121,6 +123,7 @@ class UpdateLoop:
             raise ValueError("invalid account CLI")
         self.account = AccountSource(account_cli) if account_cli is not None else None
         self.history = LocalSampleStore(history_root) if history_root is not None else None
+        self.notifier = QuotaNotifier(notification_root) if notification_root is not None else None
         self.update = UpdateSource(update_url, current=version)
         self.host = host
         if type(panel) is not bool:
@@ -216,6 +219,7 @@ class UpdateLoop:
                 payload['quota'] = self.history.enrich_quota(payload['quota'])
             payload['build'] = {'pluginVersion': self.update.current}
             payload['update'] = self.update.snapshot()
+            payload['notificationsAvailable'] = self.notifier is not None and sys.platform == 'darwin'
             if self.history is not None:
                 selected = {}
                 if payload.get('selectedThreadId') == key:
@@ -233,6 +237,15 @@ class UpdateLoop:
             self.status = 'updated' if applied is True else 'changed'
             if applied is True:
                 self._published = True
+                if self.notifier is not None and payload.get('quota') is not None:
+                    try:
+                        enabled = await self.client.evaluate(page_expression(
+                            action='notificationPreference', expected=self.page_url, key=key,
+                            host=self.host))
+                        if enabled is True:
+                            await asyncio.to_thread(self.notifier.notify, payload['quota'])
+                    except CDPError:
+                        pass
                 source_status = getattr(self.source, 'status', 'ok')
                 if source_status != 'ok':
                     self.status = 'data_' + source_status

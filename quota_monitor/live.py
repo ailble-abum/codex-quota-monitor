@@ -38,7 +38,7 @@ def load_config(path):
     if len(raw) > 65536:
         raise ValueError('config limit')
     config = json.loads(raw, object_pairs_hook=unique_object, parse_constant=reject_constant)
-    if (not isinstance(config, dict) or set(config) - {'origin', 'page_url', 'journals', 'session_root', 'host', 'panel', 'consumer', 'account_cli', 'session_layout', 'host_app', 'history_root', 'update_url', 'version'}
+    if (not isinstance(config, dict) or set(config) - {'origin', 'page_url', 'journals', 'session_root', 'host', 'panel', 'consumer', 'account_cli', 'session_layout', 'host_app', 'history_root', 'notification_root', 'update_url', 'version'}
             or not {'origin', 'page_url'} <= set(config)
             or ('journals' in config) == ('session_root' in config)):
         raise ValueError('invalid config fields')
@@ -60,6 +60,11 @@ def load_config(path):
         if not isinstance(root, str) or not root or '\0' in root:
             raise ValueError('invalid history root')
         config['history_root'] = path.parent / root
+    if 'notification_root' in config:
+        root = config['notification_root']
+        if not isinstance(root, str) or not root or '\0' in root:
+            raise ValueError('invalid notification root')
+        config['notification_root'] = path.parent / root
     if 'update_url' in config:
         root = config['update_url']
         valid = False

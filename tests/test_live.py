@@ -90,6 +90,18 @@ class LiveCLITests(unittest.TestCase):
         with self.assertRaises(ValueError):
             load_config(self.config)
 
+    def test_notification_root_is_explicit_and_relative_to_config(self):
+        from quota_monitor.live import load_config
+        self.value['notification_root'] = 'notification-state'
+        self.config.write_text(json.dumps(self.value))
+        self.assertEqual(load_config(self.config)['notification_root'],
+                         self.config.parent / 'notification-state')
+        for root in ('', None, 123, 'bad\0root'):
+            self.value['notification_root'] = root
+            self.config.write_text(json.dumps(self.value))
+            with self.assertRaises(ValueError):
+                load_config(self.config)
+
     def test_update_settings_are_optional_and_bounded(self):
         from quota_monitor.live import load_config
         self.value['update_url'] = 'https://example.invalid/manifest.json'

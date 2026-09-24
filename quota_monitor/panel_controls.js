@@ -32,6 +32,13 @@
 
   function updateHudLanguage(root) {
     updateCompanionControls(root);
+    const alerts = root.querySelector('[data-alerts]');
+    if (alerts) {
+      const available = window.__codexContextTokenInspectorPayload?.notificationsAvailable === true;
+      alerts.disabled = !available;
+      try { alerts.checked = available && localStorage.getItem('cti-alerts') === 'true'; }
+      catch (_) { alerts.checked = false; }
+    }
     const edgeDock = root.querySelector('[data-edge-dock]');
     if (edgeDock) edgeDock.checked = edgeDockEnabled();
     const chinese = uiLanguage() === 'zh';

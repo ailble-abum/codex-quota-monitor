@@ -86,7 +86,10 @@
       }
     });
     panel.addEventListener('change', event => {
-      if (event.target.matches('[data-edge-dock]')) {
+      if (event.target.matches('[data-alerts]')) {
+        try { localStorage.setItem('cti-alerts', String(event.target.checked)); }
+        catch (_) { event.target.checked = false; }
+      } else if (event.target.matches('[data-edge-dock]')) {
         setEdgeDockEnabled(event.target.checked);
         if (!edgeDockEnabled()) {
           clearDockHide(panel);

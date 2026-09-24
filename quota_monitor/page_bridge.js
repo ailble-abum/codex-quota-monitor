@@ -62,6 +62,11 @@
         return requested;
     }
 
+    if (options.action === 'notificationPreference') {
+        try { return localStorage.getItem('cti-alerts') === 'true'; }
+        catch (_) { return false; }
+    }
+
     if (options.action === 'prepare' || options.action === 'initialize') {
         // A partial/failed initializer must not be retried or adopted as healthy.
         if (window.__quotaMonitorV2Consumer?.status === 'failed')

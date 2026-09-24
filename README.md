@@ -27,6 +27,8 @@ python3 -m unittest discover -s tests -v
 
 [macOS 常驻服务入口](docs/service-contract.md) 已提供独立 LaunchAgent 的显式安装、状态、诊断和卸载命令；目前只有隔离命令测试，真实原生启动恢复仍待验收。
 
+[macOS 配额通知](docs/notification-contract.md) 已提供显式配置和面板开关；当前只有合成发送与浏览器控件测试，真实系统通知尚待验收。
+
 [显式消费者初始化](docs/consumer-contract.md) 支持启动前脚本摘要校验、缺失时挂载和刷新恢复；外部 renderer 的来源替换与原生验收仍未完成。
 
 [Renderer 首次拆分](docs/panel-split-contract.md) 提供带完整来源/许可的隔离候选，移除旧宿主扫描与观察器，保留现有面板视图；尚未完成整份 renderer 的来源替换。

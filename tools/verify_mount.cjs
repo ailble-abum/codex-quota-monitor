@@ -53,7 +53,7 @@ const {chromium, webkit} = require('playwright');
       assert.equal(await page.evaluate(() => window.alertPreferenceReads), 0);
       await page.evaluate(() => { Storage.prototype.getItem = window.alertGetItem; });
       assert.equal(await page.evaluate(() => localStorage.getItem('cti-alerts')), 'true');
-      assert.ok((await page.locator('#cti-quota-alerts-unavailable').textContent()).includes('尚未接通'));
+      assert.ok((await page.locator('#cti-quota-alerts-unavailable').textContent()).includes('本地通知目录'));
 
       await page.locator('#host-probe').evaluate(node => node.remove());
       assert.equal(await page.evaluate(() => localStorage.getItem('codex-context-token-inspector-unit')), 'k');
@@ -62,6 +62,19 @@ const {chromium, webkit} = require('playwright');
         summaries: [{thread_id: 'one', latest_context_tokens: 500, context_window: 1000, latest_context_percent: 50}], detailsByThread: {}};
       const publish = () => call({...base, action: 'publish', payload, panel: true});
       for (let i = 0; i < 4; i++) assert.equal(await publish(), true);
+      payload.notificationsAvailable = true;
+      await publish();
+      assert.equal(await page.locator('[data-alerts]').isEnabled(), true);
+      assert.equal(await page.locator('[data-alerts]').isChecked(), true);
+      await page.locator('[data-alerts]').evaluate(node => { node.checked = false; node.dispatchEvent(new Event('change', {bubbles: true})); });
+      assert.equal(await page.evaluate(() => localStorage.getItem('cti-alerts')), 'false');
+      assert.equal(await call({...base, action: 'notificationPreference'}), false);
+      await page.locator('[data-alerts]').evaluate(node => { node.checked = true; node.dispatchEvent(new Event('change', {bubbles: true})); });
+      assert.equal(await call({...base, action: 'notificationPreference'}), true);
+      payload.notificationsAvailable = false;
+      await publish();
+      assert.equal(await page.locator('[data-alerts]').isDisabled(), true);
+      assert.equal(await page.locator('[data-alerts]').isChecked(), false);
       Object.assign(payload.summaries[0], {model: '<b data-untrusted-model>model & name</b>',
         reasoning_effort: '<i>high</i>', latest_turn_total_tokens: 550, session_total_tokens: 900,
         latest_turn_input_tokens: 400, latest_turn_cached_input_tokens: 100, latest_turn_output_tokens: 150});
@@ -283,7 +296,7 @@ const {chromium, webkit} = require('playwright');
         assert.equal(await page.locator('.cti-unit-group').count(), 1);
         assert.equal(await page.locator('[data-alerts]').isDisabled(), true);
         assert.equal(await page.locator('[data-alerts]').isChecked(), false);
-        assert.ok((await page.locator('#cti-quota-alerts-unavailable').textContent()).includes(language === 'en' ? 'not connected' : '尚未接通'));
+        assert.ok((await page.locator('#cti-quota-alerts-unavailable').textContent()).includes(language === 'en' ? 'local notification directory' : '本地通知目录'));
 
         assert.equal(await page.locator('[data-details]').evaluate(node => node.open), true);
         assert.equal(await page.locator('[data-skins]').evaluate(node => node.open), true);

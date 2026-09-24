@@ -59,7 +59,7 @@
         <label><input type="checkbox" data-companion-reminders> ${text('伴宠提醒', 'Companion reminders')}</label>
         <label><input type="checkbox" data-context-alerts> ${text('上下文提醒', 'Context reminders')}</label>
         <label><input type="checkbox" data-alerts disabled aria-describedby="cti-quota-alerts-unavailable"> ${text('配额通知', 'Quota notifications')}</label>
-        <p class="cti-muted" id="cti-quota-alerts-unavailable">${text('配额通知尚未接通。', 'Quota notifications are not connected yet.')}</p>
+        <p class="cti-muted" id="cti-quota-alerts-unavailable">${text('需配置本地通知目录；默认关闭。', 'Configure a local notification directory; off by default.')}</p>
         <button type="button" data-handoff>${text('复制交接请求', 'Copy handoff request')}</button>
         <button type="button" data-position-reset>${text('重置位置', 'Reset position')}</button>
         <section class="cti-diagnostics">
