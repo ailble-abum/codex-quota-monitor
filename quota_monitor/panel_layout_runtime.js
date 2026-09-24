@@ -133,10 +133,10 @@
       document.getElementById(MASCOT_ID)?.setAttribute('aria-pressed', 'false');
       revealDock(root, false);
     });
-    const persist = (x, y, width) => {
+    const persist = (x, y, width, save = true) => {
       const mode = hudMode(root);
       root.__ctiLayout[mode] = {...(root.__ctiLayout[mode] || {}), x, y, ...(width ? {width} : {})};
-      saveLayout(root);
+      if (save) saveLayout(root);
     };
     root.addEventListener('pointerdown', event => {
       if (event.button !== 0) return;
@@ -157,13 +157,15 @@
       gesture.moved = true; event.preventDefault(); root.dataset.dragging = 'true';
       if (gesture.resize) {
         const next = resizeGeometry(gesture, event.clientX, event.clientY, gesture.resize, window.innerWidth);
-        persist(next.left, gesture.top, next.width);
+        persist(next.left, gesture.top, next.width, false);
+        root.__ctiGesture = null; applyStoredHudPosition(root); root.__ctiGesture = gesture;
       } else {
-        persist(gesture.left + dx, gesture.top + dy);
-        gesture.candidate = dockCandidate(gesture.left + dx, gesture.top + dy, gesture.width, root.getBoundingClientRect().height);
+        const x = gesture.left + dx, y = gesture.top + dy;
+        persist(x, y, null, false);
+        root.style.left = `${x}px`; root.style.top = `${y}px`;
+        gesture.candidate = dockCandidate(x, y, gesture.width, 0);
         if (gesture.candidate) root.dataset.snapEdge = gesture.candidate; else delete root.dataset.snapEdge;
       }
-      root.__ctiGesture = null; applyStoredHudPosition(root); root.__ctiGesture = gesture;
     };
     const end = event => {
       const gesture = root.__ctiGesture;
@@ -172,6 +174,7 @@
       if (gesture.moved) root.__ctiSuppressClickUntil = performance.now() + 400;
       try { root.releasePointerCapture(event.pointerId); } catch (_) {}
       applyStoredHudPosition(root);
+      if (gesture.moved) saveLayout(root);
       if (gesture.moved && !gesture.resize && hudMode(root) === 'compact') {
         const rect = root.getBoundingClientRect();
         root.__ctiLayout.compact = {...(root.__ctiLayout.compact || {}), x:rect.left, y:rect.top};

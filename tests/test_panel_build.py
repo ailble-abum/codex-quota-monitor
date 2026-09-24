@@ -91,6 +91,17 @@ class PanelBuildTests(unittest.TestCase):
         self.assertIn('[data-mascot-scale]::-webkit-slider-runnable-track', styles)
         self.assertIn('[data-mascot-scale]::-moz-range-track', styles)
 
+    def test_drag_does_not_animate_or_write_storage_on_each_move(self):
+        root = Path(__file__).parents[1] / 'quota_monitor'
+        styles = (root / 'panel_styles.js').read_text()
+        layout = (root / 'panel_layout_runtime.js').read_text()
+        companion = (root / 'panel_companion_runtime.js').read_text()
+        self.assertIn('[data-dragging="true"] { transition:none; }', styles)
+        self.assertIn('root.style.left = `${x}px`; root.style.top = `${y}px`', layout)
+        self.assertIn('if (gesture.moved) saveLayout(root)', layout)
+        self.assertIn('if (gesture.moved) saveLayout(root)', companion)
+        self.assertNotIn('saveLayout(root); applyStoredHudPosition(root)', companion)
+
     def test_compact_bar_hover_prefers_time_budget(self):
         shell = (Path(__file__).parents[1] / 'quota_monitor/panel_shell.js').read_text()
         self.assertIn('const hoverBudget = windows.map', shell)

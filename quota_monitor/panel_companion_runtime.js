@@ -33,12 +33,13 @@
       gesture.moved = true; event.preventDefault();
       const mode = hudMode(root);
       root.__ctiLayout[mode] = {...(root.__ctiLayout[mode] || {}), y:next.y};
-      saveLayout(root); applyStoredHudPosition(root);
+      applyStoredHudPosition(root);
     });
     const end = event => {
       const gesture = mascot.__ctiGesture;
       if (!gesture) return;
       mascot.__ctiGesture = null; clearTimeout(mascot.__ctiPetTimer);
+      if (gesture.moved) saveLayout(root);
       if (gesture.moved) companionReact(root, 'land');
       if (gesture.moved || gesture.mode === 'pet') mascot.__ctiSuppressClickUntil = performance.now() + 400;
       try { mascot.releasePointerCapture(event.pointerId); } catch (_) {}

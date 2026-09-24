@@ -11,6 +11,7 @@
         font:13px/1.45 system-ui,-apple-system,sans-serif; backdrop-filter:blur(16px);
         transition:left .18s ease,top .18s ease,width .18s ease,box-shadow .15s ease;
       }
+      #codex-context-token-inspector-root[data-dragging="true"] { transition:none; }
       #codex-context-token-inspector-root[data-snap-edge] {
         box-shadow:0 0 0 2px color-mix(in srgb,#4f8cff 78%,transparent),0 12px 36px #0002;
       }
