@@ -104,10 +104,12 @@ const {chromium, webkit} = require('playwright');
         timezone: 'UTC', days: Array.from({length: 7}, (_, index) => ({
           date: `2026-09-${String(index + 18).padStart(2, '0')}`, samples: index === 6 ? 2 : 0,
           peakContext: index === 6 ? 80 : null
-        })), modelCounts: [{model: '<b>safe-model</b>', samples: 2}]}};
+        })), modelCounts: [{model: '<b>safe-model</b>', samples: 2}],
+        projectCounts: [{project: '<b>My Project</b>', samples: 2}]}};
       await publish();
       assert.equal(await page.locator('[data-history] .cti-line').count(), 8);
       assert.ok((await page.locator('[data-history]').textContent()).includes('模型采样次数'));
+      assert.ok((await page.locator('[data-history]').textContent()).includes('项目采样次数'));
       assert.equal(await page.locator('[data-history] b').count(), 0);
 
       payload.healthThreadId = 'one';

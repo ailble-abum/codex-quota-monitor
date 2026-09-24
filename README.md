@@ -29,7 +29,7 @@ python3 -m unittest discover -s tests -v
 
 [macOS 配额通知](docs/notification-contract.md) 已提供显式配置和面板开关；当前只有合成发送与浏览器控件测试，真实系统通知尚待验收。
 
-[近 7 天采样报告](docs/weekly-report-contract.md) 已按账户显示 UTC 日采样与模型出现次数；项目排行仍需可信项目身份来源。
+[近 7 天采样报告](docs/weekly-report-contract.md) 已按账户显示 UTC 日采样、模型和项目出现次数；项目只记录目录名与路径摘要。
 
 [显式消费者初始化](docs/consumer-contract.md) 支持启动前脚本摘要校验、缺失时挂载和刷新恢复；外部 renderer 的来源替换与原生验收仍未完成。
 

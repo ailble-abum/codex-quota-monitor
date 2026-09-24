@@ -28,6 +28,15 @@ def panel_summary(thread_id, reading, *, allow_partial=False):
               'context_window': state.get('window'),
               'latest_context_tokens': state['last'].get('input_tokens'),
               'latest_context_percent': state.get('context_percent')}
+    project = reading.get('project')
+    if isinstance(project, dict):
+        project_key, project_label = project.get('projectKey'), project.get('projectLabel')
+        if (isinstance(project_key, str) and len(project_key) == 64 and
+                all(char in '0123456789abcdef' for char in project_key) and
+                isinstance(project_label, str) and 0 < len(project_label) <= 80 and
+                '/' not in project_label and '\\' not in project_label and
+                all(ord(char) >= 32 for char in project_label)):
+            result.update(projectKey=project_key, projectLabel=project_label)
     for source, prefix in (('last', 'latest_turn_'), ('total', 'session_')):
         for field in FIELDS:
             suffix = 'reasoning_tokens' if field == 'reasoning_output_tokens' else field

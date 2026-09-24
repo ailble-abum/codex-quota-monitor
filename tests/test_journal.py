@@ -38,6 +38,18 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(self.drain()['session']['context_percent'], 50)
         self.assertEqual(self.journal.poll()['bytes_read'], 0)
 
+    def test_verified_session_metadata_projects_name_without_path(self):
+        self.write([{'type': 'session_meta', 'payload': {'id': 'one', 'cwd': '/private/work/My Project'}}])
+        result = self.drain()
+        self.assertEqual(result['identity_status'], 'verified')
+        self.assertEqual(result['project']['projectLabel'], 'My Project')
+        self.assertEqual(len(result['project']['projectKey']), 64)
+        self.assertNotIn('/private/work', repr(result))
+        self.write([{'type': 'session_meta', 'payload': {'id': 'other', 'cwd': '/private/other'}}], 'a')
+        result = self.drain()
+        self.assertEqual(result['identity_status'], 'conflict')
+        self.assertIsNone(result['project'])
+
     def test_replacement_resets_old_model_and_usage(self):
         self.write([{'type': 'turn_context', 'payload': {'model': 'old'}}])
         self.drain()

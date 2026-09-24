@@ -63,6 +63,14 @@
               .map(item => `${item.model} ${item.samples}`).join(' · ');
           next.append(ranking);
         }
+        if (Array.isArray(weekly.projectCounts) && weekly.projectCounts.length) {
+          const ranking = document.createElement('p');
+          ranking.className = 'cti-muted';
+          ranking.textContent = `${text('项目采样次数', 'Project sample counts')}：` +
+            weekly.projectCounts.filter(item => typeof item.project === 'string' && Number.isSafeInteger(item.samples))
+              .map(item => `${item.project} ${item.samples}`).join(' · ');
+          next.append(ranking);
+        }
       }
     }
     if (!current.isEqualNode(next)) current.replaceChildren(...next.childNodes);

@@ -80,6 +80,16 @@ class CompatibilityTests(unittest.TestCase):
         self.assertNotIn('secret', repr(summary))
         self.assertNotIn('/private', repr(summary))
 
+    def test_verified_project_identity_is_bounded(self):
+        result = reading()
+        result['project'] = {'projectKey': 'a' * 64, 'projectLabel': 'My Project',
+                             'cwd': '/private/work/My Project'}
+        summary = panel_summary('one', result)
+        self.assertEqual(summary['projectLabel'], 'My Project')
+        self.assertNotIn('/private/work', repr(summary))
+        result['project']['projectLabel'] = '/private/work'
+        self.assertNotIn('projectLabel', panel_summary('one', result))
+
     def test_zero_totals_remain_visible(self):
         result = reading()
         result['session']['total']['total_tokens'] = 0

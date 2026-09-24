@@ -88,6 +88,12 @@ class LocalSampleStore:
         name = _finite_text(model)
         if name:
             row['model'] = name
+        project_key = context.get('projectKey')
+        project_label = _finite_text(context.get('projectLabel'), 80)
+        if (isinstance(project_key, str) and len(project_key) == 64 and
+                all(char in '0123456789abcdef' for char in project_key) and project_label):
+            row['projectKey'] = project_key
+            row['projectLabel'] = project_label
         self.rows = self._clean(self.rows + [row], now)
         self._write()
         return self.summary(_account_key(quota))
@@ -126,10 +132,16 @@ class LocalSampleStore:
             if _number(total, low=1) and _number(hit, low=0) and hit <= total:
                 cached.append(100 * hit / total)
         by_model = {}
+        by_project = {}
         for row in rows:
             name = _finite_text(row.get('model'))
             if name:
                 by_model[name] = by_model.get(name, 0) + 1
+            project_key = row.get('projectKey')
+            project_label = _finite_text(row.get('projectLabel'), 80)
+            if (isinstance(project_key, str) and len(project_key) == 64 and
+                    all(char in '0123456789abcdef' for char in project_key) and project_label):
+                by_project[(project_key, project_label)] = by_project.get((project_key, project_label), 0) + 1
         today = int(self.clock() // 86400)
         days = []
         for day in range(today - 6, today + 1):
@@ -149,7 +161,9 @@ class LocalSampleStore:
             'models': sorted(by_model, key=lambda key: (-by_model[key], key))[:6],
             'weekly': {'timezone': 'UTC', 'days': days,
                        'modelCounts': [{'model': name, 'samples': count} for name, count in
-                                       sorted(by_model.items(), key=lambda item: (-item[1], item[0]))[:6]]},
+                                       sorted(by_model.items(), key=lambda item: (-item[1], item[0]))[:6]],
+                       'projectCounts': [{'project': label, 'samples': count} for (_, label), count in
+                                         sorted(by_project.items(), key=lambda item: (-item[1], item[0][1]))[:6]]},
         }
 
     def enrich_quota(self, quota, now=None):

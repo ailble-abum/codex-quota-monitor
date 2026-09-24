@@ -39,3 +39,9 @@
 - Chromium/WebKit 的 `verify_mount.cjs` 通过通知开关启用、关闭、持久化与未配置时禁用；临时 Chromium 的 `verify_live.cjs` 通过双次浏览器重启恢复与信号清理。
 - 新临时目录执行 `build_panel.py`、`install_preview.py`、`audit_release.py`，64 个文件中 63 个均有摘要，状态为 `audited`；consumer 摘要为 `2059870aef48a83bfb32f190c612f324f4421048fe6c0108cb5f88ec68e81677`。
 - 未向真实通知中心发送消息，也未改动真实 Codex 或现用监视器。正式版门槛仍有真实原生安装/恢复、素材来源审查、Windows 范围确认及签名/公证决策。
+
+## 2026-09-24 七日报告复核
+
+- Python 3.9 全套 185 项通过；包括已验证任务的项目标签提取、身份冲突清空、账户隔离、7 个 UTC 日汇总和项目/模型采样次数。
+- Chromium/WebKit 面板挂载测试通过报告文本节点显示和 HTML 注入抑制。独立临时目录包经构建、安装和静态审计通过：64 个文件中 63 个有摘要，consumer 为 `3f259eb39bdaad462207bf38b3bd75097dbe7bad6210fa5c1fa753bdc47f93dc`。
+- 这仍是采样报告，不代表逐请求、逐 token 的完整用量周报；真实 Codex 原生展示尚未验收。

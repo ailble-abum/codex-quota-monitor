@@ -13,15 +13,18 @@ class HistoryStoreTests(unittest.TestCase):
             store = LocalSampleStore(directory, clock=lambda: now[0])
             one = {'accountKey': 'a' * 64, 'windows': []}
             two = {'accountKey': 'b' * 64, 'windows': []}
-            store.record(one, {'latest_context_percent': 20}, {}, 'model-one')
+            project = {'projectKey': 'c' * 64, 'projectLabel': 'My Project'}
+            store.record(one, {'latest_context_percent': 20, **project}, {}, 'model-one')
             now[0] += 60
             store.record(two, {'latest_context_percent': 99}, {}, 'model-two')
             now[0] += 86400
-            report = store.record(one, {'latest_context_percent': 80}, {}, 'model-one')['weekly']
+            report = store.record(one, {'latest_context_percent': 80, **project}, {}, 'model-one')['weekly']
             self.assertEqual(report['timezone'], 'UTC')
             self.assertEqual(len(report['days']), 7)
             self.assertEqual(sum(day['samples'] for day in report['days']), 2)
             self.assertEqual(report['modelCounts'], [{'model': 'model-one', 'samples': 2}])
+            self.assertEqual(report['projectCounts'], [{'project': 'My Project', 'samples': 2}])
+            self.assertNotIn('/private/', Path(directory, 'history.json').read_text())
             self.assertEqual(report['days'][-1]['peakContext'], 80)
             store.rows.append({'at': now[0], 'accountKey': 'a' * 64, 'model': {'bad': 'row'}})
             self.assertEqual(store.summary('a' * 64)['weekly']['modelCounts'],
