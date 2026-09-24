@@ -14,6 +14,23 @@ def number(value, low=0, high=8.64e12):
     return type(value) in (int, float) and low <= value <= high and math.isfinite(value)
 
 
+def project_usage(raw):
+    if not isinstance(raw, dict):
+        return None
+    summary = raw.get('summary')
+    lifetime = summary.get('lifetimeTokens') if isinstance(summary, dict) else None
+    buckets = []
+    for item in raw.get('dailyUsageBuckets', []) if isinstance(raw.get('dailyUsageBuckets'), list) else []:
+        if isinstance(item, dict) and number(item.get('tokens')):
+            day = item.get('startDate')
+            buckets.append({'tokens': item['tokens'], 'startDate': day}
+                           if isinstance(day, str) and len(day) <= 32 else {'tokens': item['tokens']})
+    if not buckets and not number(lifetime):
+        return None
+    return {'dailyUsageBuckets': buckets[-90:],
+            'summary': {'lifetimeTokens': lifetime} if number(lifetime) else {}}
+
+
 def project(raw, *, now):
     """Only the codex bucket, known numeric fields and bounded plan text reach UI."""
     if not isinstance(raw, dict):
@@ -53,21 +70,18 @@ def project(raw, *, now):
     # Preserve an explicit server block even if percentages look available.
     blocked = limits.get('rateLimitReachedType')
     result['ordinaryUsageAllowed'] = not bool(blocked) and not any(w['remaining'] == 0 for w in windows)
-    usage = raw.get('usage')
-    if isinstance(usage, dict):
-        buckets = []
-        for bucket in usage.get('dailyUsageBuckets', []):
-            if isinstance(bucket, dict) and number(bucket.get('tokens')):
-                buckets.append({'tokens': bucket['tokens']})
-        summary = usage.get('summary')
-        lifetime = summary.get('lifetimeTokens') if isinstance(summary, dict) else None
-        if buckets or number(lifetime):
-            result['usage'] = {'dailyUsageBuckets': buckets[:31], 'summary': {}}
-            if number(lifetime):
-                result['usage']['summary']['lifetimeTokens'] = lifetime
-    credits = raw.get('resetCredits')
+    usage = project_usage(raw.get('usage'))
+    if usage is not None:
+        result['usage'] = usage
+    credits = raw.get('rateLimitResetCredits', raw.get('resetCredits'))
     if isinstance(credits, dict):
         available, expiry = credits.get('availableCount'), credits.get('nextExpiresAt')
+        rows = credits.get('credits')
+        if isinstance(rows, list):
+            expiries = [item.get('expiresAt') for item in rows if isinstance(item, dict)
+                        and item.get('status') == 'available' and number(item.get('expiresAt'))]
+            if expiries:
+                expiry = min(expiries)
         if (type(available) is int and 0 <= available <= 10000 and
                 (expiry is None or number(expiry))):
             result['resetCredits'] = {'availableCount': available}
@@ -108,7 +122,17 @@ async def read_account(command, *, timeout=12):
         await response(1)
         await send({'method': 'initialized'})
         await send({'id': 2, 'method': 'account/rateLimits/read'})
-        return project(await response(2), now=time.time())
+        quota = project(await response(2), now=time.time())
+        if quota['status'] != 'live':
+            return quota
+        try:
+            await send({'id': 3, 'method': 'account/usage/read'})
+            usage = project_usage(await asyncio.wait_for(response(3), 3))
+            if usage is not None:
+                quota['usage'] = usage
+        except (OSError, ValueError, asyncio.TimeoutError):
+            pass
+        return quota
     try:
         return await asyncio.wait_for(exchange(), timeout)
     except FileNotFoundError:

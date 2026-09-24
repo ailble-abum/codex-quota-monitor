@@ -38,11 +38,30 @@ assert json.loads(input())['method']=='initialized'
 request=json.loads(input()); assert request['method']=='account/rateLimits/read'
 print(json.dumps({'method':'noise','params':{'secret':'hidden'}}),flush=True)
 print(json.dumps({'id':request['id'],'result':{'rateLimits':{'primary':{'usedPercent':42}}}}),flush=True)
-input()
+request=json.loads(input()); assert request['method']=='account/usage/read'
+print(json.dumps({'id':request['id'],'result':{'summary':{'lifetimeTokens':321,'secret':'hidden'},'dailyUsageBuckets':[{'startDate':'2026-09-24','tokens':12,'secret':'hidden'}]}}),flush=True)
 ''')
             result = await account.read_account([sys.executable, str(script)], timeout=2)
             self.assertEqual(result['windows'][0]['remaining'], 58)
+            self.assertEqual(result['usage']['summary']['lifetimeTokens'], 321)
+            self.assertEqual(result['usage']['dailyUsageBuckets'][0]['startDate'], '2026-09-24')
             self.assertNotIn('hidden', json.dumps(result))
+
+    async def test_usage_error_does_not_clear_valid_quota(self):
+        with tempfile.TemporaryDirectory() as directory:
+            script = Path(directory) / 'server.py'
+            script.write_text('''import json
+request=json.loads(input())
+print(json.dumps({'id':request['id'],'result':{}}),flush=True)
+input()
+request=json.loads(input())
+print(json.dumps({'id':request['id'],'result':{'rateLimits':{'primary':{'usedPercent':35}}}}),flush=True)
+request=json.loads(input())
+print(json.dumps({'id':request['id'],'error':{'code':-1}}),flush=True)
+''')
+            result = await account.read_account([sys.executable, str(script)], timeout=2)
+            self.assertEqual(result['windows'][0]['remaining'], 65)
+            self.assertNotIn('usage', result)
 
     async def test_timeout_and_missing(self):
         result = await account.read_account([sys.executable, '-c', 'import time; time.sleep(20)'], timeout=.1)
@@ -98,6 +117,14 @@ input()
                                            'summary': {'lifetimeTokens': 456}})
         self.assertEqual(result['resetCredits'], {'availableCount': 2, 'nextExpiresAt': 2000})
         self.assertEqual(result['budget'], {'kind': 'exhaust', 'seconds': 90})
+
+    def test_current_reset_credit_field_uses_available_expiry(self):
+        result = account.project({'rateLimits': {'primary': {'usedPercent': 25}},
+            'rateLimitResetCredits': {'availableCount': 2, 'credits': [
+                {'status': 'redeemed', 'expiresAt': 1000},
+                {'status': 'available', 'expiresAt': 3000},
+                {'status': 'available', 'expiresAt': 2000}]}}, now=1000)
+        self.assertEqual(result['resetCredits'], {'availableCount': 2, 'nextExpiresAt': 2000})
 
     def test_large_numbers_and_explicit_block(self):
         for percent in (10**400, -1, 101, '25', None):

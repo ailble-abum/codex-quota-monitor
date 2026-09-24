@@ -4,7 +4,9 @@
 
 ## 接口与复用依据
 
-核查 [OpenAI App Server 官方文档](https://developers.openai.com/zh-Hans/docs/app-server) 的初始化与账户速率限制章节，并检查本机 Codex 的 `app-server --help`。复用官方 stdio JSON 协议，以 Python 标准库 asyncio 驱动，不引入第三方账户 SDK，不复制旧 quota_reader 实现。只发送 initialize、initialized、account/rateLimits/read；不创建模型轮次，不登录、退出或消耗重置额度。
+核查 [OpenAI App Server 官方文档](https://developers.openai.com/zh-Hans/docs/app-server) 的初始化与账户速率限制章节，并检查本机 Codex 的 `app-server --help`。复用官方 stdio JSON 协议，以 Python 标准库 asyncio 驱动，不引入第三方账户 SDK，不复制旧 quota_reader 实现。本阶段先发送 initialize、initialized、account/rateLimits/read；不创建模型轮次，不登录、退出或消耗重置额度。
+
+2026-09-24 后续：V2 在额度读取成功后增加 `account/usage/read` 官方活动请求。活动读取失败或 3 秒超时不清除额度；只投影有界的每日 Token 数和 lifetimeTokens，不把原始响应或账户 ID 传入页面。当前 [OpenAI app-server 协议](https://github.com/openai/codex/blob/main/codex-rs/app-server-protocol/schema/typescript/v2/GetAccountRateLimitsResponse.ts) 将可用重置额度放在 `rateLimitResetCredits`；V2 从 available 记录求最近有效期，仍兼容旧测试数据的 `resetCredits` 字段。独立 stdio 合成服务覆盖双请求、噪声通知和活动请求失败回退；真实账户读数及界面验收仍需单独完成。
 
 多桶响应只选 codex；缺少该桶时不取其他桶冒充。仅旧格式响应回退 rateLimits。窗口时长保持分钟，缺失 5h 不合成；未知数值不可用。只向 renderer 传递白名单字段，丢弃原始账户、信用额度 ID 和其他未支持字段。保留服务端明确的限额阻断。
 
