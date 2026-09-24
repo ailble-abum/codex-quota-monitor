@@ -98,3 +98,9 @@
 - 普通终端用 `rc.2` 测试仍返回 `service_error`，旧版被自动恢复。随后捕获 `launchctl` 的安全错误字段，确认 V2 将默认用户域误写成了函数对象；修正为数值用户 ID，并补测试。`rc.3` 已能加载服务，但后台进程未持续运行；检查发现安装器把虚拟环境 Python 的符号链接解析成系统解释器，导致缺少依赖。修正后补虚拟环境路径测试。
 - Python 3.9 全套 196 项及 Swift typecheck 通过。用新隔离预览 `季二六软件项目-V2验收包-20260924-r7` 生成 `rc.4` ZIP，SHA-256 为 `dc9004e8f4aab5a92e353ac08e5af1310f9018f7498efb6ba9b5feca6f92b26d`；预览审计、ZIP 完整性通过。
 - 本机停止旧版后，`rc.4` 的 LaunchAgent 成功注册并保持 `running`，`doctor` 返回 `service=running`、`config=valid`、`panel=updated`，菜单栏 LaunchAgent 注册并报告 `running`。当前 V2 正在运行，旧版服务和菜单栏均停止。菜单栏实际可见性、Codex 正常退出重开、重新登录恢复和完整回退仍待核对；当前不能标记正式发布。
+
+## 2026-09-24 macOS v2.0.0 正式发行
+
+- 用户确认面板和菜单栏实际可见，正常退出并重开 Codex、重新登录 Mac 后均正常。回退测试卸载 V2 的菜单栏与主服务，确认两标签未安装，再核对旧版服务、菜单栏、面板与 injector 正常；随后重新安装 V2，`doctor` 与菜单栏服务状态再次通过。
+- Python 3.9 全套 198 项、Swift 类型检查、正式 ZIP 解压审计、CLI 帮助、菜单栏双架构检查、合成 Chromium 运行链和 Chromium/WebKit 面板挂载通过。发行 ZIP SHA-256：`963eea8a881f86eb7bd0f35838ddeb4bd9ada94026e3cde71940f71d3dbd6a7f`。
+- GitHub [v2.0.0 正式 Release](https://github.com/ailble-abum/codex-quota-monitor/releases/tag/v2.0.0) 已发布，下载资产与本地构建逐字节一致，SHA256SUMS 校验通过。仓库默认分支为 `v2`，旧版 `main` 保留。Intel Mac、Windows、签名与公证未验收。

@@ -7,3 +7,5 @@
 `rc.4` 归档已在独立临时目录解压复核：文件审计、CLI 帮助命令和 Swift 类型检查通过。`rc.2` 曾通过合成 Chromium 运行链；`rc.4` 的运行源码修正仅涉及服务安装路径。`rc.4` 已通过真实 Codex 服务 `doctor` 和菜单栏 LaunchAgent 状态检查；菜单栏可见性、应用退出重开及重新登录恢复仍按发行门槛单独验收。
 
 该工具为正式发行准备可重复的输入，但不会创建 tag、推送 release、修改 `main` 或注册系统服务。只有 [macOS 原生验收门槛](mac-release-gate.md) 通过后，才可决定最终版本号、重建发行内容并发布。
+
+2026-09-24 原生验收完成后，正式版已由独立的 `tools/package_release.py` 重新构建并发布为 [v2.0.0](https://github.com/ailble-abum/codex-quota-monitor/releases/tag/v2.0.0)。候选包和此页仍用于追溯发行前验证，不应作为正式下载入口。
