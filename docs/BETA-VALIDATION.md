@@ -52,3 +52,8 @@
 - 未注册 LaunchAgent、未读取真实历史文件；原生菜单可见性和服务集成仍需验收。
 - 后续用独立临时目录中的合成 `history.json` 启动 `--run`，进程保持运行 2 秒且无 stderr，然后发送 SIGTERM 退出。此项只确认 AppKit 程序可启动，不包含真实菜单可见性或 Codex 集成验证。
 - 隔离服务测试用临时 plist、合成配置与模拟 `launchctl` 验证菜单栏注册、状态、卸载及主服务卸载顺序；未注册真实 LaunchAgent。
+
+## 2026-09-24 本机 launchd 加载尝试
+
+- 确认当前用户域没有 `local.codex-quota-monitor-v2` 后，用独立临时目录、合成 `.app` 和空会话目录执行一次真实 `Service.install`；`launchctl bootstrap` 返回 `bootstrap_failed`。安装器移除了刚创建的 plist，后续只读 `launchctl print` 确认该标签不存在。
+- 按仓库维护说明，本会话不重复尝试注册。需要在用户的普通终端对隔离预览包执行服务加载/`doctor`，并分别核对菜单栏、真实 Codex 面板与退出恢复；此处不能把模拟命令通过当作原生验收。
