@@ -458,6 +458,14 @@ const {chromium, webkit} = require('playwright');
       payload.update = {status:'checking'};
       await publish();
       assert.equal(await page.locator('[data-update-check]').isDisabled(), true);
+      assert.equal(await page.locator('[data-update] [role="alertdialog"]').count(), 1);
+      payload.update = {status:'update_available',latestSemver:'2.0.2',
+        url:'https://example.test/release',installable:true};
+      await publish();
+      assert.ok((await page.locator('[data-update] [role="alertdialog"]').textContent()).includes('2.0.2'));
+      await page.locator('[data-update-install]').click();
+      assert.equal(await call({...base, action:'updateInstall'}), true);
+      assert.equal(await call({...base, action:'updateInstall'}), false);
       if(process.argv[3]) {
         await page.addStyleTag({content: ':root{color-scheme:light dark}body{background:Canvas}'});
         for(const colorScheme of ['light','dark']) {

@@ -126,8 +126,16 @@
         queueMicrotask(() => button.removeAttribute('aria-busy'));
       } else if (button.hasAttribute('data-update-check')) {
         window.__quotaMonitorV2UpdateCheckRequested = true;
+        panel.querySelector('[data-update]').dataset.prompt = 'waiting';
         button.disabled = true;
         button.textContent = uiLanguage() === 'zh' ? '检测中…' : 'Checking…';
+      } else if (button.hasAttribute('data-update-install')) {
+        window.__quotaMonitorV2UpdateInstallRequested = true;
+        panel.querySelector('[data-update]').dataset.prompt = 'installing';
+        applyAll(window.__codexContextTokenInspectorPayload);
+      } else if (button.hasAttribute('data-update-dismiss')) {
+        panel.querySelector('[data-update]').dataset.prompt = '';
+        applyAll(window.__codexContextTokenInspectorPayload);
       } else if (button.hasAttribute('data-cti-unit')) {
         event.preventDefault();
         event.stopPropagation();

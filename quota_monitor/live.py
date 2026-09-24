@@ -203,6 +203,7 @@ def main():
         config = load_config(args.config)
         from .runtime import UpdateLoop
         loop = UpdateLoop(**config)
+        loop.install_config = Path(args.config).resolve()
     except ModuleNotFoundError:
         emit('error', error=True, status='dependency_unavailable')
         return 2

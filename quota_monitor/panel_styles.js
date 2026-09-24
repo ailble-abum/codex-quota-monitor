@@ -72,6 +72,12 @@
       #codex-context-token-inspector-root .cti-line,
       #codex-context-token-inspector-root .cti-source-row,
       #codex-context-token-inspector-root .cti-update-row { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+      #codex-context-token-inspector-root .cti-update-prompt {
+        margin-top:8px; padding:10px; border:1px solid Highlight; border-radius:9px;
+        background:color-mix(in srgb,Highlight 10%,Canvas);
+      }
+      #codex-context-token-inspector-root .cti-update-prompt p { margin:0 0 8px; }
+      #codex-context-token-inspector-root .cti-update-prompt button { width:auto; height:auto; margin-right:8px; }
       #codex-context-token-inspector-root .cti-value { font-variant-numeric:tabular-nums; font-weight:700; }
       #codex-context-token-inspector-root .cti-metrics { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:8px; }
       #codex-context-token-inspector-root .cti-metric { display:grid; padding:7px; border-radius:8px; background:color-mix(in srgb,CanvasText 6%,transparent); }

@@ -5,6 +5,8 @@ import ipaddress
 import json
 import math
 import socket
+import subprocess
+import time
 import sys
 import threading
 import uuid
@@ -22,7 +24,7 @@ from .host_follow import HostFollower
 from .local_samples import LocalSampleStore
 from .notifications import QuotaNotifier
 from .runtime_marker import StatusStore
-from .update_state import CURRENT_VERSION, UpdateSource
+from .update_state import CURRENT_VERSION, RELEASE_API, UpdateSource
 
 
 _PAGE_BRIDGE = Path(__file__).with_name('page_bridge.js').read_text(encoding='utf-8')
@@ -126,7 +128,8 @@ class UpdateLoop:
         self.history = LocalSampleStore(history_root) if history_root is not None else None
         self.notifier = QuotaNotifier(notification_root) if notification_root is not None else None
         self.status_store = StatusStore(status_root) if status_root is not None else None
-        self.update = UpdateSource(update_url, current=version)
+        self.update = UpdateSource(update_url or RELEASE_API, current=version)
+        self.install_config = None
         self.host = host
         if type(panel) is not bool:
             raise ValueError('invalid panel mode')
@@ -223,6 +226,36 @@ class UpdateLoop:
             update_requested = await self.client.evaluate(page_expression(
                 action='updateCheck', expected=self.page_url, key=key, host=self.host))
             payload['update'] = self.update.snapshot(force=update_requested is True)
+            if payload['update'].get('status') == 'update_available':
+                from .service import Service
+                payload['update']['installable'] = (sys.platform == 'darwin' and
+                    self.install_config is not None and self.update.url == RELEASE_API and
+                    Service()._owned())
+                if self.install_config is not None:
+                    try:
+                        result = self.install_config.parent / '.quota-update-result.json'
+                        if result.stat().st_size <= 1024:
+                            outcome = json.loads(result.read_text())
+                            if (outcome.get('status') == 'failed' and
+                                    outcome.get('version') == payload['update'].get('latestSemver') and
+                                    0 <= time.time() - outcome.get('at', 0) < 600):
+                                payload['update']['installStatus'] = 'failed'
+                    except (OSError, ValueError, TypeError, AttributeError):
+                        pass
+            install_requested = await self.client.evaluate(page_expression(
+                action='updateInstall', expected=self.page_url, key=key, host=self.host))
+            if install_requested is True and self.install_config is not None and self.update.url == RELEASE_API:
+                latest = payload['update'].get('latestSemver')
+                if payload['update'].get('status') == 'update_available' and latest:
+                    try:
+                        (self.install_config.parent / '.quota-update-result.json').unlink(missing_ok=True)
+                        subprocess.Popen([sys.executable, '-m', 'quota_monitor.self_update',
+                                          '--version', latest, '--config', str(self.install_config)],
+                                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                                         stderr=subprocess.DEVNULL, start_new_session=True,
+                                         cwd=str(Path(__file__).resolve().parent.parent))
+                    except OSError:
+                        payload['update']['installStatus'] = 'failed'
             payload['notificationsAvailable'] = self.notifier is not None and sys.platform == 'darwin'
             if self.history is not None:
                 selected = {}

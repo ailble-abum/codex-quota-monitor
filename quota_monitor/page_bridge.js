@@ -68,6 +68,12 @@
         return requested;
     }
 
+    if (options.action === 'updateInstall') {
+        const requested = window.__quotaMonitorV2UpdateInstallRequested === true;
+        try { delete window.__quotaMonitorV2UpdateInstallRequested; } catch (_) {}
+        return requested;
+    }
+
     if (options.action === 'notificationPreference') {
         try { return localStorage.getItem('cti-alerts') === 'true'; }
         catch (_) { return false; }
