@@ -8,4 +8,6 @@
 
 发布后从公开 GitHub 发行页重新下载 ZIP、`SHA256SUMS` 与 `RELEASE.json`；SHA-256 校验通过，发行清单记录来源提交 `fcf0852bb3fea9a8f0e977a5fe6bd17ab3117d9c` 和 69 个文件，正式标签指向同一提交。发行页包含三个预期文件，状态为正式版。
 
+另将公开 ZIP 解压到独立临时目录，以合成账户响应执行包内 `account.project` → `LocalSampleStore.record` → 通用 `QuotaMenu --report`。输出包含 5 小时和 7 天额度、重置时间、上下文 42%、最近日用量 1,234 与累计活动 5,678；没有读取真实账户或会话。
+
 待验证：真实 macOS 菜单画面、Windows 真机、签名和公证。
