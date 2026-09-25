@@ -70,6 +70,8 @@
       #codex-context-token-inspector-root fieldset { border:0; margin:0; padding:0; }
       #codex-context-token-inspector-root legend { margin-bottom:4px; font-weight:650; }
       #codex-context-token-inspector-root .cti-muted { color:color-mix(in srgb,CanvasText 64%,transparent); }
+      #codex-context-token-inspector-root [data-history],
+      #codex-context-token-inspector-root [data-explanation] { overflow-wrap:anywhere; }
       #codex-context-token-inspector-root .cti-line,
       #codex-context-token-inspector-root .cti-source-row,
       #codex-context-token-inspector-root .cti-update-row { display:flex; align-items:center; justify-content:space-between; gap:8px; }

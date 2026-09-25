@@ -111,6 +111,16 @@ const {chromium, webkit} = require('playwright');
       assert.ok((await page.locator('[data-history]').textContent()).includes('模型采样次数'));
       assert.ok((await page.locator('[data-history]').textContent()).includes('项目采样次数'));
       assert.equal(await page.locator('[data-history] b').count(), 0);
+      payload.history.weekly.projectCounts = [{project: 'p'.repeat(80), samples: 2}];
+      payload.summaries[0].model = 'm'.repeat(128);
+      await publish();
+      for (const selector of ['[data-history]', '[data-explanation]'])
+        assert.ok(await page.locator(selector).evaluate(node => node.scrollWidth <= node.clientWidth + 1),
+          `${selector} must wrap long names instead of clipping them`);
+      if (process.argv[3]) {
+        fs.mkdirSync(process.argv[3], {recursive: true});
+        await page.locator('[data-history]').screenshot({path:path.join(process.argv[3],`${engine.name()}-long-history.png`)});
+      }
 
       payload.healthThreadId = 'one';
       payload.health = {count: 2, after: 500, afterPercent: 50, recommendHandoff: true, reason: 'baseline'};
