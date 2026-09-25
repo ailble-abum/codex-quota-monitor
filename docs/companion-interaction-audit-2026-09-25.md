@@ -23,6 +23,8 @@
 2. 六款六表情已入库并通过 48 CSS px 与隔离 Chromium/WebKit 换帧检查；五款补充资源的生成和每格手部核查见独立记录。落地已有原生 CSS 弹跳反馈，仍需在真实 UI 检查可辨认度。
 3. 合成会话与隔离候选中的提醒链路已验证。后续分别做真实 macOS UI、Windows 真机和发行验收；每层单独记录结果。
 
+2026-09-26 续轮：多指归属与取消拖动的合成触控回归通过，正式包已随 [v2.0.10](https://github.com/ailble-abum/codex-quota-monitor/releases/tag/v2.0.10) 发布并校验。真实 Codex UI 的计算机操作接口不允许访问该应用，因此本轮未将其计为通过；Windows 与真实触控设备仍待验收。
+
 ## 复用选型
 
 现有 Pointer Events、CSS、六帧 WebP 和项目状态机直接满足本轮修复，不增加运行时依赖。[MDN Pointer Events](https://developer.mozilla.org/en-US/docs/Web/API/Pointer_events) 文档说明捕获及取消语义；[MDN reduced motion](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/%40media/prefers-reduced-motion) 提供系统降低动效入口。两者是文档核对，项目内指针链路已按源码核对及纯函数测试验证，真实 macOS UI 未验证。
