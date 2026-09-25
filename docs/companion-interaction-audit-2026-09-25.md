@@ -28,3 +28,9 @@
 现有 Pointer Events、CSS、六帧 WebP 和项目状态机直接满足本轮修复，不增加运行时依赖。[MDN Pointer Events](https://developer.mozilla.org/en-US/docs/Web/API/Pointer_events) 文档说明捕获及取消语义；[MDN reduced motion](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/%40media/prefers-reduced-motion) 提供系统降低动效入口。两者是文档核对，项目内指针链路已按源码核对及纯函数测试验证，真实 macOS UI 未验证。
 
 候选动画运行时 [Rive WASM](https://github.com/rive-app/rive-wasm)（仓库文档称 MIT）和 [dotLottie Web](https://github.com/LottieFiles/dotlottie-web)（包清单称 MIT）均可支持更丰富动画，但需要新素材格式、包体和嵌入兼容性验证；本轮未集成，也未做场景验证。只有在静态帧与原生 CSS 无法达到批准的动作规格时，才对候选做最小宿主探针。保留现有资源来源与 LICENSE/NOTICE；不以新素材或新目录推断独立著作权。
+
+## 六表情素材小样与入库门槛
+
+2026-09-25 使用内置 imagegen，以现有 candy WebP 为身份参考生成六格小样，要求每格仅一只可见的手、同一右侧探出姿势、六种表情、透明背景。第一张候选 SHA-256 `305c369cb5003a069f4fcf212c7f7046aa5218f46d9010e164d85e792a3c7121`：目视未见多手，但有悬浮符号，且文件为 RGB 黑底。第二次用内置编辑要求去除符号及背景，候选 SHA-256 `d7a341f7cd51f5edc45f6588092ce2f64700d303894d55af0742d78dffab451b`：仍为 RGB，棋盘格已烘焙进像素。两张均未入库、未接入 renderer；不能将棋盘格视觉当作实际透明。
+
+后续素材必须先通过 `tools/validate_companion_atlas.py` 的 1536×1024 RGBA、六格非空、透明角、六帧互异检查，再由人逐格检查手/爪的数量和连接关系、脸部一致性、无悬浮符号、48 CSS px 可辨认度。自动脚本**不能**识别多手，人工复核不通过的图不导出。此次小样失败后未扩到另外四款，避免批量制造不合格资源。生成提示与候选 SHA 固定在本段；正式入库时还须记录最终原图、提示、导出参数与哈希。
