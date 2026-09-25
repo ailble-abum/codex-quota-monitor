@@ -4,4 +4,7 @@
 
 - 旧样式下 80 字符连续项目名使历史区横向溢出；修复后 Chromium/WebKit 的 80 字符项目名与 128 字符模型名均保持在内容宽度内，已目检截图。
 - Python 3.9 全套 208 项测试、样式与布局检查、Chromium/WebKit 挂载回归及 Swift 类型检查通过。
+- 通用菜单程序包含 arm64 和 x86_64；发行包含 69 个文件，包内清单审计及 SHA-256 校验通过。包内 consumer 的 Chromium/WebKit 挂载回归通过。
 - 真实 macOS Codex 窗口、Windows 真机、签名和公证未在本轮验收。
+
+发布后从公开 GitHub 发行页重新下载 ZIP、`SHA256SUMS` 和 `RELEASE.json`，摘要校验通过；来源提交 `5a87cd9890957c3fc9be54071e54be2273f4738b` 与正式标签一致，发行页包含三个预期文件。
