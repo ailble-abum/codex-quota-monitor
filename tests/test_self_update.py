@@ -47,7 +47,7 @@ class SelfUpdateTests(unittest.TestCase):
         return output.getvalue()
 
     def test_official_release_download_and_extract(self):
-        version = '2.0.10'
+        version = '2.0.11'
         archive = self.bundle(version)
         name = 'codex-quota-monitor-v{}-macos.zip'.format(version)
         base = 'https://github.com/ailble-abum/codex-quota-monitor/releases/download/v{}/'.format(version)

@@ -97,7 +97,8 @@ class PanelBuildTests(unittest.TestCase):
         self.assertIn('[data-dragging="true"] { transition:none; }', styles)
         self.assertIn('root.style.left = `${x}px`; root.style.top = `${y}px`', layout)
         self.assertIn('if (gesture.moved) saveLayout(root)', layout)
-        self.assertIn('if (gesture.moved) saveLayout(root)', companion)
+        self.assertIn('if (gesture.moved && event.type === \'pointercancel\')', companion)
+        self.assertIn('} else if (gesture.moved) {\n        saveLayout(root);', companion)
         self.assertNotIn('saveLayout(root); applyStoredHudPosition(root)', companion)
 
     def test_compact_bar_hover_prefers_time_budget(self):

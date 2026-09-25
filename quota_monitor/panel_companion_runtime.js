@@ -9,10 +9,13 @@
     mascot.addEventListener('focus', () => revealDock(root));
     mascot.addEventListener('blur', () => scheduleDockHide(root));
     mascot.addEventListener('pointerdown', event => {
-      if (event.button !== 0 || root.dataset.docked !== 'true') return;
+      if (event.button !== 0 || root.dataset.docked !== 'true' || mascot.__ctiGesture) return;
       clearDockHide(root);
       const rect = mascot.getBoundingClientRect();
-      mascot.__ctiGesture = {pointerY:event.clientY, top:rect.top, moved:false, x:event.clientX, y:event.clientY,
+      const layoutMode = hudMode(root);
+      mascot.__ctiGesture = {pointerId:event.pointerId, pointerY:event.clientY, top:rect.top, moved:false,
+        layoutMode, layout:root.__ctiLayout[layoutMode] ? {...root.__ctiLayout[layoutMode]} : null,
+        x:event.clientX, y:event.clientY,
         at:performance.now(), head:companionPreference('motion') && event.clientY < rect.top + rect.height * 0.6};
       clearTimeout(mascot.__ctiPetTimer);
       mascot.__ctiPetTimer = setTimeout(() => {
@@ -23,7 +26,7 @@
     });
     mascot.addEventListener('pointermove', event => {
       const gesture = mascot.__ctiGesture;
-      if (!gesture) return;
+      if (!gesture || event.pointerId !== gesture.pointerId) return;
       const action = companionGesture(gesture, event.clientX, event.clientY, performance.now());
       if (action === 'pet') { gesture.mode = 'pet'; clearTimeout(mascot.__ctiPetTimer); event.preventDefault(); companionReact(root, 'pet'); return; }
       if (action === 'drag') { gesture.mode = 'drag'; clearTimeout(mascot.__ctiPetTimer); }
@@ -31,16 +34,21 @@
         root.getBoundingClientRect().height, 48 * mascotScale());
       if (!next.moved) return;
       gesture.moved = true; event.preventDefault();
-      const mode = hudMode(root);
-      root.__ctiLayout[mode] = {...(root.__ctiLayout[mode] || {}), y:next.y};
+      root.__ctiLayout[gesture.layoutMode] = {...(root.__ctiLayout[gesture.layoutMode] || {}), y:next.y};
       applyStoredHudPosition(root);
     });
     const end = event => {
       const gesture = mascot.__ctiGesture;
-      if (!gesture) return;
+      if (!gesture || event.pointerId !== gesture.pointerId) return;
       mascot.__ctiGesture = null; clearTimeout(mascot.__ctiPetTimer);
-      if (gesture.moved) saveLayout(root);
-      if (gesture.moved) companionReact(root, 'land');
+      if (gesture.moved && event.type === 'pointercancel') {
+        if (gesture.layout) root.__ctiLayout[gesture.layoutMode] = gesture.layout;
+        else delete root.__ctiLayout[gesture.layoutMode];
+        applyStoredHudPosition(root);
+      } else if (gesture.moved) {
+        saveLayout(root);
+        companionReact(root, 'land');
+      }
       if (gesture.moved || gesture.mode === 'pet') mascot.__ctiSuppressClickUntil = performance.now() + 400;
       try { mascot.releasePointerCapture(event.pointerId); } catch (_) {}
     };

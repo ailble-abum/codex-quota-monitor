@@ -531,6 +531,34 @@ const {chromium, webkit} = require('playwright');
       await nova.evaluate(node => node.dispatchEvent(new PointerEvent('pointercancel', {pointerId: 1, bubbles: true})));
       assert.equal(await nova.evaluate(node => node.__ctiGesture), null, 'cancel must clear gesture');
       await page.mouse.up();
+      const multiTouch = await nova.evaluate(node => {
+        const root = document.querySelector('.cti-hud');
+        const before = JSON.stringify(root.__ctiLayout);
+        const box = node.getBoundingClientRect();
+        const x = box.x + box.width / 2, y = box.y + 8;
+        const capture = node.setPointerCapture, release = node.releasePointerCapture;
+        node.setPointerCapture = () => {}; node.releasePointerCapture = () => {};
+        const send = (type, pointerId, delta = 0) => node.dispatchEvent(new PointerEvent(type,
+          {pointerId, pointerType:'touch', button:0, clientX:x, clientY:y + delta, bubbles:true}));
+        try {
+          send('pointerdown', 21);
+          send('pointerdown', 22);
+          send('pointermove', 22, 60);
+          send('pointerup', 22);
+          const secondaryIgnored = node.__ctiGesture?.pointerId === 21 &&
+            JSON.stringify(root.__ctiLayout) === before;
+          send('pointermove', 21, 60);
+          const ownerMoved = JSON.stringify(root.__ctiLayout) !== before;
+          send('pointercancel', 21);
+          return {secondaryIgnored, ownerMoved, cleared:node.__ctiGesture === null,
+            restored:JSON.stringify(root.__ctiLayout) === before, reaction:node.dataset.reaction};
+        } finally {
+          node.setPointerCapture = capture; node.releasePointerCapture = release;
+        }
+      });
+      assert.deepEqual(multiTouch, {secondaryIgnored:true, ownerMoved:true, cleared:true,
+        restored:true, reaction:multiTouch.reaction}, 'second touch must not own a gesture; cancellation must restore unsaved layout');
+      assert.notEqual(multiTouch.reaction, 'land', 'cancel must not trigger landing');
       for (const skin of ['candy', 'cat', 'corgi', 'frost', 'mint', 'tea']) {
         await page.evaluate(value => localStorage.setItem('cti-mascot-skin', value), skin);
         await publish();

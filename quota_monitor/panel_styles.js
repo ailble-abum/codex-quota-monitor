@@ -164,7 +164,7 @@
       #codex-context-token-inspector-mascot {
         position:fixed; z-index:2147483001; display:none; width:48px; height:52px; padding:0; border:0;
         --cti-safe:#70d4a6; --cti-watch:#8ab5ff; --cti-low:#ff929c;
-        background:transparent; transform:scale(var(--cti-mascot-scale,1)); transform-origin:top left;
+        background:transparent; transform:scale(var(--cti-mascot-scale,1)); transform-origin:top left; touch-action:none;
       }
       #codex-context-token-inspector-mascot[data-visible="true"] { display:block; }
       #codex-context-token-inspector-mascot .cti-mascot-art { width:48px; height:52px; object-fit:contain; }
