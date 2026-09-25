@@ -18,7 +18,7 @@ const source=fs.readFileSync(path.join(__dirname,'../quota_monitor/panel_diagnos
   }
   await render({update:{status:'up_to_date'}},language);assert.ok((await page.locator('[data-update]').textContent()).includes(language==='zh'?'最新':'Up to date'));
   await render({update:{status:'error'},dom:{sidebarRows:0,activeRow:false,conversationId:false}},language);
-  assert.equal(await page.locator('[data-update]').textContent(),'');assert.ok((await page.locator('[data-dom]').textContent()).includes(language==='zh'?'可能已更新':'may have changed'));
+  assert.equal(await page.locator('[data-update]').textContent(),language==='zh'?'检测更新':'Check for updates');assert.ok((await page.locator('[data-dom]').textContent()).includes(language==='zh'?'可能已更新':'may have changed'));
   await page.evaluate(()=>{window.previous=document.querySelector('[data-dom]').firstChild;});
   await render({update:{status:'error'},dom:{sidebarRows:0,activeRow:false,conversationId:false}},language);
   assert.equal(await page.evaluate(()=>window.previous===document.querySelector('[data-dom]').firstChild),true);

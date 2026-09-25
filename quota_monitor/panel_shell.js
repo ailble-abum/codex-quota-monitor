@@ -14,6 +14,7 @@
   const SKIN_KEY = 'cti-mascot-skin';
   const MASCOT_SCALE_KEY = 'cti-mascot-scale';
   const SKINS_OPEN_KEY = 'cti-skins-open';
+  const UPDATE_DISMISSED_KEY = 'cti-update-dismissed-version';
   const MASCOT_ID = 'codex-context-token-inspector-mascot';
   const runtimeChanged = true;
   // Only labels used by the V2 panel live here; host details own their own copy.

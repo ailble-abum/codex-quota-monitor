@@ -17,6 +17,22 @@
     const current = body.querySelector('[data-update]');
     if (current) {
       const next = current.cloneNode(false), update = payload.update || {status:'not_configured'};
+      const version = update.status === 'update_available' ? update.latestSemver : null;
+      const root = body.closest('.cti-hud');
+      let autoShow = false;
+      if (root && /^\d+\.\d+\.\d+$/.test(version || '') && !next.dataset.prompt &&
+          root.__ctiAutoUpdate !== version) {
+        let dismissed;
+        try { dismissed = localStorage.getItem(UPDATE_DISMISSED_KEY); } catch (_) {}
+        if (dismissed !== version) {
+          root.__ctiAutoUpdate = version;
+          next.dataset.prompt = 'show';
+          root.dataset.collapsed = 'false';
+          body.querySelector('[data-settings]').hidden = false;
+          root.querySelector('[data-settings-toggle]').setAttribute('aria-expanded', 'true');
+          autoShow = true;
+        }
+      }
       if (next.dataset.prompt === 'installing' && update.installStatus === 'failed') next.dataset.prompt = 'show';
       if (update.status === 'update_available' && typeof update.latestSemver === 'string' && update.latestSemver) {
         const row = document.createElement('div'); row.className = 'cti-update-row';
@@ -83,6 +99,10 @@
       }
       current.dataset.prompt = next.dataset.prompt || '';
       if (!current.isEqualNode(next)) current.replaceChildren(...next.childNodes);
+      if (autoShow) queueMicrotask(() => {
+        const prompt = current.querySelector('[role="alertdialog"]');
+        if (prompt?.isConnected) prompt.scrollIntoView({block:'nearest'});
+      });
     }
 
     const probe = payload.dom;

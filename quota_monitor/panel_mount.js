@@ -134,6 +134,11 @@
         panel.querySelector('[data-update]').dataset.prompt = 'installing';
         applyAll(window.__codexContextTokenInspectorPayload);
       } else if (button.hasAttribute('data-update-dismiss')) {
+        const update = window.__codexContextTokenInspectorPayload?.update;
+        const version = update?.status === 'update_available' ? update.latestSemver : null;
+        if (/^\d+\.\d+\.\d+$/.test(version || '')) {
+          try { localStorage.setItem(UPDATE_DISMISSED_KEY, version); } catch (_) {}
+        }
         panel.querySelector('[data-update]').dataset.prompt = '';
         applyAll(window.__codexContextTokenInspectorPayload);
       } else if (button.hasAttribute('data-cti-unit')) {
