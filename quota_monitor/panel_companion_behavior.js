@@ -13,6 +13,7 @@
   }
 
   function companionGesture(start, x, y, now) {
+    if (start.mode === 'pet') return 'pet';
     if (start.mode === 'drag') return 'drag';
     const distance = Math.hypot(x - start.x, y - start.y);
     if (start.head && distance < 14 && now - start.at >= 350) return 'pet';

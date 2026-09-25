@@ -6,6 +6,8 @@ assert.deepEqual(JSON.parse(JSON.stringify(context.companionHealth({healthThread
 assert.equal(context.companionHealth({healthThreadId:'two',health:{count:1}},'one'),null);
 const gesture={x:10,y:10,at:0,head:true};
 assert.equal(context.companionGesture(gesture,11,11,100),'click'); assert.equal(context.companionGesture(gesture,11,11,400),'pet'); assert.equal(context.companionGesture(gesture,20,10,100),'drag');
+assert.equal(context.companionGesture({...gesture,mode:'pet'},30,30,500),'pet');
+assert.equal(context.companionGesture({...gesture,mode:'drag'},11,11,500),'drag');
 let state={},step=context.companionStep(state,{live:true,account:'a',remaining:20,windows:[],thread:'t',ctx:84},1000);
 assert.equal(step.event,'quota-watch'); state=step.state;
 step=context.companionStep(state,{live:true,account:'a',remaining:10,windows:[],thread:'t',ctx:85},2000);

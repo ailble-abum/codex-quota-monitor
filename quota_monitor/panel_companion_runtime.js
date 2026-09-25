@@ -17,7 +17,7 @@
       clearTimeout(mascot.__ctiPetTimer);
       mascot.__ctiPetTimer = setTimeout(() => {
         const gesture = mascot.__ctiGesture;
-        if (gesture?.head && !gesture.moved) { gesture.mode = 'pet'; companionReact(root, 'pet'); }
+        if (gesture?.head && !gesture.moved && gesture.mode !== 'drag') { gesture.mode = 'pet'; companionReact(root, 'pet'); }
       }, 350);
       mascot.setPointerCapture(event.pointerId);
     });
@@ -25,7 +25,7 @@
       const gesture = mascot.__ctiGesture;
       if (!gesture) return;
       const action = companionGesture(gesture, event.clientX, event.clientY, performance.now());
-      if (action === 'pet') { gesture.mode = 'pet'; event.preventDefault(); companionReact(root, 'pet'); return; }
+      if (action === 'pet') { gesture.mode = 'pet'; clearTimeout(mascot.__ctiPetTimer); event.preventDefault(); companionReact(root, 'pet'); return; }
       if (action === 'drag') { gesture.mode = 'drag'; clearTimeout(mascot.__ctiPetTimer); }
       const next = mascotDragGeometry(gesture, event.clientY, window.innerHeight,
         root.getBoundingClientRect().height, 48 * mascotScale());
