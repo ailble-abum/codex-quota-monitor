@@ -174,6 +174,8 @@
       #codex-context-token-inspector-mascot:not([data-skin="cat"])[data-expression="waiting"] .cti-mascot-art { filter:grayscale(.4); }
       #codex-context-token-inspector-mascot:not([data-skin="cat"])[data-expression="notice"] .cti-mascot-art { filter:brightness(1.14); }
       #codex-context-token-inspector-mascot:not([data-skin="cat"])[data-motion="true"][data-expression="pet"] .cti-mascot-art { transform:translateY(-3px) rotate(-5deg); }
+      @keyframes cti-mascot-land { 0% { transform:translateY(-5px) scaleY(1.05); } 60% { transform:translateY(2px) scaleY(.92); } 100% { transform:none; } }
+      #codex-context-token-inspector-mascot[data-motion="true"][data-reaction="land"] .cti-mascot-art { animation:cti-mascot-land .42s ease-out; }
       #codex-context-token-inspector-mascot [data-gauge] {
         position:absolute; top:50%; transform:translateY(-50%); display:flex;
         flex-direction:column; gap:4px; width:7px;
@@ -220,7 +222,7 @@
       }
       @media (prefers-reduced-motion:reduce) {
         #codex-context-token-inspector-root { transition:none; }
-        #codex-context-token-inspector-mascot .cti-mascot-art { transition:none; transform:none !important; }
+        #codex-context-token-inspector-mascot .cti-mascot-art { transition:none; transform:none !important; animation:none !important; }
       }
     `;
   }
