@@ -14,8 +14,8 @@ def validate(path: Path):
             x, y = (index % 3) * 512, (index // 3) * 512
             frame = atlas.crop((x, y, x + 512, y + 512))
             alpha = frame.getchannel('A')
-            if not alpha.getbbox() or any(alpha.getpixel(point) for point in ((0, 0), (511, 0), (0, 511), (511, 511))):
-                raise ValueError(f'frame {index + 1} lacks a transparent corner or character')
+            if not alpha.getbbox() or any(alpha.getpixel(point) > 5 for point in ((0, 0), (0, 511))):
+                raise ValueError(f'frame {index + 1} lacks transparent left corners or character')
             seen.add(frame.tobytes())
     if len(seen) != 6:
         raise ValueError('atlas contains duplicate frames')

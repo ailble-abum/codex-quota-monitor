@@ -18,22 +18,20 @@ class PanelBuildTests(unittest.TestCase):
     def test_repository_artwork_is_complete(self):
         art, expressions = panel_build.artwork()
         self.assertEqual(set(art), {'candy', 'cat', 'corgi', 'frost', 'mint', 'tea'})
-        self.assertEqual(set(expressions['cat']), {'idle', 'happy', 'concerned', 'notice', 'waiting', 'pet'})
+        self.assertEqual(set(expressions), set(art))
+        self.assertTrue(all(set(frames) == {'idle', 'happy', 'concerned', 'notice', 'waiting', 'pet'}
+                            for frames in expressions.values()))
         self.assertTrue(all(value.startswith('data:image/webp;base64,') for value in art.values()))
 
     def test_repository_artwork_has_reproducible_manifest(self):
         hashes = panel_build.resource_hashes()
-        self.assertEqual(len(hashes), 12)
+        self.assertEqual(len(hashes), 42)
         self.assertEqual(set(hashes), {
-            'assets/companions/web/candy.webp', 'assets/companions/web/cat.webp',
-            'assets/companions/web/corgi.webp', 'assets/companions/web/frost.webp',
-            'assets/companions/web/mint.webp', 'assets/companions/web/tea.webp',
-            'assets/companions/expressions/cat-concerned.webp',
-            'assets/companions/expressions/cat-happy.webp',
-            'assets/companions/expressions/cat-idle.webp',
-            'assets/companions/expressions/cat-notice.webp',
-            'assets/companions/expressions/cat-pet.webp',
-            'assets/companions/expressions/cat-waiting.webp'})
+            f'assets/companions/web/{skin}.webp' for skin in ('candy', 'cat', 'corgi', 'frost', 'mint', 'tea')
+        } | {
+            f'assets/companions/expressions/{skin}-{name}.webp'
+            for skin in ('candy', 'cat', 'corgi', 'frost', 'mint', 'tea')
+            for name in ('idle', 'happy', 'concerned', 'notice', 'waiting', 'pet')})
         self.assertTrue(all(len(value) == 64 for value in hashes.values()))
 
     def test_nova_replaces_the_archived_cat_pixels(self):

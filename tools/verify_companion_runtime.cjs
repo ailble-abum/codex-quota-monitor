@@ -1,11 +1,15 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const image={value:'',getAttribute(){return this.value;},set src(value){this.value=value;},get src(){return this.value;}};
 const mascot={dataset:{skin:'cat',mood:'idle'},querySelector:selector=>selector==='img'?image:null};
-const context=vm.createContext({MASCOT_ID:'mascot',MASCOT_EXPRESSIONS:{cat:{idle:'idle',happy:'happy',pet:'pet',notice:'notice',waiting:'waiting',concerned:'concerned'}},
+const context=vm.createContext({MASCOT_ID:'mascot',MASCOT_EXPRESSIONS:{cat:{idle:'idle',happy:'happy',pet:'pet',notice:'notice',waiting:'waiting',concerned:'concerned'},
+  candy:{idle:'candy-idle',happy:'candy-happy',pet:'candy-pet',notice:'candy-notice',waiting:'candy-waiting',concerned:'candy-concerned'}},
   document:{getElementById:()=>mascot},motion:true,companionPreference:name=>name==='motion'?context.motion:true,
   setTimeout,clearTimeout});
 for(const file of ['panel_companion_behavior.js','panel_companion_runtime.js']) vm.runInContext(fs.readFileSync(path.join(__dirname,'../quota_monitor',file),'utf8'),context);
 context.applyCompanionExpression(mascot); assert.equal(image.src,'idle'); assert.equal(mascot.dataset.expression,'idle');
+mascot.dataset.skin='candy'; mascot.dataset.mood='waiting'; context.applyCompanionExpression(mascot);
+assert.equal(image.src,'candy-waiting'); mascot.dataset.mood='idle';
+context.applyCompanionExpression(mascot); assert.equal(image.src,'candy-idle'); mascot.dataset.skin='cat';
 context.companionReact({},'hello'); assert.equal(mascot.dataset.reaction,'hello'); assert.equal(image.src,'happy'); assert.ok(mascot.__ctiReactionTimer);
 clearTimeout(mascot.__ctiReactionTimer); delete mascot.dataset.reaction; context.motion=false;
 context.companionReact({},'notice'); assert.equal(mascot.dataset.reaction,undefined);

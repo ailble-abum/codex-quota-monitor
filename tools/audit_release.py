@@ -13,16 +13,11 @@ REQUIRED = {'run.py', 'requirements-cdp.txt', 'config.example.json', 'PREVIEW.tx
             'renderer/consumer.js', 'renderer/manifest.json', 'renderer/LICENSE',
             'renderer/NOTICE', 'install-manifest.json'}
 RELEASE_REQUIRED = (REQUIRED - {'PREVIEW.txt'}) | {'RELEASE.txt', 'QuotaMenu'}
-VISUAL_RESOURCES = {
-    'assets/companions/web/candy.webp', 'assets/companions/web/cat.webp',
-    'assets/companions/web/corgi.webp', 'assets/companions/web/frost.webp',
-    'assets/companions/web/mint.webp', 'assets/companions/web/tea.webp',
-    'assets/companions/expressions/cat-concerned.webp',
-    'assets/companions/expressions/cat-happy.webp',
-    'assets/companions/expressions/cat-idle.webp',
-    'assets/companions/expressions/cat-notice.webp',
-    'assets/companions/expressions/cat-pet.webp',
-    'assets/companions/expressions/cat-waiting.webp'}
+SKINS = {'candy', 'cat', 'corgi', 'frost', 'mint', 'tea'}
+EXPRESSIONS = {'idle', 'happy', 'concerned', 'notice', 'waiting', 'pet'}
+VISUAL_RESOURCES = ({f'assets/companions/web/{skin}.webp' for skin in SKINS} |
+                    {f'assets/companions/expressions/{skin}-{name}.webp'
+                     for skin in SKINS for name in EXPRESSIONS})
 
 
 def _files(root):

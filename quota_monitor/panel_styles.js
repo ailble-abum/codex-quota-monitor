@@ -168,11 +168,7 @@
       }
       #codex-context-token-inspector-mascot[data-visible="true"] { display:block; }
       #codex-context-token-inspector-mascot .cti-mascot-art { width:48px; height:52px; object-fit:contain; }
-      #codex-context-token-inspector-mascot:not([data-skin="cat"]) .cti-mascot-art { transition:transform .25s ease,filter .25s ease; }
-      #codex-context-token-inspector-mascot:not([data-skin="cat"])[data-expression="happy"] .cti-mascot-art { filter:brightness(1.12) saturate(1.18); }
-      #codex-context-token-inspector-mascot:not([data-skin="cat"])[data-expression="concerned"] .cti-mascot-art { filter:saturate(.8); }
-      #codex-context-token-inspector-mascot:not([data-skin="cat"])[data-expression="waiting"] .cti-mascot-art { filter:grayscale(.4); }
-      #codex-context-token-inspector-mascot:not([data-skin="cat"])[data-expression="notice"] .cti-mascot-art { filter:brightness(1.14); }
+      #codex-context-token-inspector-mascot:not([data-skin="cat"]) .cti-mascot-art { transition:transform .25s ease; }
       @keyframes cti-mascot-greet { 50% { transform:rotate(-9deg) translateY(-2px); } }
       @keyframes cti-mascot-notice { 50% { transform:translateY(-6px); } }
       #codex-context-token-inspector-mascot:not([data-skin="cat"])[data-motion="true"][data-reaction="hello"] .cti-mascot-art { animation:cti-mascot-greet .45s ease-in-out; }

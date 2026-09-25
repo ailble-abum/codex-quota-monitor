@@ -4,11 +4,11 @@
 
 ## 当前仓库中的资源
 
-`assets/companions` 中的 12 个 WebP 是 V2 构建输入。最初它们在提交 `ba2ca24` 中被内建到本仓库，构建器随后把它们编码进 `renderer/consumer.js`。每次候选构建都会在 `renderer/manifest.json` 的 `visualResourceSHA256` 中记录相对路径和 SHA-256，避免资源被无记录替换。
+`assets/companions` 中的 42 个 WebP 是 V2 构建输入：六款角色各一张旧静态图及六张表情帧。最初的 12 个 WebP 在提交 `ba2ca24` 中被内建到本仓库；2026-09-25 为其余五款各增加六帧，新图集的生成、去背、手部核对与导出记录见[六款表情资源记录](companion-expression-art-2026-09-25.md)。构建器把 WebP 编码进 `renderer/consumer.js`，并在 `renderer/manifest.json` 的 `visualResourceSHA256` 中记录每项相对路径和 SHA-256，避免资源被无记录替换。
 
 最初的 12 个文件与正式线 `origin/main` 中对应的 WebP 逐字节一致（2026-09-24 核对 SHA-256）。正式线历史补足了部分工程来源：`afe50a2` 加入五款角色源 PNG 和 WebP 构建脚本；`17c5302` 加入黑猫源 PNG；`2705f32` 加入黑猫六表情源图及导出脚本。正式线 `docs/companion-feedback.md` 记录旧版六表情由内置 imagegen 生成，并以已有角色 WebP 为身份参考；该记录及 `docs/companion-expression-provenance.md` 的详细提示词保存在 Git 历史中。
 
-2026-09-25 将 V2 的旧黑猫静态 WebP 和六个表情 WebP 替换为新角色“星瞳诺瓦”。新原图和导出过程见 [诺瓦资源记录](nova-art-provenance.md)。其余五款角色 WebP 仍沿用上述归档来源。已发布的 v2.0.0 包不受此更改影响。
+2026-09-25 将 V2 的旧黑猫静态 WebP 和六个表情 WebP 替换为新角色“星瞳诺瓦”。新原图和导出过程见 [诺瓦资源记录](nova-art-provenance.md)。其余五款角色的原静态 WebP 仍沿用上述归档来源；新增六帧各有本轮记录。已发布的 v2.0.0 至 v2.0.8 包不受此更改影响。
 
 ## 补充核对：角色原图的本机生成记录
 

@@ -8,7 +8,7 @@ from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
 
-CURRENT_VERSION = '2.0.8'
+CURRENT_VERSION = '2.0.9'
 RELEASE_API = 'https://api.github.com/repos/ailble-abum/codex-quota-monitor/releases/latest'
 _VERSION = re.compile(r'^[vV]?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:[-+]([0-9A-Za-z.-]+))?$')
 

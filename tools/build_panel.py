@@ -23,10 +23,13 @@ def artwork():
     directory = ROOT / 'assets/companions'
     uri = lambda path: 'data:image/webp;base64,' + base64.b64encode(path.read_bytes()).decode()
     art = {path.stem:uri(path) for path in sorted((directory / 'web').glob('*.webp'))}
-    expressions = {'cat':{path.stem.removeprefix('cat-'):uri(path)
-                          for path in sorted((directory / 'expressions').glob('cat-*.webp'))}}
-    if set(art) != {'candy', 'cat', 'corgi', 'frost', 'mint', 'tea'} or set(expressions['cat']) != {
-            'idle', 'happy', 'concerned', 'notice', 'waiting', 'pet'}:
+    expressions = {}
+    for path in sorted((directory / 'expressions').glob('*.webp')):
+        skin, name = path.stem.split('-', 1)
+        expressions.setdefault(skin, {})[name] = uri(path)
+    skins = {'candy', 'cat', 'corgi', 'frost', 'mint', 'tea'}
+    names = {'idle', 'happy', 'concerned', 'notice', 'waiting', 'pet'}
+    if set(art) != skins or set(expressions) != skins or any(set(frames) != names for frames in expressions.values()):
         raise ValueError('incomplete companion artwork')
     return art, expressions
 

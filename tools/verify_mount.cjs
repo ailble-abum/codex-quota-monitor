@@ -531,6 +531,24 @@ const {chromium, webkit} = require('playwright');
       await nova.evaluate(node => node.dispatchEvent(new PointerEvent('pointercancel', {pointerId: 1, bubbles: true})));
       assert.equal(await nova.evaluate(node => node.__ctiGesture), null, 'cancel must clear gesture');
       await page.mouse.up();
+      for (const skin of ['candy', 'cat', 'corgi', 'frost', 'mint', 'tea']) {
+        await page.evaluate(value => localStorage.setItem('cti-mascot-skin', value), skin);
+        await publish();
+        await page.waitForTimeout(950);
+        assert.equal(await nova.getAttribute('data-skin'), skin);
+        assert.equal(await nova.evaluate(node => {
+          const image = node.querySelector('img');
+          const before = image.src;
+          node.dispatchEvent(new PointerEvent('pointerenter'));
+          return node.dataset.expression === 'happy' && image.src !== before;
+        }), true, `${skin} should show its own happy frame`);
+        assert.deepEqual(await nova.locator('img').evaluate(async image => {
+          await image.decode(); return [image.naturalWidth, image.naturalHeight];
+        }), [320, 320]);
+        if (process.argv[3]) await nova.screenshot({path:path.join(process.argv[3],`${engine.name()}-${skin}-happy.png`)});
+      }
+      await page.evaluate(() => localStorage.setItem('cti-mascot-skin', 'cat'));
+      await publish();
       await page.evaluate(() => {
         const root = document.querySelector('.cti-hud');
         root.__ctiLayout.compact = {x:14,y:120,width:292};
