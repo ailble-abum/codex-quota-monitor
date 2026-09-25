@@ -5,6 +5,8 @@ from pathlib import Path
 import re
 import stat
 
+MAX_CONSUMER_BYTES = 8 * 1024 * 1024
+
 
 def load_consumer(config):
     if (not isinstance(config, dict) or set(config) != {'path', 'sha256'}
@@ -15,7 +17,7 @@ def load_consumer(config):
     with os.fdopen(descriptor, 'rb') as stream:
         if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
             raise ValueError('consumer must be regular file')
-        data = stream.read(524289)
-    if not data or len(data) > 524288 or hashlib.sha256(data).hexdigest() != config['sha256']:
+        data = stream.read(MAX_CONSUMER_BYTES + 1)
+    if not data or len(data) > MAX_CONSUMER_BYTES or hashlib.sha256(data).hexdigest() != config['sha256']:
         raise ValueError('invalid consumer bytes')
     return {'source': data.decode('utf-8'), 'digest': config['sha256']}
