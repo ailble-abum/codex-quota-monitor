@@ -9,6 +9,7 @@
     '[data-chatgpt-conversation-turn="true"]',
   ];
   let hostListenersInstalled = false;
+  let hostTooltipHideTimer = null;
 
   function hostFinite(value) {
     return typeof value === 'number' && Number.isFinite(value);
@@ -34,14 +35,36 @@
 
   function hostSummaryNote(item) {
     const zh = uiLanguage() === 'zh';
-    const parts = [
-      `${zh ? '会话总计' : 'Session total'}  ${hostNumber(item.session_total_tokens)}`,
-      `${zh ? '输入' : 'Input'}          ${hostNumber(item.session_input_tokens)}`,
-      `${zh ? '缓存输入' : 'Cached input'}   ${hostNumber(item.session_cached_input_tokens)}`,
-      `${zh ? '输出' : 'Output'}         ${hostNumber(item.session_output_tokens)}`,
-      `${zh ? '推理' : 'Reasoning'}      ${hostNumber(item.session_reasoning_tokens)}`,
-    ];
-    return parts.join('\n');
+    return JSON.stringify([
+      [zh ? '会话总计' : 'Session total', hostNumber(item.session_total_tokens)],
+      [zh ? '输入' : 'Input', hostNumber(item.session_input_tokens)],
+      [zh ? '缓存输入' : 'Cached input', hostNumber(item.session_cached_input_tokens)],
+      [zh ? '输出' : 'Output', hostNumber(item.session_output_tokens)],
+      [zh ? '推理' : 'Reasoning', hostNumber(item.session_reasoning_tokens)],
+    ]);
+  }
+
+  function hostSummaryRows(value) {
+    try {
+      const rows = JSON.parse(value);
+      if (Array.isArray(rows) && rows.every(row => Array.isArray(row) && row.length === 2)) return rows;
+    } catch (_) {}
+    return [];
+  }
+
+  function positionHostTooltip(row, tip) {
+    const rect = row.getBoundingClientRect();
+    const size = tip.getBoundingClientRect();
+    const viewportWidth = document.documentElement.clientWidth || innerWidth;
+    const viewportHeight = document.documentElement.clientHeight || innerHeight;
+    const right = rect.right + 8;
+    const preferredLeft = right + size.width <= viewportWidth - 8 ? right : rect.left - size.width - 8;
+    tip.style.left = `${Math.max(8, Math.min(viewportWidth - size.width - 8, preferredLeft))}px`;
+    tip.style.top = `${Math.max(8, Math.min(viewportHeight - size.height - 8, rect.top))}px`;
+  }
+
+  function leavingHostTooltip(event) {
+    return !event.relatedTarget?.closest?.(`[${HOST_NOTE_ATTR}]`);
   }
 
   function hostItems(payload) {
@@ -108,7 +131,29 @@
   }
 
   function removeHostTooltip() {
+    clearTimeout(hostTooltipHideTimer);
+    hostTooltipHideTimer = null;
     document.getElementById(HOST_TOOLTIP_ID)?.remove();
+  }
+
+  function scheduleHostTooltipRemoval() {
+    clearTimeout(hostTooltipHideTimer);
+    hostTooltipHideTimer = setTimeout(removeHostTooltip, 120);
+  }
+
+  function renderHostTooltip(tip, value) {
+    const rows = hostSummaryRows(value);
+    if (!rows.length) return false;
+    tip.replaceChildren();
+    for (const [label, amount] of rows) {
+      const labelNode = document.createElement('span');
+      labelNode.className = 'cti-v2-sidebar-tooltip-label'; labelNode.textContent = label;
+      const valueNode = document.createElement('span');
+      valueNode.className = 'cti-v2-sidebar-tooltip-value'; valueNode.textContent = amount;
+      tip.append(labelNode, valueNode);
+    }
+    tip.dataset.note = value;
+    return true;
   }
 
   function showHostTooltip(row) {
@@ -117,12 +162,17 @@
     removeHostTooltip();
     const tip = document.createElement('aside');
     tip.id = HOST_TOOLTIP_ID; tip.className = 'cti-v2-sidebar-tooltip';
-    tip.setAttribute('role', 'tooltip'); tip.textContent = value;
+    tip.setAttribute('role', 'tooltip');
+    if (!renderHostTooltip(tip, value)) return;
+    tip.__ctiHostRow = row;
+    tip.addEventListener('mouseenter', () => {
+      clearTimeout(hostTooltipHideTimer); hostTooltipHideTimer = null;
+      if (!row.isConnected || !row.hasAttribute(HOST_NOTE_ATTR)
+          || row.closest('[data-app-shell-active-page="false"]')) removeHostTooltip();
+    });
+    tip.addEventListener('mouseleave', event => { if (leavingHostTooltip(event)) scheduleHostTooltipRemoval(); });
     document.body.append(tip);
-    const rect = row.getBoundingClientRect();
-    const size = tip.getBoundingClientRect();
-    tip.style.left = `${Math.max(8, Math.min(innerWidth - size.width - 8, rect.right + 8))}px`;
-    tip.style.top = `${Math.max(8, Math.min(innerHeight - size.height - 8, rect.top + 28))}px`;
+    positionHostTooltip(row, tip);
   }
 
   function installHostListeners() {
@@ -134,12 +184,18 @@
 
   function hostMouseOver(event) {
     const row = event.target?.closest?.(`[${HOST_NOTE_ATTR}]`);
-    if (row) showHostTooltip(row);
+    if (row?.closest('[data-app-shell-active-page="false"]')) {
+      row.removeAttribute(HOST_NOTE_ATTR); removeHostTooltip();
+    } else if (row) {
+      clearTimeout(hostTooltipHideTimer); hostTooltipHideTimer = null; showHostTooltip(row);
+    }
   }
 
   function hostMouseOut(event) {
     const row = event.target?.closest?.(`[${HOST_NOTE_ATTR}]`);
-    if (row && (!event.relatedTarget || !row.contains(event.relatedTarget))) removeHostTooltip();
+    if (!row || (event.relatedTarget && row.contains(event.relatedTarget))) return;
+    if (event.relatedTarget?.closest?.(`#${HOST_TOOLTIP_ID}`)) return;
+    scheduleHostTooltipRemoval();
   }
 
   function clearHostProjection() {
@@ -156,10 +212,26 @@
       (item?.thread_keys || []).forEach(key => byId.set(String(key), item));
     });
     document.querySelectorAll('[data-app-action-sidebar-thread-row]').forEach(row => {
+      if (row.closest('[data-app-shell-active-page="false"]')) {
+        row.removeAttribute(HOST_NOTE_ATTR);
+        return;
+      }
       const item = byId.get(String(hostThreadId(row)));
       if (item) row.setAttribute(HOST_NOTE_ATTR, hostSummaryNote(item));
       else row.removeAttribute(HOST_NOTE_ATTR);
     });
+    const tip = document.getElementById(HOST_TOOLTIP_ID);
+    const owner = tip?.__ctiHostRow;
+    if (!tip) return;
+    if (!owner?.isConnected || !owner.hasAttribute(HOST_NOTE_ATTR)
+        || owner.closest('[data-app-shell-active-page="false"]')) {
+      removeHostTooltip();
+    } else if (tip.dataset.note !== owner.getAttribute(HOST_NOTE_ATTR)) {
+      const scrollTop = tip.scrollTop;
+      renderHostTooltip(tip, owner.getAttribute(HOST_NOTE_ATTR));
+      positionHostTooltip(owner, tip);
+      tip.scrollTop = scrollTop;
+    }
   }
 
   function projectMessageChips(payload) {

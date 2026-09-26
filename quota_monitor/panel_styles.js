@@ -208,13 +208,17 @@
       #codex-context-token-inspector-mascot[data-art="true"][data-edge="left"] [data-gauge] { right:-10px; }
       #cti-context-hint { position:fixed; z-index:2147483002; max-width:260px; padding:7px 9px; border-radius:8px; color:CanvasText; background:Canvas; box-shadow:0 8px 24px #0004; }
       .cti-v2-sidebar-tooltip {
-        position:fixed; z-index:2147483002; max-width:min(26rem,calc(100vw - 1rem));
+        position:fixed; z-index:2147483002; box-sizing:border-box;
+        display:grid; grid-template-columns:minmax(0,auto) minmax(0,1fr); gap:.35rem .75rem;
+        width:max-content; max-width:calc(100vw - 1rem); max-height:calc(100vh - 1rem); overflow:auto;
         padding:.6rem .75rem; border:1px solid color-mix(in srgb,CanvasText 20%,Canvas);
         border-radius:.65rem; background:Canvas; color:CanvasText;
         box-shadow:0 .5rem 1.5rem #0003;
-        white-space:pre-wrap; overflow-wrap:anywhere;
-        font:13px/1.45 ui-monospace,monospace; pointer-events:none;
+        font:13px/1.45 ui-monospace,monospace;
       }
+      .cti-v2-sidebar-tooltip-label,
+      .cti-v2-sidebar-tooltip-value { min-width:0; overflow-wrap:anywhere; }
+      .cti-v2-sidebar-tooltip-value { text-align:right; font-variant-numeric:tabular-nums; }
       .cti-v2-message-chip {
         display:inline-block; max-width:100%; margin-block-start:.25rem;
         padding:.2rem .45rem; border-radius:.45rem;
