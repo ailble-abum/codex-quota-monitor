@@ -169,6 +169,19 @@ class NamedDirectoryTests(unittest.TestCase):
             self.assertEqual(payload['selectedThreadId'], 'one')
             self.assertEqual({item['thread_id'] for item in payload['summaries']}, {'one', 'two'})
 
+    def test_named_accepts_uuid_with_numeric_final_group_but_rejects_short_numeric_noise(self):
+        from quota_monitor.indexed import NamedDirectorySource
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            key = '01a08a0a-d922-7143-9a82-123456789012'
+            self.write_rollout(root / ('rollout-date-' + key + '.jsonl'), key, 42)
+            (root / 'rollout-other-123.jsonl').write_text('broken\n')
+            source = NamedDirectorySource(root)
+            payload = source.read(key)
+            self.assertEqual(payload['selectedThreadId'], key)
+            self.assertEqual(payload['summaries'][0]['latest_context_tokens'], 42)
+            self.assertEqual(list(source._journals), [Path('rollout-date-' + key + '.jsonl')])
+
     def test_named_rollout_accepts_bounded_compacted_record(self):
         from quota_monitor.indexed import NamedDirectorySource
         with tempfile.TemporaryDirectory() as directory:

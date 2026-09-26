@@ -231,10 +231,16 @@ class NamedDirectorySource(DirectorySource):
     def _accept_name(self, name):
         if not name.startswith('rollout-') or not name.endswith('.jsonl'):
             return False
-        suffix = name[:-len('.jsonl')].rsplit('-', 1)[-1]
+        stem = name[:-len('.jsonl')]
+        suffix = stem.rsplit('-', 1)[-1]
+        uuid_parts = stem.split('-')[-5:]
+        uuid_suffix = (len(uuid_parts) == 5 and
+                       [len(part) for part in uuid_parts] == [8, 4, 4, 4, 12] and
+                       all(part and all(char in '0123456789abcdefABCDEF' for char in part)
+                           for part in uuid_parts))
         # Real rollout names end in a UUID-like task key. Keep the synthetic
         # short keys used by offline tests, while ignoring numeric noise files.
-        return len(suffix) >= 3 and not suffix.isdigit()
+        return uuid_suffix or (len(suffix) >= 3 and not suffix.isdigit())
 
     def _select_paths(self, candidates):
         suffix = '-' + self._selected_key + '.jsonl'
