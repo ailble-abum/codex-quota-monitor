@@ -14,16 +14,18 @@ const skins = {
   frost:[66, 297], mint:[101, 317], tea:[86, 320],
 };
 
-async function publish(page, call, base) {
+const quotaWindows = [
+  {key:'five-hour', duration:300, remaining:76, exhaustInSec:18400},
+  {key:'weekly', duration:10080, remaining:43, exhaustInSec:221000},
+];
+
+async function publish(page, call, base, windows = quotaWindows) {
   const now = Date.now() / 1000;
   return call({...base, action:'publish', panel:true, payload:{
     activeThreadId:'synthetic', selectedThreadId:'synthetic', observedAt:now,
     summaries:[{thread_id:'synthetic', latest_context_percent:41}],
     quota:{status:'live', accountKey:'synthetic-account', updatedAt:now,
-      windows:[
-        {key:'five-hour', duration:300, remaining:76, exhaustInSec:18400},
-        {key:'weekly', duration:10080, remaining:43, exhaustInSec:221000},
-      ]},
+      windows},
   }});
 }
 
@@ -66,6 +68,9 @@ async function main() {
         assert.equal(await root.getAttribute('data-revealed'), 'false');
         assert.equal(await root.getAttribute('data-collapsed'), 'true');
         assert.ok(Math.abs((await mascot.boundingBox()).y - 180) < 1);
+        // Geometry assertions sample final positions, not the intentionally
+        // animated path between them.
+        await page.emulateMedia({reducedMotion:'reduce'});
 
         for (const [skin, [alphaLeft, alphaRight]] of Object.entries(skins)) {
           for (const scale of [.75, 1, 1.5, 2]) {
@@ -87,6 +92,23 @@ async function main() {
               `${engine.name()} ${edge} ${skin} ${scale}: unexpected gauge gap ${gap}`);
             assert.ok(Math.abs((await mascot.boundingBox()).y - 180) < 1,
               `${engine.name()} ${edge} ${skin} ${scale}: mascot Y anchor moved`);
+            const panelRect = await root.boundingBox();
+            const mascotRect = await mascot.boundingBox();
+            assert.ok(Math.abs(panelRect.y + panelRect.height / 2
+              - mascotRect.y - mascotRect.height / 2) <= 1,
+            `${engine.name()} ${edge} ${skin} ${scale}: compact centers differ`);
+            if (edge === 'right' && skin === 'tea' && [0.75, 2].includes(scale)) {
+              await mascot.hover();
+              await page.screenshot({path:path.join(artifacts,
+                `${engine.name()}-right-tea-scale-${String(scale).replace('.', '')}-compact-revealed.png`)});
+              await page.mouse.move(550, 740);
+              await page.evaluate(() => {
+                const root = document.querySelector('.cti-hud');
+                clearTimeout(root.__ctiDockHideTimer);
+                root.dataset.revealed = 'false';
+                root.__ctiApplyPosition();
+              });
+            }
           }
           await page.evaluate(() => {
             localStorage.setItem('cti-mascot-scale', '1');
@@ -95,6 +117,51 @@ async function main() {
           await page.screenshot({path:path.join(
             artifacts, `${engine.name()}-${edge}-${skin}-compact.png`)});
         }
+
+        // Stress independent compact widths and content heights at both safe
+        // boundaries. The mascot keeps its own stored anchor; only the compact
+        // panel is centered and then clamped by its own height.
+        for (let windowCount = 0; windowCount <= 2; windowCount++) {
+          assert.equal(await publish(page, call, base, quotaWindows.slice(0, windowCount)), true);
+          for (const scale of [.75, 1, 1.5, 2]) {
+            for (const compactWidth of [180, 360]) {
+             for (const requestedY of [0, 260, 10000]) {
+              await page.evaluate(({edge, scale, requestedY, compactWidth}) => {
+                const root = document.querySelector('.cti-hud');
+                localStorage.setItem('cti-mascot-scale', String(scale));
+                root.__ctiLayout.compact = {edge, y:requestedY, width:compactWidth};
+                root.__ctiApplyPosition();
+              }, {edge, scale, requestedY, compactWidth});
+              const panelRect = await root.boundingBox();
+              const mascotRect = await mascot.boundingBox();
+              const safeTop = 64;
+              const safeBottom = 780 - panelRect.height - 8;
+              const desired = mascotRect.y + (mascotRect.height - panelRect.height) / 2;
+              const expected = Math.max(safeTop, Math.min(safeBottom, desired));
+              const label = `${engine.name()} ${edge} windows=${windowCount} scale=${scale} width=${compactWidth} y=${requestedY}`;
+              assert.ok(Math.abs(panelRect.y - expected) <= 1,
+                `${label}: compact clamp mismatch ${panelRect.y} != ${expected}`);
+              if (desired >= safeTop && desired <= safeBottom) {
+                assert.ok(Math.abs(panelRect.y + panelRect.height / 2
+                  - mascotRect.y - mascotRect.height / 2) <= 1,
+                `${label}: unclamped centers differ`);
+              } else {
+                const boundary = desired < safeTop ? safeTop : safeBottom;
+                assert.ok(Math.abs(panelRect.y - boundary) <= 1,
+                  `${label}: compact panel did not stop at its safe boundary`);
+              }
+             }
+            }
+          }
+        }
+        assert.equal(await publish(page, call, base), true);
+        await page.evaluate(edge => {
+          const root = document.querySelector('.cti-hud');
+          localStorage.setItem('cti-mascot-scale', '1');
+          root.__ctiLayout.compact = {edge, y:180, width:270};
+          root.__ctiApplyPosition();
+        }, edge);
+        await page.emulateMedia({reducedMotion:'no-preference'});
 
         const transition = await gauge.evaluate(node => {
           const style = getComputedStyle(node);
@@ -112,6 +179,14 @@ async function main() {
           assert.equal(await gauge.evaluate(node => getComputedStyle(node).opacity), '0');
           await toggle.click();
           assert.equal(await root.getAttribute('data-collapsed'), 'false');
+          await page.waitForTimeout(220);
+          const expandedRect = await root.boundingBox();
+          const expandedMascot = await mascot.boundingBox();
+          const expandedBottom = Math.max(64,
+            780 - Math.max(expandedRect.height, expandedMascot.height) - 8);
+          const expandedY = Math.max(64, Math.min(expandedBottom, 180));
+          assert.ok(Math.abs(expandedRect.y - expandedY) < 1,
+            `${engine.name()} ${edge}: expanded mode changed its established clamp`);
           await page.mouse.move(550, 740);
           await page.waitForTimeout(760);
           assert.equal(await root.getAttribute('data-revealed'), 'false');

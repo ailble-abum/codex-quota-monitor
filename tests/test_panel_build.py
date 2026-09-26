@@ -125,7 +125,9 @@ class PanelBuildTests(unittest.TestCase):
         self.assertNotIn('saveLayout(root); applyStoredHudPosition(root)', companion)
 
     def test_dock_auto_hide_restores_compact_mode_and_respects_focus(self):
-        layout = (Path(__file__).parents[1] / 'quota_monitor/panel_layout_runtime.js').read_text()
+        root = Path(__file__).parents[1] / 'quota_monitor'
+        layout = (root / 'panel_layout_runtime.js').read_text()
+        geometry = (root / 'panel_geometry.js').read_text()
         self.assertIn("root.dataset.collapsed = 'true'", layout)
         self.assertIn("localStorage.setItem(COLLAPSE_KEY, 'true')", layout)
         self.assertIn("if (root.dataset.docked !== 'true' || root.dataset.dockPinned === 'true') return", layout)
@@ -133,6 +135,9 @@ class PanelBuildTests(unittest.TestCase):
         self.assertIn("focused?.matches?.(':focus-visible')", layout)
         self.assertIn("root.addEventListener('focusin'", layout)
         self.assertIn("root.addEventListener('focusout'", layout)
+        self.assertIn('compactDockPanelY(mascotY, mascotHeight, rect.height)', layout)
+        self.assertIn('compact ? 0 : mascotHeight', layout)
+        self.assertIn('function compactDockPanelY(', geometry)
 
     def test_compact_bar_hover_prefers_time_budget(self):
         shell = (Path(__file__).parents[1] / 'quota_monitor/panel_shell.js').read_text()

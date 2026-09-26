@@ -55,8 +55,14 @@
     const rect = root.getBoundingClientRect();
     const scale = mascotScale();
     const anchorY = Number.isFinite(wanted.y) ? wanted.y : dockSafeTop();
-    const mascotY = dockVerticalY(anchorY, window.innerHeight, 0, 52 * scale);
-    const panelY = dockVerticalY(anchorY, window.innerHeight, rect.height, 52 * scale);
+    const mascotHeight = 52 * scale;
+    const mascotY = dockVerticalY(anchorY, window.innerHeight, 0, mascotHeight);
+    const compact = hudMode(root) === 'compact';
+    const panelTargetY = compact ? compactDockPanelY(mascotY, mascotHeight, rect.height) : anchorY;
+    // Compact mode centers independently around the retained companion anchor.
+    // Its own height alone determines viewport clamping; expanded mode keeps the
+    // established top-anchor behavior and companion-aware clamp.
+    const panelY = dockVerticalY(panelTargetY, window.innerHeight, rect.height, compact ? 0 : mascotHeight);
     root.dataset.docked = 'true';
     root.dataset.dockEdge = edge;
     root.dataset.revealed ||= 'false';

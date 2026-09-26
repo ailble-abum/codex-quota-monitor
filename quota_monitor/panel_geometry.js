@@ -20,6 +20,10 @@
     return Math.max(top, Math.min(bottom, y));
   }
 
+  function compactDockPanelY(mascotY, mascotHeight, panelHeight) {
+    return mascotY + (mascotHeight - panelHeight) / 2;
+  }
+
   function mascotDragGeometry(start, clientY, viewportHeight, panelHeight, mascotHeight = 48) {
     const delta = clientY - start.pointerY;
     const moved = start.moved || Math.abs(delta) >= 4;
