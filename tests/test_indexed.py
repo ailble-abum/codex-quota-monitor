@@ -143,6 +143,18 @@ class IndexedTests(unittest.TestCase):
             self.assertEqual(source.status, 'unavailable')
 
 class NamedDirectoryTests(unittest.TestCase):
+    @staticmethod
+    def write_rollout(path, key, count, padding=0):
+        rows = [
+            {'type': 'session_meta', 'payload': {'id': key}},
+            {'type': 'event_msg', 'payload': {'type': 'token_count', 'info': {
+                'last_token_usage': {'input_tokens': count}, 'model_context_window': 100}}},
+        ]
+        text = ''.join(json.dumps(row) + '\n' for row in rows)
+        if padding:
+            text += ('{}\n' * padding)
+        path.write_text(text)
+
     def test_named_source_projects_verified_summaries_for_sidebar(self):
         from quota_monitor.indexed import NamedDirectorySource
         with tempfile.TemporaryDirectory() as directory:
@@ -194,3 +206,62 @@ class NamedDirectoryTests(unittest.TestCase):
             source = NamedDirectorySource(root)
             self.assertIsNone(source.read('one')['selectedThreadId'])
             self.assertEqual(source.status, 'ambiguous')
+
+    def test_named_duplicate_selected_reads_share_global_budget(self):
+        from quota_monitor.indexed import NamedDirectorySource
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for prefix in ('a', 'b', 'c'):
+                self.write_rollout(root / ('rollout-%s-one.jsonl' % prefix), 'one', 10,
+                                   padding=200)
+            source = NamedDirectorySource(root)
+            source.read_budget = 512
+            self.assertIsNone(source.read('one')['selectedThreadId'])
+            self.assertEqual(source.status, 'ambiguous')
+            self.assertLessEqual(source.bytes_read, source.read_budget)
+
+    def test_named_switch_waits_for_complete_selected_log_and_reuses_cursor(self):
+        from quota_monitor.indexed import NamedDirectorySource
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            one = root / 'rollout-date-one.jsonl'
+            two = root / 'rollout-date-two.jsonl'
+            self.write_rollout(one, 'one', 10)
+            self.write_rollout(two, 'two', 20, padding=200)
+            with two.open('a') as stream:
+                stream.write(json.dumps({'type': 'event_msg', 'payload': {'type': 'token_count',
+                    'info': {'last_token_usage': {'input_tokens': 90},
+                             'model_context_window': 100}}}) + '\n')
+            source = NamedDirectorySource(root)
+            source.read_budget = 256
+            self.assertEqual(source.read('one')['summaries'][0]['latest_context_tokens'], 10)
+            self.assertEqual(source.read('two')['summaries'], [])
+            self.assertEqual(source.status, 'loading')
+            while source.status == 'loading':
+                payload = source.read('two')
+            self.assertEqual(payload['summaries'][0]['latest_context_tokens'], 90)
+            with one.open('a') as stream:
+                stream.write(json.dumps({'type': 'event_msg', 'payload': {'type': 'token_count',
+                    'info': {'last_token_usage': {'input_tokens': 40},
+                             'model_context_window': 100}}}) + '\n')
+            self.assertEqual(source.read('one')['summaries'][0]['latest_context_tokens'], 40)
+            self.assertGreater(source.bytes_read, 0)
+            self.assertLess(source.bytes_read, one.stat().st_size)
+
+    def test_named_inventory_prioritizes_selected_with_bounded_recent_window(self):
+        from quota_monitor.indexed import NamedDirectorySource
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            selected = root / 'rollout-date-target.jsonl'
+            self.write_rollout(selected, 'target', 77)
+            os.utime(selected, ns=(1, 1))
+            for index in range(140):
+                key = 'task%03d' % index
+                self.write_rollout(root / ('rollout-date-' + key + '.jsonl'), key, index)
+            source = NamedDirectorySource(root)
+            payload = source.read('target')
+            self.assertEqual(payload['selectedThreadId'], 'target')
+            self.assertEqual(next(item for item in payload['summaries']
+                                  if item['thread_id'] == 'target')['latest_context_tokens'], 77)
+            self.assertLessEqual(len(source._journals), source.max_files)
+            self.assertEqual(len(source._journals), 128)

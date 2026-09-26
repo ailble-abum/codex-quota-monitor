@@ -1,4 +1,5 @@
 """Bounded inventory with incremental journals; directory changes invalidate it."""
+import hashlib
 import math
 import os
 from pathlib import Path
@@ -52,10 +53,15 @@ class DirectorySource:
     def _accept_name(self, name):
         return True
 
+    def _select_paths(self, candidates):
+        if len(candidates) > self.max_files:
+            raise ValueError('file limit')
+        return [path for path, _modified in candidates]
+
     def _scan(self):
         if os.scandir not in os.supports_fd:
             raise OSError('descriptor scanning unavailable')
-        paths, directories, entries = [], {}, 0
+        candidates, directories, entries = [], {}, 0
 
         def visit(descriptor, relative, depth):
             nonlocal entries
@@ -78,9 +84,7 @@ class DirectorySource:
                         finally:
                             os.close(child)
                     elif stat.S_ISREG(info.st_mode) and entry.name.endswith('.jsonl') and self._accept_name(entry.name):
-                        paths.append(path)
-                        if len(paths) > self.max_files:
-                            raise ValueError('file limit')
+                        candidates.append((path, info.st_mtime_ns))
             if signature(os.fstat(descriptor)) != before:
                 raise ValueError('directory changed')
 
@@ -89,6 +93,7 @@ class DirectorySource:
             visit(descriptor, Path('.'), 0)
         finally:
             os.close(descriptor)
+        paths = self._select_paths(candidates)
         old = self._journals
         self._journals = {path: old[path] if path in old else SessionJournal(
             path, root=self.root, line_limit=self.line_limit)
@@ -118,14 +123,28 @@ class DirectorySource:
                 self.status = self._scan_status
                 return empty
 
-        readings = []
+        readings, selected_readings = [], []
+        selected_paths = ([path for path in self._journals
+                           if self.all_summaries and path.name.endswith('-' + key + '.jsonl')]
+                          if self.all_summaries else [])
+        background_count = len(self._journals) - len(selected_paths)
+        selected_quota = 0
+        if selected_paths:
+            selected_quota = min(2 * 1024 * 1024,
+                                 max(1, (self.read_budget - background_count) // len(selected_paths)))
+        remaining = self.read_budget - selected_quota * len(selected_paths)
+        background_quota = (min(16384, max(1, remaining // background_count))
+                            if background_count else 0)
         quota = self.read_budget // max(1, len(self._journals))
         for path, journal in self._journals.items():
-            if self.all_summaries and path.name.endswith('-' + key + '.jsonl'):
+            selected_name = path in selected_paths
+            if selected_name:
                 # Keep the active task responsive even when sidebar inventory
                 # contains many older logs; the rollout adapter allows a
                 # bounded compacted line up to its 2 MiB reader limit.
-                journal.reader.read_budget = min(2 * 1024 * 1024, self.read_budget)
+                journal.reader.read_budget = selected_quota
+            elif self.all_summaries:
+                journal.reader.read_budget = background_quota
             else:
                 journal.reader.read_budget = min(quota, 16384)
             reading = journal.poll()
@@ -135,14 +154,19 @@ class DirectorySource:
             if reading['invalid_lines']:
                 self._tainted.add(path)
             readings.append(reading)
+            if selected_name:
+                selected_readings.append(reading)
         if not self._current():
             self.status = 'index_wait'
         elif self.all_summaries:
             # A background task may have a large or partial log. Keep the
             # selected task responsive and omit only non-ready sidebar rows.
-            matches = [r for r in readings if r['thread_id'] == key and
+            matches = [r for r in selected_readings if r['thread_id'] == key and
                        r.get('status') == 'ok' and r.get('identity_status') == 'verified']
-            self.status = 'ambiguous' if len(matches) > 1 else 'ok' if matches else 'not_found'
+            selected_loading = any(r.get('status') == 'ok' and (r.get('more') or r.get('pending'))
+                                   for r in selected_readings)
+            self.status = ('ambiguous' if len(matches) > 1 else
+                           'loading' if selected_loading else 'ok' if matches else 'not_found')
             if self.status == 'ok':
                 verified = {}
                 duplicate = set()
@@ -199,6 +223,7 @@ class NamedDirectorySource(DirectorySource):
         # stricter default.
         super().__init__(root, read_budget=4 * 1024 * 1024, line_limit=2 * 1024 * 1024)
         self._selected_key = None
+        self._selected_tails = {}
         self.all_summaries = True
 
     def _accept_name(self, name):
@@ -209,12 +234,63 @@ class NamedDirectorySource(DirectorySource):
         # short keys used by offline tests, while ignoring numeric noise files.
         return len(suffix) >= 3 and not suffix.isdigit()
 
+    def _select_paths(self, candidates):
+        suffix = '-' + self._selected_key + '.jsonl'
+        selected = [(path, modified) for path, modified in candidates if path.name.endswith(suffix)]
+        if len(selected) > self.max_files:
+            raise ValueError('file limit')
+        selected_paths = {path for path, _modified in selected}
+        recent = sorted((item for item in candidates if item[0] not in selected_paths),
+                        key=lambda item: (item[1], str(item[0])), reverse=True)
+        return [path for path, _modified in selected + recent[:self.max_files - len(selected)]]
+
+    def _tail_fingerprint(self, path, offset):
+        try:
+            descriptor = open_in_root(self.root, path)
+            try:
+                info = os.fstat(descriptor)
+                if info.st_size < offset:
+                    return None
+                size = min(64, offset)
+                os.lseek(descriptor, offset - size, os.SEEK_SET)
+                return ((info.st_dev, info.st_ino), offset,
+                        hashlib.sha256(os.read(descriptor, size)).digest())
+            finally:
+                os.close(descriptor)
+        except OSError:
+            return None
+
+    def _drop_changed_selected(self, key):
+        suffix = '-' + key + '.jsonl'
+        for path, journal in list(self._journals.items()):
+            if not path.name.endswith(suffix):
+                continue
+            expected = self._selected_tails.get(path)
+            actual = self._tail_fingerprint(path, journal.reader._offset)
+            if expected is None or actual != expected:
+                self._journals.pop(path, None)
+                self._tainted.discard(path)
+                self._selected_tails.pop(path, None)
+
+    def _remember_selected(self, key):
+        self._selected_tails = {path: value for path, value in self._selected_tails.items()
+                                if path in self._journals}
+        suffix = '-' + key + '.jsonl'
+        for path, journal in self._journals.items():
+            if path.name.endswith(suffix):
+                fingerprint = self._tail_fingerprint(path, journal.reader._offset)
+                if fingerprint is not None:
+                    self._selected_tails[path] = fingerprint
+
     def read(self, key):
         if thread_key(key) != key or key is None:
             self.status = 'not_found'
             return panel_payload({}, None)
         if key != self._selected_key:
+            self._drop_changed_selected(key)
             self._selected_key = key
-            self._dirs, self._journals, self._tainted = None, {}, set()
+            self._dirs = None
             self._next_scan = float('-inf')
-        return super().read(key)
+        result = super().read(key)
+        self._remember_selected(key)
+        return result
