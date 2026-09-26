@@ -40,11 +40,11 @@ async function verifyTooltip(engine) {
       [data-app-action-sidebar-thread-row]{position:absolute;left:4px;width:64px;height:24px}
       #top{top:0}#bottom{bottom:0}</style>
       <div class="shell" data-app-shell-active-page="true">
-        <button id="top" data-app-action-sidebar-thread-row data-app-action-sidebar-thread-id="one">one</button>
-        <button id="bottom" data-app-action-sidebar-thread-row data-app-action-sidebar-thread-id="one">one</button>
+        <button id="top" data-app-action-sidebar-thread-row data-app-action-sidebar-thread-id="one" data-app-action-sidebar-thread-kind="local" data-app-action-sidebar-thread-host-id="local">one</button>
+        <button id="bottom" data-app-action-sidebar-thread-row data-app-action-sidebar-thread-id="one" data-app-action-sidebar-thread-kind="local" data-app-action-sidebar-thread-host-id="local">one</button>
       </div>
       <div data-app-shell-active-page="false">
-        <button id="inactive" data-app-action-sidebar-thread-row data-app-action-sidebar-thread-id="one">stale</button>
+        <button id="inactive" data-app-action-sidebar-thread-row data-app-action-sidebar-thread-id="one" data-app-action-sidebar-thread-kind="local" data-app-action-sidebar-thread-host-id="local">stale</button>
       </div>`);
     const styles = fs.readFileSync(path.join(__dirname, '../quota_monitor/panel_styles.js'), 'utf8');
     const host = fs.readFileSync(path.join(__dirname, '../quota_monitor/panel_host_details.js'), 'utf8');
@@ -132,6 +132,21 @@ async function verifyTooltip(engine) {
     assert.equal(await page.locator('#cti-v2-sidebar-tooltip').count(), 0,
       'clearing the plugin must remove the tooltip and hover request');
     assert.equal(await page.evaluate(() => window.__quotaMonitorV2SidebarThread), undefined);
+    for (const [kind, host] of [[null, 'local'], ['local', null], ['cloud', 'local'], ['local', 'remote']]) {
+      await page.evaluate(({kind, host}) => {
+        const row = document.getElementById('top');
+        for (const [name, value] of [['kind', kind], ['host-id', host]]) {
+          const attr = 'data-app-action-sidebar-thread-' + name;
+          if (value === null) row.removeAttribute(attr); else row.setAttribute(attr, value);
+        }
+        projectHostDetails(window.testPayload);
+        row.dispatchEvent(new MouseEvent('mouseover', {bubbles:true}));
+      }, {kind, host});
+      assert.equal(await page.locator('#top').getAttribute('data-cti-v2-sidebar-note'), null,
+        'unknown or remote rows must not receive local usage data');
+      assert.equal(await page.locator('#cti-v2-sidebar-tooltip').count(), 0);
+      assert.equal(await page.evaluate(() => window.__quotaMonitorV2SidebarThread), undefined);
+    }
     console.log(`${engine.name()}: tooltip grid, narrow bounds, scrolling, hover retention and inactive-shell filtering passed`);
   } finally {
     await browser.close();

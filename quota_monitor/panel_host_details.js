@@ -14,8 +14,8 @@
 
   function hostLocalSidebarRow(row) {
     return row && !row.closest('[data-app-shell-active-page="false"]') && hostThreadId(row)
-      && [null, 'local'].includes(row.getAttribute('data-app-action-sidebar-thread-kind'))
-      && [null, 'local'].includes(row.getAttribute('data-app-action-sidebar-thread-host-id'));
+      && row.getAttribute('data-app-action-sidebar-thread-kind') === 'local'
+      && row.getAttribute('data-app-action-sidebar-thread-host-id') === 'local';
   }
 
   function hostLoadingNote(row, payload) {
