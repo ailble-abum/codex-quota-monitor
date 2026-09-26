@@ -19,6 +19,7 @@ class HealthState:
         self.last_input = None
         self.window = None
         self.signature = None
+        self.pre_compaction_signature = None
 
     def reset(self):
         self.__init__()
@@ -31,6 +32,7 @@ class HealthState:
                      'after': None, 'timestamp': self._timestamp(row)}
             self.events.append(event)
             self.pending = event
+            self.pre_compaction_signature = self.signature
             self.events = self.events[-20:]
             if self.pending not in self.events:
                 self.pending = self.events[-1]
@@ -39,17 +41,31 @@ class HealthState:
         if info is None:
             return
         last = usage(info.get('last_token_usage'))
+        total = usage(info.get('total_token_usage'))
         current = last.get('input_tokens')
         window = count(info.get('model_context_window'))
         signature = tuple(last.get(key) for key in (
             'input_tokens', 'cached_input_tokens', 'output_tokens',
-            'reasoning_output_tokens', 'total_tokens')) + (window,)
+            'reasoning_output_tokens', 'total_tokens')) + tuple(
+                total.get(key) for key in (
+                    'input_tokens', 'cached_input_tokens', 'output_tokens',
+                    'reasoning_output_tokens', 'total_tokens')) + (window,)
+        # A compacted rollout is followed by a zero-input accounting record
+        # whose last total can describe the summary. It is not a model request.
+        if current is None or current == 0:
+            self.window = window
+            return
+        # Incremental readers may replay the last pre-compaction snapshot.
+        # Keep waiting until a genuinely new request snapshot arrives.
+        if self.pending is not None and signature == self.pre_compaction_signature:
+            return
         if signature != self.signature:
             self.requests += 1
             self.signature = signature
             if self.pending is not None:
                 self.pending['after'] = current
                 self.pending = None
+                self.pre_compaction_signature = None
         self.last_input, self.window = current, window
 
     @staticmethod
