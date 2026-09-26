@@ -150,6 +150,23 @@ async function main() {
       assert.equal(await step(), 'updated');
       await meter(3);
       assert.equal(await page.evaluate(() => window.__quotaMonitorV2Snapshot.health.after), 30);
+      // The sidebar must project the hovered journal, not the active thread's health.
+      await page.locator('[data-app-action-sidebar-thread-id="one"]').hover();
+      await page.waitForSelector('#cti-v2-sidebar-tooltip');
+      assert.equal(await step(), 'updated');
+      assert.equal(await page.evaluate(() => window.__quotaMonitorV2Snapshot.activeThreadId), 'two');
+      let hoverText = await page.locator('#cti-v2-sidebar-tooltip').innerText();
+      assert.match(hoverText, /压缩次数\s*0 次/);
+      assert.match(hoverText, /压后首请求\s*尚未压缩/);
+      await page.mouse.move(600, 650);
+      await page.locator('#cti-v2-sidebar-tooltip').waitFor({state:'hidden'});
+      await page.locator('[data-app-action-sidebar-thread-id="two"]').hover();
+      assert.equal(await step(), 'updated');
+      hoverText = await page.locator('#cti-v2-sidebar-tooltip').innerText();
+      assert.match(hoverText, /压缩次数\s*1 次/);
+      assert.match(hoverText, /压后首请求\s*3(?:\.0)?%/);
+      await page.screenshot({path:path.join(artifacts, `hover-health-${colorScheme}.png`)});
+      await page.mouse.move(600, 650);
       await page.locator('.cti-edge-mascot').focus();
       await page.locator('[data-details] summary').click();
       assert.match(await page.locator('[data-metrics]').innerText(), /900/);
