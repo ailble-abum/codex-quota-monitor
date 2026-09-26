@@ -313,3 +313,104 @@ class NamedDirectoryTests(unittest.TestCase):
                                   if item['thread_id'] == 'target')['latest_context_tokens'], 77)
             self.assertLessEqual(len(source._journals), source.max_files)
             self.assertEqual(len(source._journals), 128)
+
+    def test_named_hover_priority_includes_old_task_beyond_recent_window(self):
+        from quota_monitor.indexed import NamedDirectorySource
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            active = root / 'rollout-date-active.jsonl'
+            hover = root / 'rollout-date-hover.jsonl'
+            self.write_rollout(active, 'active', 11)
+            self.write_rollout(hover, 'hover', 77)
+            os.utime(active, ns=(1, 1))
+            os.utime(hover, ns=(2, 2))
+            for index in range(140):
+                key = 'task%03d' % index
+                path = root / ('rollout-date-' + key + '.jsonl')
+                self.write_rollout(path, key, index)
+                os.utime(path, ns=(100 + index, 100 + index))
+            source = NamedDirectorySource(root)
+            source.prioritize('hover')
+            payload = source.read('active')
+            self.assertEqual(payload['selectedThreadId'], 'active')
+            self.assertEqual(payload['sidebarStatus'],
+                             {'threadId': 'hover', 'status': 'ready'})
+            values = {item['thread_id']: item['latest_context_tokens']
+                      for item in payload['summaries']}
+            self.assertEqual(values['active'], 11)
+            self.assertEqual(values['hover'], 77)
+            self.assertIn(Path('rollout-date-hover.jsonl'), source._journals)
+            self.assertLessEqual(len(source._journals), source.max_files)
+
+    def test_named_hover_loading_omits_partial_context_and_uses_idle_active_budget(self):
+        from quota_monitor.indexed import NamedDirectorySource
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            active = root / 'rollout-date-active.jsonl'
+            hover = root / 'rollout-date-hover.jsonl'
+            self.write_rollout(active, 'active', 11)
+            source = NamedDirectorySource(root)
+            self.assertEqual(source.read('active')['selectedThreadId'], 'active')
+            self.write_rollout(hover, 'hover', 77, padding=400)
+            source.read_budget = 256
+            source.prioritize('hover')
+            payload = source.read('active')
+            self.assertEqual(payload['selectedThreadId'], 'active')
+            self.assertEqual(payload['sidebarStatus'],
+                             {'threadId': 'hover', 'status': 'loading'})
+            self.assertNotIn('hover', {item['thread_id'] for item in payload['summaries']})
+            self.assertEqual(source._journals[Path('rollout-date-hover.jsonl')].reader.read_budget,
+                             source.read_budget)
+            self.assertEqual(source.bytes_read, source.read_budget)
+
+    def test_named_completed_priority_and_active_transfer_budget_to_background(self):
+        from quota_monitor.indexed import NamedDirectorySource
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            active = root / 'rollout-date-active.jsonl'
+            hover = root / 'rollout-date-hover.jsonl'
+            background = root / 'rollout-date-background.jsonl'
+            self.write_rollout(active, 'active', 11)
+            source = NamedDirectorySource(root)
+            self.assertEqual(source.read('active')['selectedThreadId'], 'active')
+            self.write_rollout(hover, 'hover', 22)
+            self.write_rollout(background, 'background', 33, padding=400)
+            source.read_budget = 512
+            source.prioritize('hover')
+            payload = source.read('active')
+            self.assertEqual(payload['sidebarStatus']['status'], 'ready')
+            background_reader = source._journals[Path('rollout-date-background.jsonl')].reader
+            self.assertGreater(background_reader._offset, 256)
+            self.assertLessEqual(source.bytes_read, source.read_budget)
+
+    def test_named_duplicate_hover_identity_is_ambiguous_without_replacing_active(self):
+        from quota_monitor.indexed import NamedDirectorySource
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.write_rollout(root / 'rollout-date-active.jsonl', 'active', 11)
+            for prefix in ('a', 'b'):
+                self.write_rollout(root / ('rollout-' + prefix + '-hover.jsonl'), 'hover', 90)
+            source = NamedDirectorySource(root)
+            source.prioritize('hover')
+            payload = source.read('active')
+            self.assertEqual(payload['selectedThreadId'], 'active')
+            self.assertEqual(payload['sidebarStatus'],
+                             {'threadId': 'hover', 'status': 'ambiguous'})
+            self.assertEqual(next(item for item in payload['summaries']
+                                  if item['thread_id'] == 'active')['latest_context_tokens'], 11)
+            self.assertNotIn('hover', {item['thread_id'] for item in payload['summaries']})
+
+    def test_named_priority_can_be_cleared_and_rejects_invalid_keys(self):
+        from quota_monitor.indexed import NamedDirectorySource
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.write_rollout(root / 'rollout-date-active.jsonl', 'active', 11)
+            source = NamedDirectorySource(root)
+            source.prioritize('missing')
+            payload = source.read('active')
+            self.assertEqual(payload['sidebarStatus'],
+                             {'threadId': 'missing', 'status': 'not_found'})
+            source.prioritize(None)
+            self.assertNotIn('sidebarStatus', source.read('active'))
+            with self.assertRaises(ValueError):
+                source.prioritize('bad/key')

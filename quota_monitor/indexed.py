@@ -104,10 +104,20 @@ class DirectorySource:
     def read(self, thread_id):
         key = thread_key(thread_id)
         empty = panel_payload({}, key)
+        priority_key = getattr(self, '_priority_key', None) if self.all_summaries else None
+
+        def publish(payload, status=None):
+            if priority_key is not None:
+                payload['sidebarStatus'] = {
+                    'threadId': priority_key,
+                    'status': status or 'unavailable',
+                }
+            return payload
+
         self.bytes_read = 0
         if key is None:
             self.status = 'not_found'
-            return empty
+            return publish(empty)
         if not self._current():
             now = time.monotonic()
             if now < self._next_scan:
@@ -121,34 +131,60 @@ class DirectorySource:
                 self._dirs, self._journals, self._tainted = None, {}, set()
                 self._scan_status = 'unavailable' if isinstance(error, OSError) else 'incomplete'
                 self.status = self._scan_status
-                return empty
+                return publish(empty)
 
         readings, selected_readings, path_readings = [], [], []
         selected_paths = ([path for path in self._journals
                            if self.all_summaries and path.name.endswith('-' + key + '.jsonl')]
                           if self.all_summaries else [])
-        background_count = len(self._journals) - len(selected_paths)
-        selected_quota = 0
-        if selected_paths:
-            selected_quota = min(2 * 1024 * 1024,
-                                 max(1, (self.read_budget - background_count) // len(selected_paths)))
-        remaining = self.read_budget - selected_quota * len(selected_paths)
-        background_quota = (min(16384, max(1, remaining // background_count))
-                            if background_count else 0)
+        priority_paths = ([path for path in self._journals
+                           if priority_key is not None and
+                           path.name.endswith('-' + priority_key + '.jsonl')]
+                          if self.all_summaries else [])
+        priority_only = [path for path in priority_paths if path not in selected_paths]
+        background_paths = [path for path in self._journals
+                            if path not in selected_paths and path not in priority_only]
+        ordered_paths = (selected_paths + priority_only + background_paths
+                         if self.all_summaries else list(self._journals))
+        remaining_budget = self.read_budget
+        active_budget = min(2 * 1024 * 1024,
+                            max(0, remaining_budget - len(priority_only) - len(background_paths)))
+        group_remaining = active_budget
+        active_left = len(selected_paths)
+        priority_remaining = None
+        priority_left = len(priority_only)
         quota = self.read_budget // max(1, len(self._journals))
-        for path, journal in self._journals.items():
+        for index, path in enumerate(ordered_paths):
+            journal = self._journals[path]
             selected_name = path in selected_paths
-            if selected_name:
-                # Keep the active task responsive even when sidebar inventory
-                # contains many older logs; the rollout adapter allows a
-                # bounded compacted line up to its 2 MiB reader limit.
-                journal.reader.read_budget = selected_quota
-            elif self.all_summaries:
-                journal.reader.read_budget = background_quota
+            priority_name = path in priority_only
+            reserve = len(ordered_paths) - index - 1
+            available = max(1, remaining_budget - reserve)
+            if not self.all_summaries:
+                allocation = min(quota, 16384)
+            elif selected_name:
+                allocation = max(1, min(available,
+                                        group_remaining // max(1, active_left)))
+            elif priority_name:
+                if priority_remaining is None:
+                    priority_remaining = max(1, remaining_budget - len(background_paths))
+                allocation = max(1, min(available,
+                                        priority_remaining // max(1, priority_left)))
             else:
-                journal.reader.read_budget = min(quota, 16384)
+                # Drain the remaining budget through recent background files.
+                # Completed files consume zero, so the next file immediately
+                # inherits their unused allowance instead of waiting at 16 KiB.
+                allocation = available
+            journal.reader.read_budget = allocation
             reading = journal.poll()
             self.bytes_read += reading['bytes_read']
+            remaining_budget -= reading['bytes_read']
+            if selected_name:
+                group_remaining = max(0, group_remaining - reading['bytes_read'])
+                active_left -= 1
+            elif priority_name:
+                priority_remaining = max(0, priority_remaining - reading['bytes_read'])
+                priority_left -= 1
             if reading['reset']:
                 self._tainted.discard(path)
             if reading['invalid_lines']:
@@ -157,6 +193,24 @@ class DirectorySource:
             path_readings.append((path, reading))
             if selected_name:
                 selected_readings.append(reading)
+        sidebar_status = None
+        if priority_key is not None:
+            priority_readings = [reading for path, reading in path_readings
+                                 if path in priority_paths]
+            if not priority_paths:
+                sidebar_status = 'not_found'
+            elif (any(reading.get('status') != 'ok' for reading in priority_readings)
+                  or any(path in self._tainted for path in priority_paths)):
+                sidebar_status = 'unavailable'
+            elif any(reading.get('more') or reading.get('pending')
+                     for reading in priority_readings):
+                sidebar_status = 'loading'
+            else:
+                matches = [reading for reading in priority_readings
+                           if reading.get('thread_id') == priority_key and
+                           reading.get('identity_status') == 'verified']
+                sidebar_status = ('ambiguous' if len(matches) > 1 else
+                                  'ready' if matches else 'not_found')
         if not self._current():
             self.status = 'index_wait'
         elif self.all_summaries:
@@ -184,7 +238,7 @@ class DirectorySource:
                         verified[thread_id] = reading
                 for thread_id in duplicate:
                     verified.pop(thread_id, None)
-                return panel_payload(verified, key, allow_partial=True)
+                return publish(panel_payload(verified, key, allow_partial=True), sidebar_status)
         elif any(r['status'] != 'ok' for r in readings):
             self.status = 'unavailable'
         elif self._tainted:
@@ -198,7 +252,7 @@ class DirectorySource:
             self.status = 'ambiguous' if len(matches) > 1 else 'ok' if matches else 'not_found'
             if self.status == 'ok':
                 if not self.all_summaries:
-                    return panel_payload({key: matches[0]}, key)
+                    return publish(panel_payload({key: matches[0]}, key), sidebar_status)
                 verified = {}
                 duplicate = set()
                 for reading in readings:
@@ -212,8 +266,8 @@ class DirectorySource:
                         verified[thread_id] = reading
                 for thread_id in duplicate:
                     verified.pop(thread_id, None)
-                return panel_payload(verified, key)
-        return empty
+                return publish(panel_payload(verified, key), sidebar_status)
+        return publish(empty, sidebar_status)
 
 
 class NamedDirectorySource(DirectorySource):
@@ -225,6 +279,7 @@ class NamedDirectorySource(DirectorySource):
         # stricter default.
         super().__init__(root, read_budget=4 * 1024 * 1024, line_limit=2 * 1024 * 1024)
         self._selected_key = None
+        self._priority_key = None
         self._selected_tails = {}
         self.all_summaries = True
 
@@ -243,8 +298,9 @@ class NamedDirectorySource(DirectorySource):
         return uuid_suffix or (len(suffix) >= 3 and not suffix.isdigit())
 
     def _select_paths(self, candidates):
-        suffix = '-' + self._selected_key + '.jsonl'
-        selected = [(path, modified) for path, modified in candidates if path.name.endswith(suffix)]
+        keys = [key for key in (self._selected_key, self._priority_key) if key is not None]
+        selected = [(path, modified) for path, modified in candidates
+                    if any(path.name.endswith('-' + key + '.jsonl') for key in keys)]
         if len(selected) > self.max_files:
             raise ValueError('file limit')
         selected_paths = {path for path, _modified in selected}
@@ -302,6 +358,17 @@ class NamedDirectorySource(DirectorySource):
                 if fingerprint is not None:
                     self._selected_tails[path] = fingerprint
 
+    def prioritize(self, key):
+        if key is not None and thread_key(key) != key:
+            raise ValueError('invalid task key')
+        if key == self._priority_key:
+            return
+        if key is not None:
+            self._drop_changed_selected(key)
+        self._priority_key = key
+        self._dirs = None
+        self._next_scan = float('-inf')
+
     def read(self, key):
         if thread_key(key) != key or key is None:
             self.status = 'not_found'
@@ -313,4 +380,6 @@ class NamedDirectorySource(DirectorySource):
             self._next_scan = float('-inf')
         result = super().read(key)
         self._remember_selected(key)
+        if self._priority_key is not None and self._priority_key != key:
+            self._remember_selected(self._priority_key)
         return result
