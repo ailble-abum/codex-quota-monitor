@@ -13,7 +13,7 @@ from quota_monitor.runtime import UpdateLoop
 async def main():
     origin, url, directory = sys.argv[1:4]
     root = Path(directory)
-    loop = UpdateLoop(origin, url, {key: root / (key + '.jsonl') for key in ('one', 'two')},
+    loop = UpdateLoop(origin, url, session_root=root / 'logs', session_layout='codex-rollout',
                       panel=True, host='codex-sidebar', account_cli=os.environ.get('QUOTA_ACCOUNT_CLI'), consumer={
                           'path': root / 'consumer.js',
                           'sha256': hashlib.sha256((root / 'consumer.js').read_bytes()).hexdigest()})

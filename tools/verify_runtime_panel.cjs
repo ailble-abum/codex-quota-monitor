@@ -19,13 +19,15 @@ async function main() {
     const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'quota-runtime-panel-'));
     let context, worker, lines, exited;
     try {
+      await fs.mkdir(path.join(temp, 'logs'));
+      const logPath = key => path.join(temp, 'logs', `rollout-date-${key}.jsonl`);
       for (const [key, count, total] of [['one', 800, 700], ['two', null, null]]) {
         const rows = [{type: 'session_meta', payload: {id: key}},
           {type: 'turn_context', payload: {model: 'synthetic', effort: 'high'}}];
         if (count !== null) rows.push({type: 'event_msg', payload: {type: 'token_count', info: {
           last_token_usage: {input_tokens: count}, total_token_usage: {total_tokens: total},
           model_context_window: 1000}}});
-        await fs.writeFile(path.join(temp, `${key}.jsonl`), rows.map(JSON.stringify).join('\n') + '\n');
+        await fs.writeFile(logPath(key), rows.map(JSON.stringify).join('\n') + '\n');
       }
       context = await chromium.launchPersistentContext(path.join(temp, 'profile'), {
         headless: true, colorScheme, viewport: {width: 1280, height: 800},
@@ -99,7 +101,14 @@ async function main() {
         const expected = await page.evaluate(() => window.__quotaMonitorV2Snapshot.quota.windows.length);
         assert.equal(await page.locator('.cti-quota-window').count(), expected);
       }
-      await fs.appendFile(path.join(temp, 'one.jsonl'), JSON.stringify({type: 'event_msg', payload: {
+      await page.locator('[data-app-action-sidebar-thread-id="two"]').hover();
+      await page.waitForSelector('#cti-v2-sidebar-tooltip');
+      assert.equal(await step(), 'updated');
+      assert.equal(await page.evaluate(() => window.__quotaMonitorV2Snapshot.sidebarStatus?.threadId), 'two');
+      assert.equal(await page.evaluate(() => window.__quotaMonitorV2Snapshot.activeThreadId), 'one');
+      assert.match(await page.locator('#cti-v2-sidebar-tooltip').innerText(), /会话总计/);
+      await page.mouse.move(600, 650);
+      await fs.appendFile(logPath('one'), JSON.stringify({type: 'event_msg', payload: {
         type: 'token_count', info: {last_token_usage: {input_tokens: 350}, model_context_window: 1000}}}) + '\n');
       assert.equal(await step(), 'updated');
       await meter(35);
@@ -111,26 +120,33 @@ async function main() {
       await empty();
       assert.equal(await step(), 'updated');
       await contextUnknown();
-      await fs.appendFile(path.join(temp, 'two.jsonl'), JSON.stringify({type: 'event_msg', payload: {
+      await fs.appendFile(logPath('two'), JSON.stringify({type: 'event_msg', payload: {
         type: 'token_count', info: {last_token_usage: {input_tokens: 25},
           total_token_usage: {total_tokens: 900}, model_context_window: 1000}}}) + '\n');
       assert.equal(await step(), 'updated');
       await meter(2.5);
-      await fs.appendFile(path.join(temp, 'two.jsonl'), JSON.stringify({type: 'compacted', payload: {}}) + '\n');
+      await fs.appendFile(logPath('two'), JSON.stringify({type: 'compacted', payload: {}}) + '\n');
       assert.equal(await step(), 'updated');
       await contextUnknown();
-      await fs.appendFile(path.join(temp, 'two.jsonl'), JSON.stringify({type: 'event_msg', payload: {
+      await fs.appendFile(logPath('two'), JSON.stringify({type: 'event_msg', payload: {
+        type: 'token_count', info: {last_token_usage: {input_tokens: 0, total_tokens: 20},
+          total_token_usage: {total_tokens: 900}, model_context_window: 1000}}}) + '\n');
+      assert.equal(await step(), 'updated');
+      await contextUnknown();
+      assert.equal(await page.evaluate(() => window.__quotaMonitorV2Snapshot.health.after), null);
+      await fs.appendFile(logPath('two'), JSON.stringify({type: 'event_msg', payload: {
         type: 'token_count', info: {last_token_usage: {input_tokens: 30},
           total_token_usage: {total_tokens: 900}, model_context_window: 1000}}}) + '\n');
       assert.equal(await step(), 'updated');
       await meter(3);
+      assert.equal(await page.evaluate(() => window.__quotaMonitorV2Snapshot.health.after), 30);
       await page.locator('.cti-edge-mascot').focus();
       await page.locator('[data-details] summary').click();
       assert.match(await page.locator('[data-metrics]').innerText(), /900/);
       await page.locator('.cti-edge-mascot img').evaluate(img => img.decode());
       await page.screenshot({path: path.join(artifacts, `runtime-${colorScheme}.png`)});
       await select('missing');
-      assert.equal(await step(), 'updated');
+      assert.equal(await step(), 'data_not_found');
       await empty();
       await select('one');
       assert.equal(await step(), 'updated');
