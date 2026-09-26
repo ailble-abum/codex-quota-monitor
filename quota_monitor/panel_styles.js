@@ -48,7 +48,7 @@
       #codex-context-token-inspector-root [data-cti-title]::before {
         content:''; width:7px; height:7px; flex:none; border-radius:50%; background:var(--cti-tone);
       }
-      #codex-context-token-inspector-root .cti-header-actions { display:flex; gap:4px; }
+      #codex-context-token-inspector-root .cti-header-actions { display:flex; align-items:center; gap:4px; }
       #codex-context-token-inspector-root .cti-unit-group { display:flex; gap:4px; padding:0 8px 8px; }
       #codex-context-token-inspector-root .cti-unit-group button[data-active="true"],
       #codex-context-token-inspector-root [data-layout-preset][data-active="true"],
@@ -123,14 +123,29 @@
       #codex-context-token-inspector-root[data-tone="unknown"] { --cti-tone:color-mix(in srgb,CanvasText 55%,transparent); }
       #codex-context-token-inspector-root[data-collapsed="true"] { width:max-content; overflow:hidden; }
       #codex-context-token-inspector-root[data-collapsed="true"] .cti-header {
-        padding:9px 12px; border:0; gap:10px;
+        padding:7px 9px; border:0; gap:7px;
       }
+      #codex-context-token-inspector-root[data-collapsed="true"] .cti-header-actions {
+        align-self:stretch; justify-content:center;
+      }
+      #codex-context-token-inspector-root [data-cti-toggle] {
+        align-self:center; font-size:0; line-height:0; position:relative;
+      }
+      #codex-context-token-inspector-root [data-cti-toggle]::before,
+      #codex-context-token-inspector-root [data-cti-toggle]::after {
+        content:''; position:absolute; left:50%; top:50%; width:10px; height:1.5px;
+        border-radius:999px; background:currentColor; transform:translate(-50%,-50%);
+      }
+      #codex-context-token-inspector-root[data-collapsed="true"] [data-cti-toggle]::after {
+        width:1.5px; height:10px;
+      }
+      #codex-context-token-inspector-root:not([data-collapsed="true"]) [data-cti-toggle]::after { display:none; }
       #codex-context-token-inspector-root[data-collapsed="true"] [data-cti-title]::before { display:none; }
       #codex-context-token-inspector-root .cti-mini {
-        display:flex; align-items:center; gap:7px; padding:2px 0;
+        display:flex; align-items:center; gap:6px; padding:2px 0;
       }
       #codex-context-token-inspector-root .cti-mini + .cti-mini {
-        border-left:1px solid color-mix(in srgb,CanvasText 9%,transparent); padding-left:10px;
+        border-left:1px solid color-mix(in srgb,CanvasText 9%,transparent); padding-left:8px;
       }
       #codex-context-token-inspector-root .cti-battery {
         display:block; position:relative; width:9px; height:30px; flex:none; border-radius:3px;

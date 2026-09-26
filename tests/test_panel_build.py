@@ -86,6 +86,24 @@ class PanelBuildTests(unittest.TestCase):
         self.assertIn('zoom:var(--cti-scale,1)', styles)
         self.assertIn('background:linear-gradient(135deg,transparent 60%', styles)
 
+    def test_compact_bar_prioritizes_percent_and_post_compaction_percent(self):
+        root = Path(__file__).parents[1] / 'quota_monitor'
+        shell = (root / 'panel_shell.js').read_text()
+        geometry = (root / 'panel_geometry.js').read_text()
+        styles = (root / 'panel_styles.js').read_text()
+        self.assertIn("cell(windowLabel(item, true), item.remaining", shell)
+        self.assertIn("windowBudgetText(item)", shell)
+        self.assertIn("health?.afterPercent", shell)
+        self.assertIn("${chinese ? '压后' : 'after'} ${afterPercent}", shell)
+        self.assertNotIn("health.after == null ? '…' : token(health.after)", shell)
+        self.assertIn("* 70", geometry)
+        self.assertIn("align-self:stretch; justify-content:center", styles)
+        self.assertIn("align-self:center; font-size:0; line-height:0; position:relative", styles)
+        self.assertIn("transform:translate(-50%,-50%)", styles)
+        probe = (Path(__file__).parents[1] / 'tools/verify_compact_hud.cjs').read_text()
+        for evidence in ("['62%', '37%']", "['约 8.8h', '↻3 · 压后 20.2%']", 'unknown-scaled.png'):
+            self.assertIn(evidence, probe)
+
     def test_companion_size_slider_has_a_visible_track(self):
         styles = (Path(__file__).parents[1] / 'quota_monitor/panel_styles.js').read_text()
         self.assertIn('[data-mascot-scale]::-webkit-slider-runnable-track', styles)

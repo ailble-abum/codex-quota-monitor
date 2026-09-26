@@ -107,17 +107,25 @@
     if (collapsed) {
       const cell = (label, value, cellTone, fill, sub = '', figure = null) =>
         `<span class="cti-mini" data-tone="${cellTone}">${fill == null ? '' : `<span class="cti-battery" aria-hidden="true"><i style="height:${fill}%"></i></span>`}<span class="cti-mini-copy"><small>${label}</small><strong>${figure != null ? figure : value == null ? '—' : Math.round(value) + '%'}</strong>${sub ? `<em>${sub}</em>` : ''}</span></span>`;
-      const context = contextMeterValue(root.__ctiContext), health = root.__ctiHealth;
-      const sub = health?.count ? `↻${health.count} · ${health.after == null ? '…' : token(health.after)}` : '';
       const chinese = uiLanguage() === 'zh';
+      const context = contextMeterValue(root.__ctiContext), health = root.__ctiHealth;
+      const afterPercent = Number.isFinite(health?.afterPercent) && health.afterPercent >= 0 && health.afterPercent <= 100
+        ? pct(health.afterPercent) : '…';
+      const sub = health?.count ? `↻${health.count} · ${chinese ? '压后' : 'after'} ${afterPercent}` : '';
       const blocked = live && (quota.ordinaryUsageAllowed === false || Boolean(quota.rateLimitReachedType));
-      const html = windows.map(item => cell(windowLabel(item, true), item.remaining,
-        blocked ? 'low' : quotaTone(item.remaining), item.remaining, '',
-        blocked ? (chinese ? '已停' : 'stopped') : windowBudgetText(item))).join('')
+      const html = windows.map(item => {
+        const estimate = windowBudgetText(item);
+        const auxiliary = blocked ? (chinese ? '已停' : 'stopped')
+          : estimate ? `${chinese ? '约 ' : '~'}${estimate}` : '';
+        return cell(windowLabel(item, true), item.remaining,
+          blocked ? 'low' : quotaTone(item.remaining), item.remaining, auxiliary);
+      }).join('')
         + cell(chinese ? 'CTX 已用' : 'CTX used', context, contextTone(context), context, sub);
       if (title.innerHTML !== html) title.innerHTML = html;
       const budget = blocked ? (chinese ? '账户已达上限' : 'Account at its limit') : accountBudgetText(quota);
-      title.setAttribute('aria-label', [compact, budget, `${chinese ? '上下文已用' : 'Context used'} ${pct(context)}`].filter(Boolean).join(' · '));
+      const compaction = health?.count
+        ? `${chinese ? '压缩' : 'Compactions'} ${health.count} · ${chinese ? '压后首次请求' : 'first post-compaction request'} ${afterPercent}` : '';
+      title.setAttribute('aria-label', [compact, budget, `${chinese ? '上下文已用' : 'Context used'} ${pct(context)}`, compaction].filter(Boolean).join(' · '));
     } else if (title.textContent !== tr('monitor')) title.textContent = tr('monitor');
     updateHudLanguage(root);
   }
