@@ -123,7 +123,7 @@ class DirectorySource:
                 self.status = self._scan_status
                 return empty
 
-        readings, selected_readings = [], []
+        readings, selected_readings, path_readings = [], [], []
         selected_paths = ([path for path in self._journals
                            if self.all_summaries and path.name.endswith('-' + key + '.jsonl')]
                           if self.all_summaries else [])
@@ -154,6 +154,7 @@ class DirectorySource:
             if reading['invalid_lines']:
                 self._tainted.add(path)
             readings.append(reading)
+            path_readings.append((path, reading))
             if selected_name:
                 selected_readings.append(reading)
         if not self._current():
@@ -170,11 +171,12 @@ class DirectorySource:
             if self.status == 'ok':
                 verified = {}
                 duplicate = set()
-                for reading in readings:
+                for path, reading in path_readings:
                     thread_id = reading.get('thread_id')
                     if (reading.get('status') != 'ok' or
                             reading.get('identity_status') != 'verified' or
-                            not isinstance(thread_id, str)):
+                            not isinstance(thread_id, str) or
+                            not path.name.endswith('-' + thread_id + '.jsonl')):
                         continue
                     if thread_id in verified:
                         duplicate.add(thread_id)
@@ -244,7 +246,7 @@ class NamedDirectorySource(DirectorySource):
                         key=lambda item: (item[1], str(item[0])), reverse=True)
         return [path for path, _modified in selected + recent[:self.max_files - len(selected)]]
 
-    def _tail_fingerprint(self, path, offset):
+    def _file_fingerprint(self, path, offset):
         try:
             descriptor = open_in_root(self.root, path)
             try:
@@ -252,13 +254,26 @@ class NamedDirectorySource(DirectorySource):
                 if info.st_size < offset:
                     return None
                 size = min(64, offset)
+                os.lseek(descriptor, 0, os.SEEK_SET)
+                head = hashlib.sha256(os.read(descriptor, size)).digest()
                 os.lseek(descriptor, offset - size, os.SEEK_SET)
-                return ((info.st_dev, info.st_ino), offset,
-                        hashlib.sha256(os.read(descriptor, size)).digest())
+                tail = hashlib.sha256(os.read(descriptor, size)).digest()
+                return ((info.st_dev, info.st_ino), offset, info.st_size,
+                        info.st_mtime_ns, info.st_ctime_ns, head, tail)
             finally:
                 os.close(descriptor)
         except OSError:
             return None
+
+    def _matches_fingerprint(self, path, expected):
+        actual = self._file_fingerprint(path, expected[1])
+        if actual is None or actual[0] != expected[0] or actual[2] < expected[2]:
+            return False
+        if actual[5:] != expected[5:]:
+            return False
+        # Growth may be an append and is verified by the saved prefix windows.
+        # Same-size metadata changes are conservatively treated as a rewrite.
+        return actual[2] > expected[2] or actual[3:5] == expected[3:5]
 
     def _drop_changed_selected(self, key):
         suffix = '-' + key + '.jsonl'
@@ -266,8 +281,7 @@ class NamedDirectorySource(DirectorySource):
             if not path.name.endswith(suffix):
                 continue
             expected = self._selected_tails.get(path)
-            actual = self._tail_fingerprint(path, journal.reader._offset)
-            if expected is None or actual != expected:
+            if expected is None or not self._matches_fingerprint(path, expected):
                 self._journals.pop(path, None)
                 self._tainted.discard(path)
                 self._selected_tails.pop(path, None)
@@ -278,7 +292,7 @@ class NamedDirectorySource(DirectorySource):
         suffix = '-' + key + '.jsonl'
         for path, journal in self._journals.items():
             if path.name.endswith(suffix):
-                fingerprint = self._tail_fingerprint(path, journal.reader._offset)
+                fingerprint = self._file_fingerprint(path, journal.reader._offset)
                 if fingerprint is not None:
                     self._selected_tails[path] = fingerprint
 

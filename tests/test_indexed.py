@@ -240,13 +240,48 @@ class NamedDirectoryTests(unittest.TestCase):
             while source.status == 'loading':
                 payload = source.read('two')
             self.assertEqual(payload['summaries'][0]['latest_context_tokens'], 90)
+            source.read_budget = 4 * 1024 * 1024
             with one.open('a') as stream:
                 stream.write(json.dumps({'type': 'event_msg', 'payload': {'type': 'token_count',
                     'info': {'last_token_usage': {'input_tokens': 40},
                              'model_context_window': 100}}}) + '\n')
+            self.assertEqual(source.read('two')['summaries'][0]['latest_context_tokens'], 90)
             self.assertEqual(source.read('one')['summaries'][0]['latest_context_tokens'], 40)
-            self.assertGreater(source.bytes_read, 0)
-            self.assertLess(source.bytes_read, one.stat().st_size)
+            self.assertEqual(source.bytes_read, 0)
+
+    def test_named_same_size_head_rewrite_invalidates_cached_identity(self):
+        from quota_monitor.indexed import NamedDirectorySource
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            selected = root / 'rollout-date-one.jsonl'
+            other = root / 'rollout-date-two.jsonl'
+            self.write_rollout(selected, 'one', 10)
+            self.write_rollout(other, 'two', 20)
+            source = NamedDirectorySource(root)
+            self.assertEqual(source.read('one')['selectedThreadId'], 'one')
+            self.assertEqual(source.read('two')['selectedThreadId'], 'two')
+            before = selected.read_text()
+            selected.write_text(before.replace('"id": "one"', '"id": "bad"', 1))
+            self.assertEqual(selected.stat().st_size, len(before.encode()))
+            self.assertIsNone(source.read('one')['selectedThreadId'])
+
+    def test_named_requires_filename_and_content_identity_in_small_and_large_inventory(self):
+        from quota_monitor.indexed import NamedDirectorySource
+        for filler_count in (0, 140):
+            with self.subTest(filler_count=filler_count), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                selected = root / 'rollout-date-target.jsonl'
+                impostor = root / 'rollout-date-other.jsonl'
+                self.write_rollout(selected, 'target', 77)
+                self.write_rollout(impostor, 'target', 99)
+                os.utime(selected, ns=(1, 1))
+                for index in range(filler_count):
+                    key = 'task%03d' % index
+                    self.write_rollout(root / ('rollout-date-' + key + '.jsonl'), key, index)
+                payload = NamedDirectorySource(root).read('target')
+                self.assertEqual(payload['selectedThreadId'], 'target')
+                target_rows = [item for item in payload['summaries'] if item['thread_id'] == 'target']
+                self.assertEqual([item['latest_context_tokens'] for item in target_rows], [77])
 
     def test_named_inventory_prioritizes_selected_with_bounded_recent_window(self):
         from quota_monitor.indexed import NamedDirectorySource
