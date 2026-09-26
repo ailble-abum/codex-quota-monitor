@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const context=vm.createContext({});
 vm.runInContext(fs.readFileSync(path.join(__dirname,'../quota_monitor/panel_companion_behavior.js'),'utf8'),context);
-for(const [reaction,mood,result] of [['pet','idle','pet'],['hello','idle','happy'],['happy','idle','happy'],['notice','idle','notice'],[null,'waiting','waiting'],[null,'concerned','concerned'],[null,'unknown','concerned'],[null,'idle','idle']]) assert.equal(context.companionExpression(reaction,mood),result);
+for(const [reaction,mood,result] of [['pet','idle','pet'],['hello','idle','happy'],['happy','idle','happy'],['notice','idle','notice'],[null,'waiting','waiting'],[null,'concerned','concerned'],[null,'unknown','idle'],[null,'idle','idle']]) assert.equal(context.companionExpression(reaction,mood),result);
 assert.deepEqual(JSON.parse(JSON.stringify(context.companionHealth({healthThreadId:'local:one',health:{count:1}},'one'))),{count:1});
 assert.equal(context.companionHealth({healthThreadId:'two',health:{count:1}},'one'),null);
 const gesture={x:10,y:10,at:0,head:true};

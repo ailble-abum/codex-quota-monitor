@@ -4,7 +4,7 @@
     if (reaction === 'happy' || reaction === 'hello') return 'happy';
     if (reaction === 'notice') return 'notice';
     if (mood === 'waiting') return 'waiting';
-    return mood === 'concerned' || mood === 'unknown' ? 'concerned' : 'idle';
+    return mood === 'concerned' ? 'concerned' : 'idle';
   }
 
   function companionHealth(payload, threadId) {

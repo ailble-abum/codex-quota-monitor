@@ -26,9 +26,13 @@
   function applyMascotSkin(root) {
     const mascot = ensureMascot(root);
     const id = mascotSkin();
+    const language = uiLanguage();
+    if (mascot.dataset.skin === id && mascot.dataset.skinLanguage === language
+        && mascot.querySelector('img, .cti-mascot-art')) return;
     const skin = MASCOT_SKINS[id];
     mascot.innerHTML = mascotMarkup(id, 'cti-mascot-art');
     mascot.dataset.skin = id;
+    mascot.dataset.skinLanguage = language;
     mascot.dataset.art = String(Boolean(mascotArt(id)));
     mascot.style.setProperty('--cti-mascot-accent', skin.accent);
     const [x, y, size] = skin.ring;
