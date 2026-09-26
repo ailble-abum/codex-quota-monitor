@@ -116,6 +116,13 @@ async function verifyTooltip(engine) {
     assert.match(await page.locator('#cti-v2-sidebar-tooltip').innerText(), /读取|Reading/,
       'unloaded logs should replace old values with visible loading feedback');
     assert.equal(await page.evaluate(() => window.__quotaMonitorV2SidebarThread), 'one');
+    await page.evaluate(() => projectHostDetails({summaries:[],sidebarStatus:{threadId:'one',
+      status:'loading',readBytes:42,totalBytes:100}}));
+    assert.match(await page.locator('#cti-v2-sidebar-tooltip').innerText(), /42%/,
+      'large journal reads must expose numeric progress');
+    await page.evaluate(() => projectHostDetails({summaries:[],sidebarStatus:{threadId:'one',status:'loading'}}));
+    assert.ok(!(await page.locator('#cti-v2-sidebar-tooltip').innerText()).includes('%'),
+      'a pending unfinished line must not appear as 100% complete');
     await page.evaluate(() => projectHostDetails({summaries:[],sidebarStatus:{threadId:'one',status:'not_found'}}));
     assert.match(await page.locator('#cti-v2-sidebar-tooltip').innerText(), /暂无本机|No local/);
     await page.evaluate(() => projectHostDetails(window.testPayload));
@@ -132,6 +139,15 @@ async function verifyTooltip(engine) {
     assert.equal(await page.locator('#cti-v2-sidebar-tooltip').count(), 0,
       'clearing the plugin must remove the tooltip and hover request');
     assert.equal(await page.evaluate(() => window.__quotaMonitorV2SidebarThread), undefined);
+    await page.mouse.move(page.viewportSize().width - 1, page.viewportSize().height - 1);
+    await page.mouse.move(36, 12);
+    await page.waitForSelector('#cti-v2-sidebar-tooltip');
+    assert.match(await page.locator('#cti-v2-sidebar-tooltip').innerText(), /请先打开|Open a local/,
+      'without a selected local conversation, do not promise that a log read is running');
+    await page.evaluate(() => projectHostDetails({activeThreadId:'one', summaries:[],
+      sidebarStatus:{threadId:'one',status:'index_wait'}}));
+    assert.match(await page.locator('#cti-v2-sidebar-tooltip').innerText(), /会话列表更新|Conversation list updating/);
+    await page.evaluate(() => clearHostProjection());
     for (const [kind, host] of [[null, 'local'], ['local', null], ['cloud', 'local'], ['local', 'remote']]) {
       await page.evaluate(({kind, host}) => {
         const row = document.getElementById('top');

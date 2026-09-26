@@ -20,6 +20,10 @@
 
   function hostLoadingNote(row, payload) {
     const zh = uiLanguage() === 'zh';
+    if (!payload || payload.activeThreadId === null) {
+      return JSON.stringify([[zh ? '用量' : 'Usage',
+        zh ? '请先打开一个本地对话' : 'Open a local conversation to read usage']]);
+    }
     const key = String(hostThreadId(row) || '').replace(/^local:/, '');
     const state = payload?.sidebarStatus;
     const status = state?.threadId === key ? state.status : 'loading';
@@ -28,9 +32,18 @@
       not_found: zh ? '暂无本机会话日志' : 'No local conversation log',
       ambiguous: zh ? '存在重复日志，暂不可用' : 'Duplicate logs; usage unavailable',
       unavailable: zh ? '暂时无法读取日志' : 'Log temporarily unavailable',
+      index_wait: zh ? '会话列表更新中，稍后重试…' : 'Conversation list updating; retrying…',
+      incomplete: zh ? '日志读取尚未完成' : 'Log reading is incomplete',
       ready: zh ? '正在更新用量…' : 'Updating usage…',
     };
-    return JSON.stringify([[zh ? '用量' : 'Usage', messages[status] || messages.unavailable]]);
+    let message = messages[status] || messages.unavailable;
+    if (status === 'loading' && state?.threadId === key &&
+        Number.isFinite(state.readBytes) && Number.isFinite(state.totalBytes) &&
+        state.readBytes >= 0 && state.totalBytes > 0 && state.readBytes <= state.totalBytes) {
+      const percent = Math.min(99, Math.floor(100 * state.readBytes / state.totalBytes));
+      message = zh ? `正在读取此对话的用量 ${percent}%…` : `Reading conversation usage ${percent}%…`;
+    }
+    return JSON.stringify([[zh ? '用量' : 'Usage', message]]);
   }
 
   function hostFinite(value) {
