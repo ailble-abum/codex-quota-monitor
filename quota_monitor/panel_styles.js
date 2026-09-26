@@ -204,8 +204,15 @@
       }
       #codex-context-token-inspector-mascot[data-edge="left"] [data-gauge] { right:-3px; }
       #codex-context-token-inspector-mascot[data-edge="right"] [data-gauge] { left:-3px; }
-      #codex-context-token-inspector-mascot[data-art="true"][data-edge="right"] [data-gauge] { left:-10px; }
-      #codex-context-token-inspector-mascot[data-art="true"][data-edge="left"] [data-gauge] { right:-10px; }
+      /* Stable alpha-union bounds from each skin's six 320px expression frames. */
+      #codex-context-token-inspector-mascot[data-skin="candy"] { --cti-gauge-left:-3.55px; --cti-gauge-right:-3.1px; }
+      #codex-context-token-inspector-mascot[data-skin="cat"],
+      #codex-context-token-inspector-mascot[data-skin="corgi"] { --cti-gauge-left:-7px; --cti-gauge-right:-7px; }
+      #codex-context-token-inspector-mascot[data-skin="frost"] { --cti-gauge-left:2.9px; --cti-gauge-right:-3.55px; }
+      #codex-context-token-inspector-mascot[data-skin="mint"] { --cti-gauge-left:8.15px; --cti-gauge-right:-6.55px; }
+      #codex-context-token-inspector-mascot[data-skin="tea"] { --cti-gauge-left:5.9px; --cti-gauge-right:-7px; }
+      #codex-context-token-inspector-mascot[data-art="true"][data-edge="right"] [data-gauge] { left:var(--cti-gauge-left,-7px); }
+      #codex-context-token-inspector-mascot[data-art="true"][data-edge="left"] [data-gauge] { right:var(--cti-gauge-right,-7px); }
       #cti-context-hint { position:fixed; z-index:2147483002; max-width:260px; padding:7px 9px; border-radius:8px; color:CanvasText; background:Canvas; box-shadow:0 8px 24px #0004; }
       .cti-v2-sidebar-tooltip {
         position:fixed; z-index:2147483002; box-sizing:border-box;

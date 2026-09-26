@@ -80,6 +80,8 @@ class PanelBuildTests(unittest.TestCase):
         self.assertIn('background:var(--cti-tone); border-radius:2px', styles)
         self.assertIn('flex-direction:column; gap:4px; width:7px', styles)
         self.assertIn('[data-edge="right"] [data-gauge] { left:-3px; }', styles)
+        self.assertIn('[data-skin="tea"] { --cti-gauge-left:5.9px; --cti-gauge-right:-7px; }', styles)
+        self.assertIn('left:var(--cti-gauge-left,-7px)', styles)
         self.assertIn('overflow-x:hidden; overflow-y:auto', styles)
         self.assertIn('zoom:var(--cti-scale,1)', styles)
         self.assertIn('background:linear-gradient(135deg,transparent 60%', styles)

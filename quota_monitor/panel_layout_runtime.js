@@ -41,8 +41,9 @@
     const mascot = ensureMascot(root);
     const rect = root.getBoundingClientRect();
     const scale = mascotScale();
-    const y = dockVerticalY(Number.isFinite(wanted.y) ? wanted.y : dockSafeTop(),
-      window.innerHeight, rect.height, 48 * scale);
+    const anchorY = Number.isFinite(wanted.y) ? wanted.y : dockSafeTop();
+    const mascotY = dockVerticalY(anchorY, window.innerHeight, 0, 52 * scale);
+    const panelY = dockVerticalY(anchorY, window.innerHeight, rect.height, 52 * scale);
     root.dataset.docked = 'true';
     root.dataset.dockEdge = edge;
     root.dataset.revealed ||= 'false';
@@ -52,12 +53,14 @@
     mascot.style.setProperty('--cti-mascot-scale', String(scale));
     mascot.style.left = edge === 'left' ? '0px' : 'auto';
     mascot.style.right = edge === 'right' ? '0px' : 'auto';
-    mascot.style.top = `${y}px`;
-    const gap = 52 * scale;
+    mascot.style.top = `${mascotY}px`;
+    // Include the gauge protruding from the mascot so the revealed panel never
+    // covers it, even at the largest companion scale.
+    const gap = 60 * scale;
     const visible = root.dataset.revealed === 'true';
     root.style.left = edge === 'left' ? (visible ? `${gap}px` : `${-rect.width - 2}px`)
       : (visible ? `${window.innerWidth - rect.width - gap}px` : `${window.innerWidth + 2}px`);
-    root.style.top = `${y}px`;
+    root.style.top = `${panelY}px`;
     positionContextHint(root);
   }
 
@@ -68,7 +71,7 @@
     const wanted = root.__ctiLayout[mode] || root.__ctiLayout.compact || {};
     const base = hudBase(root);
     const docked = edgeDockEnabled() && ['left', 'right'].includes(wanted.edge);
-    const available = window.innerWidth - (docked ? 52 * mascotScale() + 8 : 16);
+    const available = window.innerWidth - (docked ? 60 * mascotScale() + 8 : 16);
     const width = Math.max(160, Math.min(available, wanted.width || base));
     Object.assign(root.style, {width:`${width}px`, maxHeight:`${Math.max(80, window.innerHeight - 80)}px`, right:'auto', bottom:'auto'});
     root.style.setProperty('--cti-scale', String(Math.max(0.55, Math.min(1.65, width / base))));
@@ -210,10 +213,15 @@
   function keepTogglePosition(root, update) {
     const before = hudMode(root), rect = root.getBoundingClientRect();
     const dockedEdge = root.dataset.docked === 'true' ? root.dataset.dockEdge : null;
-    root.__ctiLayout[before] = {...(root.__ctiLayout[before] || {}), x:rect.left, y:rect.top};
+    const beforeLayout = root.__ctiLayout[before] || {};
+    const mascot = dockedEdge ? document.getElementById(MASCOT_ID) : null;
+    const anchorY = dockedEdge
+      ? (Number.isFinite(beforeLayout.y) ? beforeLayout.y : mascot?.getBoundingClientRect().top)
+      : rect.top;
+    root.__ctiLayout[before] = {...beforeLayout, x:rect.left, y:anchorY};
     update();
     const after = hudMode(root);
-    root.__ctiLayout[after] = {...(root.__ctiLayout[after] || {}), x:rect.left, y:rect.top};
+    root.__ctiLayout[after] = {...(root.__ctiLayout[after] || {}), x:rect.left, y:anchorY};
     if (dockedEdge === 'left' || dockedEdge === 'right') root.__ctiLayout[after].edge = dockedEdge;
     else delete root.__ctiLayout[after].edge;
     saveLayout(root); applyStoredHudPosition(root);
