@@ -57,6 +57,18 @@
     }
     if (!options.key || current() !== options.key) return false;
 
+    if (options.action === 'sidebarHover') {
+        if (options.host !== 'codex-sidebar') return null;
+        const wanted = normalize(window.__quotaMonitorV2SidebarThread);
+        if (!wanted) return null;
+        const found = Array.from(document.querySelectorAll('[data-app-action-sidebar-thread-row]'))
+            .some(row => !row.closest('[data-app-shell-active-page="false"]') &&
+                row.getAttribute('data-app-action-sidebar-thread-kind') === 'local' &&
+                row.getAttribute('data-app-action-sidebar-thread-host-id') === 'local' &&
+                normalize(row.getAttribute('data-app-action-sidebar-thread-id')) === wanted);
+        return found ? wanted : null;
+    }
+
     if (options.action === 'refresh') {
         const requested = window.__quotaMonitorV2RefreshRequested === true;
         try { delete window.__quotaMonitorV2RefreshRequested; } catch (_) {}

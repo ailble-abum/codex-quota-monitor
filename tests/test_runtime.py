@@ -43,6 +43,31 @@ class SelectionTests(unittest.TestCase):
 
 
 class LoopTests(unittest.IsolatedAsyncioTestCase):
+    async def test_sidebar_hover_prioritizes_loading_without_changing_active_task(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for key in ('one', 'two'):
+                (root / ('rollout-date-' + key + '.jsonl')).write_text(
+                    json.dumps({'type':'session_meta','payload':{'id':key}}) + '\n')
+            loop = runtime.UpdateLoop('http://127.0.0.1:9222', 'about:blank',
+                                      session_root=root, session_layout='codex-rollout')
+            loop.update.snapshot = Mock(return_value={'status':'unavailable'})
+            client = AsyncMock()
+            client.endpoint = 'ws://127.0.0.1:9222/devtools/page/one'
+            loop.client = client
+            with patch.object(runtime, 'list_pages', return_value=[]), \
+                    patch.object(runtime, 'select_page', return_value=client.endpoint):
+                client.evaluate.side_effect = ['one', 'two', False, False, True]
+                self.assertEqual(await loop.step(), 'updated')
+                self.assertEqual(loop.source._priority_key, 'two')
+                expression = client.evaluate.call_args.args[0]
+                payload = json.loads(expression[len(runtime._PAGE_BRIDGE) + 1:-1])['payload']
+                self.assertEqual(payload['selectedThreadId'], 'one')
+                self.assertEqual(payload['sidebarStatus'], {'threadId':'two','status':'ready'})
+                client.evaluate.side_effect = ['one', None, False, False, True]
+                self.assertEqual(await loop.step(), 'updated')
+                self.assertIsNone(loop.source._priority_key)
+
     async def test_history_uses_verified_active_summary_not_first_sidebar_row(self):
         loop = runtime.UpdateLoop('http://127.0.0.1:9222', 'about:blank', {})
         payload = {'selectedThreadId': 'active', 'summaries': [

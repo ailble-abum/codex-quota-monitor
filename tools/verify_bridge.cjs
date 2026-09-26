@@ -97,6 +97,22 @@ async function main() {
         document.body.append(row);
       });
       assert.equal(await readHost(), 'one');
+      const readHover = () => call({action:'sidebarHover', expected:'about:blank', host:'codex-sidebar', key:'one'});
+      await page.evaluate(() => { window.__quotaMonitorV2SidebarThread = 'local:two'; });
+      assert.equal(await readHover(), 'two');
+      await page.locator('button:last-child').evaluate(row => row.setAttribute('data-app-action-sidebar-thread-host-id', 'remote-host'));
+      assert.equal(await readHover(), null, 'remote hover must not request local logs');
+      await page.locator('button:last-child').evaluate(row => {
+        row.setAttribute('data-app-action-sidebar-thread-host-id', 'local');
+        const shell=document.createElement('section'); shell.dataset.appShellActivePage='false';
+        row.replaceWith(shell); shell.append(row);
+      });
+      assert.equal(await readHover(), null, 'inactive hover must not request local logs');
+      await page.evaluate(() => {
+        const shell=document.querySelector('section'); const row=shell.querySelector('button');
+        shell.replaceWith(row); window.__quotaMonitorV2SidebarThread='missing';
+      });
+      assert.equal(await readHover(), null, 'missing row must not request local logs');
       await page.evaluate(() => document.querySelector('button:last-child').remove());
       await page.evaluate(() => document.body.append(document.querySelector('button').cloneNode()));
       assert.equal(await readHost(), null);

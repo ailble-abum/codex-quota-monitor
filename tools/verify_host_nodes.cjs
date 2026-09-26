@@ -35,6 +35,7 @@ async function verifyTooltip(engine) {
   const browser = await engine.launch();
   try {
     const page = await browser.newPage({viewport:{width:220,height:96}});
+    page.setDefaultTimeout(5000);
     await page.setContent(`<style>body{margin:0;font:13px system-ui}.shell{position:relative;height:96px}
       [data-app-action-sidebar-thread-row]{position:absolute;left:4px;width:64px;height:24px}
       #top{top:0}#bottom{bottom:0}</style>
@@ -112,8 +113,25 @@ async function verifyTooltip(engine) {
     await page.mouse.move(36, 12);
     await page.waitForSelector('#cti-v2-sidebar-tooltip');
     await page.evaluate(() => projectHostDetails({summaries:[]}));
+    assert.match(await page.locator('#cti-v2-sidebar-tooltip').innerText(), /读取|Reading/,
+      'unloaded logs should replace old values with visible loading feedback');
+    assert.equal(await page.evaluate(() => window.__quotaMonitorV2SidebarThread), 'one');
+    await page.evaluate(() => projectHostDetails({summaries:[],sidebarStatus:{threadId:'one',status:'not_found'}}));
+    assert.match(await page.locator('#cti-v2-sidebar-tooltip').innerText(), /暂无本机|No local/);
+    await page.evaluate(() => projectHostDetails(window.testPayload));
+    assert.equal(await page.locator('#cti-v2-sidebar-tooltip span').count(), 10,
+      'completed data should populate the same hovered tooltip without another mouse movement');
+    await page.mouse.move(page.viewportSize().width - 1, page.viewportSize().height - 1);
+    await page.waitForFunction(() => !document.getElementById('cti-v2-sidebar-tooltip'));
+    await page.evaluate(() => projectHostDetails({summaries:[]}));
+    await page.mouse.move(36, 12);
+    await page.waitForSelector('#cti-v2-sidebar-tooltip');
+    assert.match(await page.locator('#cti-v2-sidebar-tooltip').innerText(), /读取|Reading/,
+      'rows without any prior plugin data must still request and show loading');
+    await page.evaluate(() => clearHostProjection());
     assert.equal(await page.locator('#cti-v2-sidebar-tooltip').count(), 0,
-      'publishing a task change must remove the previous task tooltip');
+      'clearing the plugin must remove the tooltip and hover request');
+    assert.equal(await page.evaluate(() => window.__quotaMonitorV2SidebarThread), undefined);
     console.log(`${engine.name()}: tooltip grid, narrow bounds, scrolling, hover retention and inactive-shell filtering passed`);
   } finally {
     await browser.close();

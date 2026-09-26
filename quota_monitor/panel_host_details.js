@@ -10,6 +10,28 @@
   ];
   let hostListenersInstalled = false;
   let hostTooltipHideTimer = null;
+  let hostSidebarPayload = null;
+
+  function hostLocalSidebarRow(row) {
+    return row && !row.closest('[data-app-shell-active-page="false"]') && hostThreadId(row)
+      && [null, 'local'].includes(row.getAttribute('data-app-action-sidebar-thread-kind'))
+      && [null, 'local'].includes(row.getAttribute('data-app-action-sidebar-thread-host-id'));
+  }
+
+  function hostLoadingNote(row, payload) {
+    const zh = uiLanguage() === 'zh';
+    const key = String(hostThreadId(row) || '').replace(/^local:/, '');
+    const state = payload?.sidebarStatus;
+    const status = state?.threadId === key ? state.status : 'loading';
+    const messages = {
+      loading: zh ? '正在读取此对话的用量…' : 'Reading usage for this conversation…',
+      not_found: zh ? '暂无本机会话日志' : 'No local conversation log',
+      ambiguous: zh ? '存在重复日志，暂不可用' : 'Duplicate logs; usage unavailable',
+      unavailable: zh ? '暂时无法读取日志' : 'Log temporarily unavailable',
+      ready: zh ? '正在更新用量…' : 'Updating usage…',
+    };
+    return JSON.stringify([[zh ? '用量' : 'Usage', messages[status] || messages.unavailable]]);
+  }
 
   function hostFinite(value) {
     return typeof value === 'number' && Number.isFinite(value);
@@ -134,6 +156,7 @@
     clearTimeout(hostTooltipHideTimer);
     hostTooltipHideTimer = null;
     document.getElementById(HOST_TOOLTIP_ID)?.remove();
+    try { delete window.__quotaMonitorV2SidebarThread; } catch (_) {}
   }
 
   function scheduleHostTooltipRemoval() {
@@ -165,6 +188,7 @@
     tip.setAttribute('role', 'tooltip');
     if (!renderHostTooltip(tip, value)) return;
     tip.__ctiHostRow = row;
+    window.__quotaMonitorV2SidebarThread = String(hostThreadId(row)).replace(/^local:/, '');
     tip.addEventListener('mouseenter', () => {
       clearTimeout(hostTooltipHideTimer); hostTooltipHideTimer = null;
       if (!row.isConnected || !row.hasAttribute(HOST_NOTE_ATTR)
@@ -183,11 +207,15 @@
   }
 
   function hostMouseOver(event) {
-    const row = event.target?.closest?.(`[${HOST_NOTE_ATTR}]`);
-    if (row?.closest('[data-app-shell-active-page="false"]')) {
+    const row = event.target?.closest?.('[data-app-action-sidebar-thread-row]');
+    if (!row) return;
+    if (!hostLocalSidebarRow(row)) {
       row.removeAttribute(HOST_NOTE_ATTR); removeHostTooltip();
-    } else if (row) {
-      clearTimeout(hostTooltipHideTimer); hostTooltipHideTimer = null; showHostTooltip(row);
+    } else {
+      clearTimeout(hostTooltipHideTimer); hostTooltipHideTimer = null;
+      if (document.getElementById(HOST_TOOLTIP_ID)?.__ctiHostRow === row) return;
+      if (!row.hasAttribute(HOST_NOTE_ATTR)) row.setAttribute(HOST_NOTE_ATTR, hostLoadingNote(row, hostSidebarPayload));
+      showHostTooltip(row);
     }
   }
 
@@ -199,12 +227,15 @@
   }
 
   function clearHostProjection() {
+    hostSidebarPayload = null;
     document.querySelectorAll(`[${HOST_NOTE_ATTR}]`).forEach(row => row.removeAttribute(HOST_NOTE_ATTR));
     document.querySelectorAll(`[${HOST_CHIP_ATTR}]`).forEach(node => node.remove());
     removeHostTooltip();
   }
 
   function projectSidebarNotes(payload) {
+    hostSidebarPayload = payload;
+    const hovered = document.getElementById(HOST_TOOLTIP_ID)?.__ctiHostRow;
     const byId = new Map();
     (payload?.summaries || []).forEach(item => {
       const id = String(item?.thread_id || '');
@@ -212,12 +243,13 @@
       (item?.thread_keys || []).forEach(key => byId.set(String(key), item));
     });
     document.querySelectorAll('[data-app-action-sidebar-thread-row]').forEach(row => {
-      if (row.closest('[data-app-shell-active-page="false"]')) {
+      if (!hostLocalSidebarRow(row)) {
         row.removeAttribute(HOST_NOTE_ATTR);
         return;
       }
       const item = byId.get(String(hostThreadId(row)));
       if (item) row.setAttribute(HOST_NOTE_ATTR, hostSummaryNote(item));
+      else if (row === hovered) row.setAttribute(HOST_NOTE_ATTR, hostLoadingNote(row, payload));
       else row.removeAttribute(HOST_NOTE_ATTR);
     });
     const tip = document.getElementById(HOST_TOOLTIP_ID);
@@ -255,7 +287,7 @@
 
   function projectHostDetails(payload) {
     installHostListeners();
-    if (!payload || !payload.summaries?.length) { clearHostProjection(); return; }
+    if (!payload || payload.activeThreadId === null) { clearHostProjection(); return; }
     projectSidebarNotes(payload);
     projectMessageChips(payload);
   }

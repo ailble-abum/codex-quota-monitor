@@ -213,6 +213,10 @@ class UpdateLoop:
                 if ready != 'ready':
                     self.status = 'changed'
                     return self.status
+            if isinstance(self.source, NamedDirectorySource):
+                hovered = await self.client.evaluate(page_expression(
+                    action='sidebarHover', expected=self.page_url, key=key, host=self.host))
+                self.source.prioritize(thread_key(hovered))
             payload = self.source.read(key)
             if self.account is not None:
                 requested = await self.client.evaluate(page_expression(
