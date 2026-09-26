@@ -3,7 +3,28 @@ import asyncio
 import hashlib
 import json
 import math
+import os
+from pathlib import Path
 import time
+
+
+def resolve_cli(configured):
+    """Follow known CLI packaging changes only inside the configured app bundle."""
+    path = Path(configured)
+    if path.is_file() and os.access(path, os.X_OK):
+        return configured
+    layouts = ('codex', 'codex-cli/CodexCLI.app/Contents/MacOS/codex',
+               'codex-cli/bin/codex')
+    for resources in path.parents:
+        if (resources.name != 'Resources' or resources.parent.name != 'Contents'
+                or resources.parent.parent.suffix != '.app'
+                or path.relative_to(resources).as_posix() not in layouts):
+            continue
+        for layout in layouts:
+            candidate = resources / layout
+            if candidate.is_file() and os.access(candidate, os.X_OK):
+                return str(candidate)
+    return configured
 
 
 def unavailable(code='account_unavailable'):
@@ -160,7 +181,9 @@ class AccountSource:
         self.next_read = 0
 
     async def refresh(self):
-        self.value = await read_account(self.command)
+        # Resolve each refresh so an app update does not pin a removed binary
+        # until the monitor itself is restarted. Explicit external CLIs stay exact.
+        self.value = await read_account([resolve_cli(self.command[0]), *self.command[1:]])
 
     def snapshot(self):
         if time.monotonic() >= self.next_read and (self.task is None or self.task.done()):

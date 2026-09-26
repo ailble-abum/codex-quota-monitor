@@ -10,6 +10,56 @@ from quota_monitor import account
 
 
 class AccountTests(unittest.IsolatedAsyncioTestCase):
+    def test_cli_resolves_known_packaging_only_within_configured_bundle(self):
+        with tempfile.TemporaryDirectory() as directory:
+            resources = Path(directory) / 'Codex.app/Contents/Resources'
+            legacy = resources / 'codex'
+            bundled = resources / 'codex-cli/CodexCLI.app/Contents/MacOS/codex'
+            bundled.parent.mkdir(parents=True)
+            bundled.write_text('#!/bin/sh\nexit 0\n')
+            bundled.chmod(0o755)
+            self.assertEqual(account.resolve_cli(str(legacy)), str(bundled))
+            legacy.write_text('#!/bin/sh\nexit 0\n')
+            legacy.chmod(0o755)
+            self.assertEqual(account.resolve_cli(str(legacy)), str(legacy))
+            custom = resources / 'custom/codex'
+            self.assertEqual(account.resolve_cli(str(custom)), str(custom))
+            other = Path(directory) / 'Other.app/Contents/Resources/codex'
+            self.assertEqual(account.resolve_cli(str(other)), str(other))
+
+    def test_cli_wrapper_fallback_requires_executable_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            resources = Path(directory) / 'Codex.app/Contents/Resources'
+            legacy = resources / 'codex'
+            wrapper = resources / 'codex-cli/bin/codex'
+            wrapper.parent.mkdir(parents=True)
+            wrapper.write_text('#!/bin/sh\nexit 0\n')
+            wrapper.chmod(0o644)
+            self.assertEqual(account.resolve_cli(str(legacy)), str(legacy))
+            wrapper.chmod(0o755)
+            self.assertEqual(account.resolve_cli(str(legacy)), str(wrapper))
+
+    async def test_cli_packaging_is_resolved_again_after_app_update(self):
+        from unittest.mock import AsyncMock, patch
+        with tempfile.TemporaryDirectory() as directory:
+            resources = Path(directory) / 'Codex.app/Contents/Resources'
+            resources.mkdir(parents=True)
+            legacy = resources / 'codex'
+            legacy.write_text('#!/bin/sh\nexit 0\n')
+            legacy.chmod(0o755)
+            source = account.AccountSource(str(legacy))
+            with patch.object(account, 'read_account', new_callable=AsyncMock,
+                              return_value=account.unavailable()) as read:
+                await source.refresh()
+                read.assert_awaited_with([str(legacy), 'app-server'])
+                legacy.unlink()
+                bundled = resources / 'codex-cli/CodexCLI.app/Contents/MacOS/codex'
+                bundled.parent.mkdir(parents=True)
+                bundled.write_text('#!/bin/sh\nexit 0\n')
+                bundled.chmod(0o755)
+                await source.refresh()
+                read.assert_awaited_with([str(bundled), 'app-server'])
+
     def test_projection(self):
         result = account.project({'accountId': 'private-account', 'rateLimits': {'primary': {'usedPercent': 25,
             'windowDurationMins': 300, 'resetsAt': 2000}, 'secondary': None,
