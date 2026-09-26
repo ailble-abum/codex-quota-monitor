@@ -6,7 +6,7 @@ from pathlib import Path
 import stat
 import time
 
-from .compat import panel_payload, thread_key
+from .compat import panel_payload, panel_summary, thread_key
 from .journal import SessionJournal
 from .reader import open_in_root
 
@@ -57,6 +57,26 @@ class DirectorySource:
         if len(candidates) > self.max_files:
             raise ValueError('file limit')
         return [path for path, _modified in candidates]
+
+    def _read_progress(self, paths):
+        read_bytes, total_bytes = 0, 0
+        try:
+            for path in paths:
+                journal = self._journals[path]
+                descriptor = open_in_root(self.root, path)
+                try:
+                    info = os.fstat(descriptor)
+                finally:
+                    os.close(descriptor)
+                if (not stat.S_ISREG(info.st_mode) or
+                        (info.st_dev, info.st_ino) != journal.reader._identity or
+                        info.st_size < journal.reader._offset):
+                    return None
+                read_bytes += journal.reader._offset
+                total_bytes += info.st_size
+        except OSError:
+            return None
+        return read_bytes, total_bytes
 
     def _scan(self):
         if os.scandir not in os.supports_fd:
@@ -118,20 +138,28 @@ class DirectorySource:
         if key is None:
             self.status = 'not_found'
             return publish(empty)
+        inventory_wait = False
         if not self._current():
             now = time.monotonic()
             if now < self._next_scan:
                 self.status = 'index_wait' if self._dirs is not None else self._scan_status
-                return empty
-            self._next_scan = now + self.rescan_interval
-            try:
-                self._scan()
-                self._scan_status = 'ok'
-            except (OSError, ValueError) as error:
-                self._dirs, self._journals, self._tainted = None, {}, set()
-                self._scan_status = 'unavailable' if isinstance(error, OSError) else 'incomplete'
-                self.status = self._scan_status
-                return publish(empty)
+                # A changed inventory does not make already-open, explicitly
+                # named journals unsafe. Continue polling those journals while
+                # the bounded rescan is cooling down, but report that a missing
+                # hover target may still be waiting for the next inventory.
+                inventory_wait = self._dirs is not None
+                if not inventory_wait:
+                    return publish(empty)
+            else:
+                self._next_scan = now + self.rescan_interval
+                try:
+                    self._scan()
+                    self._scan_status = 'ok'
+                except (OSError, ValueError) as error:
+                    self._dirs, self._journals, self._tainted = None, {}, set()
+                    self._scan_status = 'unavailable' if isinstance(error, OSError) else 'incomplete'
+                    self.status = self._scan_status
+                    return publish(empty)
 
         readings, selected_readings, path_readings = [], [], []
         selected_paths = ([path for path in self._journals
@@ -194,16 +222,19 @@ class DirectorySource:
             if selected_name:
                 selected_readings.append(reading)
         sidebar_status = None
+        sidebar_progress = None
         if priority_key is not None:
             priority_readings = [reading for path, reading in path_readings
                                  if path in priority_paths]
             if not priority_paths:
-                sidebar_status = 'not_found'
+                sidebar_status = 'index_wait' if inventory_wait else 'not_found'
             elif any(reading.get('status') != 'ok' for reading in priority_readings):
                 sidebar_status = 'unavailable'
             elif any(reading.get('more') or reading.get('pending')
                      for reading in priority_readings):
                 sidebar_status = 'loading'
+                if any(reading.get('more') for reading in priority_readings):
+                    sidebar_progress = self._read_progress(priority_paths)
             else:
                 matches = [reading for reading in priority_readings
                            if reading.get('thread_id') == priority_key and
@@ -211,33 +242,58 @@ class DirectorySource:
                 sidebar_status = ('ambiguous' if len(matches) > 1 else
                                   'ready' if matches else 'not_found')
         if not self._current():
+            inventory_wait = True
             self.status = 'index_wait'
-        elif self.all_summaries:
+        if self.all_summaries and inventory_wait:
+            # Directory changes can introduce a second file claiming the same
+            # task identity. Advancing known journal cursors is safe, but no
+            # summary is publishable until a fresh inventory proves uniqueness.
+            return publish(empty, 'index_wait')
+        if self.all_summaries:
             # A background task may have a large or partial log. Keep the
             # selected task responsive and omit only non-ready sidebar rows.
             matches = [r for r in selected_readings if r['thread_id'] == key and
                        r.get('status') == 'ok' and r.get('identity_status') == 'verified']
             selected_loading = any(r.get('status') == 'ok' and (r.get('more') or r.get('pending'))
                                    for r in selected_readings)
-            self.status = ('ambiguous' if len(matches) > 1 else
-                           'loading' if selected_loading else 'ok' if matches else 'not_found')
-            if self.status == 'ok':
-                verified = {}
-                duplicate = set()
-                for path, reading in path_readings:
-                    thread_id = reading.get('thread_id')
-                    if (reading.get('status') != 'ok' or
-                            reading.get('identity_status') != 'verified' or
-                            not isinstance(thread_id, str) or
-                            not path.name.endswith('-' + thread_id + '.jsonl')):
-                        continue
-                    if thread_id in verified:
-                        duplicate.add(thread_id)
-                    else:
-                        verified[thread_id] = reading
-                for thread_id in duplicate:
-                    verified.pop(thread_id, None)
-                return publish(panel_payload(verified, key, allow_partial=True), sidebar_status)
+            selected_status = ('ambiguous' if len(matches) > 1 else
+                               'loading' if selected_loading else 'ok' if matches else 'not_found')
+            self.status = selected_status
+            verified = {}
+            duplicate = set()
+            for path, reading in path_readings:
+                candidate = reading.get('thread_id')
+                if (reading.get('status') != 'ok' or
+                        reading.get('identity_status') != 'verified' or
+                        not isinstance(candidate, str) or
+                        not path.name.endswith('-' + candidate + '.jsonl')):
+                    continue
+                if candidate in verified:
+                    duplicate.add(candidate)
+                else:
+                    verified[candidate] = reading
+            for candidate in duplicate:
+                verified.pop(candidate, None)
+
+            # Active details and sidebar summaries have independent readiness.
+            # A very large active journal can take minutes to drain, while an
+            # explicitly hovered task is already complete. Publish that
+            # identity-verified complete sidebar summary without claiming the
+            # active task itself is selected or ready.
+            payload = (panel_payload(verified, key, allow_partial=True)
+                       if selected_status == 'ok' else panel_payload({}, key))
+            if payload['selectedThreadId'] is None and priority_key is not None:
+                payload['summaries'] = [summary for candidate, reading in verified.items()
+                                        if (summary := panel_summary(candidate, reading)) is not None]
+            if sidebar_progress is not None:
+                payload['sidebarStatus'] = {
+                    'threadId': priority_key, 'status': sidebar_status,
+                    'readBytes': sidebar_progress[0], 'totalBytes': sidebar_progress[1],
+                }
+                return payload
+            return publish(payload, sidebar_status)
+        elif inventory_wait:
+            self.status = 'index_wait'
         elif any(r['status'] != 'ok' for r in readings):
             self.status = 'unavailable'
         elif self._tainted:

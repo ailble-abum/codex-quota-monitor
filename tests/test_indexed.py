@@ -356,12 +356,84 @@ class NamedDirectoryTests(unittest.TestCase):
             source.prioritize('hover')
             payload = source.read('active')
             self.assertEqual(payload['selectedThreadId'], 'active')
-            self.assertEqual(payload['sidebarStatus'],
-                             {'threadId': 'hover', 'status': 'loading'})
+            self.assertEqual(payload['sidebarStatus']['threadId'], 'hover')
+            self.assertEqual(payload['sidebarStatus']['status'], 'loading')
+            self.assertLess(payload['sidebarStatus']['readBytes'],
+                            payload['sidebarStatus']['totalBytes'])
             self.assertNotIn('hover', {item['thread_id'] for item in payload['summaries']})
             self.assertEqual(source._journals[Path('rollout-date-hover.jsonl')].reader.read_budget,
                              source.read_budget)
             self.assertEqual(source.bytes_read, source.read_budget)
+
+    def test_named_ready_hover_is_published_while_large_active_log_is_still_loading(self):
+        from quota_monitor.indexed import NamedDirectorySource
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            active = '01a08a0a-d922-7143-9a82-82451d38b81f'
+            hover = '01a0d3fc-3dbf-7131-92f4-05e5f7514653'
+            self.write_rollout(root / ('rollout-date-' + active + '.jsonl'), active, 11,
+                               padding=750000)
+            self.write_rollout(root / ('rollout-date-' + hover + '.jsonl'), hover, 77)
+            source = NamedDirectorySource(root)
+            source.read_budget = 2 * 1024 * 1024 + 8192
+            source.prioritize(hover)
+            payload = source.read(active)
+            self.assertEqual(source.status, 'loading')
+            self.assertIsNone(payload['selectedThreadId'])
+            self.assertEqual(payload['sidebarStatus'],
+                             {'threadId': hover, 'status': 'ready'})
+            summary = next(item for item in payload['summaries']
+                           if item['thread_id'] == hover)
+            self.assertEqual(summary['latest_context_tokens'], 77)
+            self.assertIn('local:' + hover, summary['thread_keys'])
+
+    def test_named_hover_loading_reports_bounded_byte_progress(self):
+        from quota_monitor.indexed import NamedDirectorySource
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.write_rollout(root / 'rollout-date-active.jsonl', 'active', 11)
+            self.write_rollout(root / 'rollout-date-hover.jsonl', 'hover', 77,
+                               padding=1500000)
+            source = NamedDirectorySource(root)
+            source.prioritize('hover')
+            payload = source.read('active')
+            status = payload['sidebarStatus']
+            self.assertEqual(status['threadId'], 'hover')
+            self.assertEqual(status['status'], 'loading')
+            self.assertGreater(status['readBytes'], 0)
+            self.assertLess(status['readBytes'], status['totalBytes'])
+            self.assertEqual(status['totalBytes'],
+                             (root / 'rollout-date-hover.jsonl').stat().st_size)
+
+    def test_named_inventory_wait_withholds_hover_until_uniqueness_is_rescanned(self):
+        from quota_monitor.indexed import NamedDirectorySource
+        with tempfile.TemporaryDirectory() as directory, \
+                patch('quota_monitor.indexed.time.monotonic', return_value=0) as clock:
+            root = Path(directory)
+            self.write_rollout(root / 'rollout-date-active.jsonl', 'active', 11)
+            self.write_rollout(root / 'rollout-date-hover.jsonl', 'hover', 77)
+            source = NamedDirectorySource(root)
+            source.prioritize('hover')
+            self.assertEqual(source.read('active')['sidebarStatus']['status'], 'ready')
+
+            self.write_rollout(root / 'rollout-copy-hover.jsonl', 'hover', 88)
+            payload = source.read('active')
+            self.assertEqual(source.status, 'index_wait')
+            self.assertEqual(payload['sidebarStatus'],
+                             {'threadId': 'hover', 'status': 'index_wait'})
+            self.assertEqual(payload['summaries'], [])
+            clock.return_value = 31
+            rescanned = source.read('active')
+            self.assertEqual(rescanned['sidebarStatus']['status'], 'ambiguous')
+            self.assertNotIn('hover', {item['thread_id'] for item in rescanned['summaries']})
+
+            source.prioritize('missing')
+            self.assertEqual(source.read('active')['sidebarStatus']['status'], 'not_found')
+            self.write_rollout(root / 'rollout-date-missing.jsonl', 'missing', 33)
+            waiting = source.read('active')
+            self.assertEqual(source.status, 'index_wait')
+            self.assertEqual(waiting['sidebarStatus'],
+                             {'threadId': 'missing', 'status': 'index_wait'})
 
     def test_named_completed_priority_and_active_transfer_budget_to_background(self):
         from quota_monitor.indexed import NamedDirectorySource
