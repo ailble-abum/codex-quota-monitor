@@ -9,7 +9,7 @@
         border:1px solid color-mix(in srgb,CanvasText 18%,transparent);
         border-radius:14px; box-shadow:0 14px 42px color-mix(in srgb,#000 28%,transparent);
         font:13px/1.45 system-ui,-apple-system,sans-serif; backdrop-filter:blur(16px);
-        transition:left .18s ease,top .18s ease,width .18s ease,box-shadow .15s ease;
+        transition:left .18s ease,top .18s ease,box-shadow .15s ease;
       }
       #codex-context-token-inspector-root[data-dragging="true"] { transition:none; }
       #codex-context-token-inspector-root[data-snap-edge] {
@@ -167,6 +167,7 @@
         background:transparent; transform:scale(var(--cti-mascot-scale,1)); transform-origin:top left; touch-action:none;
       }
       #codex-context-token-inspector-mascot[data-visible="true"] { display:block; }
+      #codex-context-token-inspector-mascot[data-edge="right"] { transform-origin:top right; }
       #codex-context-token-inspector-mascot .cti-mascot-art { width:48px; height:52px; object-fit:contain; }
       #codex-context-token-inspector-mascot:not([data-skin="cat"]) .cti-mascot-art { transition:transform .25s ease; }
       @keyframes cti-mascot-greet { 50% { transform:rotate(-9deg) translateY(-2px); } }

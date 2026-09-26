@@ -74,7 +74,6 @@
         catch (_) { /* Keep this mounted panel's choice and finish its layout update. */ }
         panel.querySelector('[data-cti-toggle]').textContent = panel.dataset.collapsed === 'true' ? '+' : '−';
         updateHudTitle(panel);
-        clampHud(panel);
       });
       // Restoring a docked layout after a floating compact mode resets visibility.
       // A user-pinned panel must remain accessible after that mode transition.

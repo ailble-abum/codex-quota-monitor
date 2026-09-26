@@ -16,7 +16,9 @@ const {chromium, webkit} = require('playwright');
     await page.evaluate(edge => {
      window.__quotaMonitorV2Thread = 'one';
      localStorage.setItem('cti-language','zh');
-     localStorage.setItem('cti-layout-v2',JSON.stringify({expanded:{edge,y:80}}));
+     localStorage.setItem('cti-layout-v2',JSON.stringify({
+       expanded:{edge,y:80}, compact:{edge:edge === 'left' ? 'right' : 'left',y:360}
+     }));
     },edge);
     const call = options => page.evaluate(({bridge,options}) => (0,eval)(bridge)(options),{bridge,options});
     const base={expected:'http://dock.invalid/',key:'one'};
@@ -33,16 +35,43 @@ const {chromium, webkit} = require('playwright');
       summaries:[{thread_id:'one',latest_context_percent:50,latest_context_tokens:500,context_window:1000}],
       quota:{status:'live',updatedAt:Date.now()/1000,windows:[{remaining:10,duration:300},{remaining:90,duration:10080}]}};
     await call({...base,action:'publish',payload,panel:true});
+    for (const scale of [.75,1,1.5,2]) {
+     await page.evaluate(scale => {
+     localStorage.setItem('cti-mascot-scale',String(scale));
+     document.querySelector('.cti-hud').__ctiApplyPosition();
+     },scale);
+     await page.waitForTimeout(220);
+     const panelRect=await root.boundingBox(), mascotRect=await mascot.boundingBox();
+     assert.ok(Math.abs(panelRect.y-mascotRect.y)<1,
+       `${engine.name()} ${edge} ${scale}: mascot and panel must share a top edge`);
+     assert.ok(mascotRect.x>=-1 && mascotRect.x+mascotRect.width<=1281,
+       `${engine.name()} ${edge} ${scale}: mascot must stay inside the viewport`);
+     assert.ok(panelRect.x>=-1 && panelRect.x+panelRect.width<=1281,
+       `${engine.name()} ${edge} ${scale}: panel must stay inside the viewport`);
+    }
+    await page.evaluate(() => {
+     localStorage.removeItem('cti-mascot-scale');
+     document.querySelector('.cti-hud').__ctiApplyPosition();
+    });
     await page.evaluate(()=>{
      window.collapseErrors=[];window.addEventListener('error',event=>collapseErrors.push(event.message));
      window.collapseSetItem=Storage.prototype.setItem;
      Storage.prototype.setItem=function(key,value){if(key==='codex-context-token-inspector-collapsed')throw Error('full');return collapseSetItem.call(this,key,value);};
     });
     const toggle=page.locator('[data-cti-toggle]');
+    const dockBefore=await root.boundingBox();
     await toggle.click();
     assert.equal(await root.getAttribute('data-collapsed'),'true');
+    await page.waitForTimeout(220);
+    const compactRect=await root.boundingBox();
+    assert.equal(await root.getAttribute('data-dock-edge'),edge);
+    assert.ok(Math.abs(compactRect.y-dockBefore.y)<1, 'collapse must retain the current dock anchor');
     await toggle.click();
     assert.equal(await root.getAttribute('data-collapsed'),'false');
+    await page.waitForTimeout(220);
+    const expandedRect=await root.boundingBox();
+    assert.equal(await root.getAttribute('data-dock-edge'),edge);
+    assert.ok(Math.abs(expandedRect.y-dockBefore.y)<1, 'expand must retain the current dock anchor');
     assert.equal(await root.getAttribute('data-revealed'),'true', 'pinned dock must stay revealed after mode changes');
     assert.deepEqual(await page.evaluate(()=>collapseErrors),[]);
     await page.evaluate(()=>{Storage.prototype.setItem=collapseSetItem;});
@@ -51,7 +80,39 @@ const {chromium, webkit} = require('playwright');
     // A real click waited for the post-resize position/transition to settle.
     const rect=await root.boundingBox();
     assert.ok(rect.x>=0 && rect.y>=0 && rect.x+rect.width<=901 && rect.y+rect.height<=701, JSON.stringify(rect));
+    const lastSetting=page.locator('[data-position-reset]');
+    await lastSetting.scrollIntoViewIfNeeded();
+    const settingRect=await lastSetting.boundingBox(), scrollerRect=await root.boundingBox();
+    assert.ok(settingRect.x>=scrollerRect.x && settingRect.x+settingRect.width<=scrollerRect.x+scrollerRect.width,
+      'the last setting must remain horizontally reachable');
+    assert.ok(settingRect.y>=scrollerRect.y && settingRect.y+settingRect.height<=scrollerRect.y+scrollerRect.height,
+      'the last setting must remain vertically reachable after scrolling');
     await page.locator('[data-settings-toggle]').click();
+    // A compact panel near the bottom may move up only as far as the expanded
+    // height requires. Returning to compact and refreshing must keep that new anchor.
+    await toggle.click();
+    await page.evaluate(() => {
+     const node=document.querySelector('.cti-hud'), mode=node.dataset.collapsed === 'true' ? 'compact' : 'expanded';
+     node.__ctiLayout[mode]={...(node.__ctiLayout[mode] || {}),y:9999}; node.__ctiApplyPosition();
+    });
+    await page.waitForTimeout(220);
+    const bottomCompact=await root.boundingBox();
+    await toggle.click();
+    await page.waitForTimeout(220);
+    const bottomExpanded=await root.boundingBox();
+    assert.ok(bottomExpanded.y+bottomExpanded.height<=701, 'expanded panel must be clamped into the viewport');
+    assert.ok(bottomExpanded.y<=bottomCompact.y, 'expansion may only move upward when more room is required');
+    await toggle.click();
+    await page.waitForTimeout(220);
+    const returnedCompact=await root.boundingBox();
+    assert.ok(Math.abs(returnedCompact.y-bottomExpanded.y)<1,
+      'compact mode must retain the necessarily clamped expanded anchor');
+    await call({...base,action:'publish',payload,panel:true});
+    await page.waitForTimeout(220);
+    const refreshedCompact=await root.boundingBox();
+    assert.ok(Math.abs(refreshedCompact.y-returnedCompact.y)<1, 'data refresh must not move a settled panel');
+    await toggle.click();
+    await page.waitForTimeout(220);
     if(process.argv[3]) {
      fs.mkdirSync(process.argv[3],{recursive:true});
      await page.evaluate(()=>document.documentElement.style.colorScheme='light dark');

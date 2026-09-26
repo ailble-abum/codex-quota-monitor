@@ -52,7 +52,7 @@
     mascot.style.setProperty('--cti-mascot-scale', String(scale));
     mascot.style.left = edge === 'left' ? '0px' : 'auto';
     mascot.style.right = edge === 'right' ? '0px' : 'auto';
-    mascot.style.top = `${y / scale}px`;
+    mascot.style.top = `${y}px`;
     const gap = 52 * scale;
     const visible = root.dataset.revealed === 'true';
     root.style.left = edge === 'left' ? (visible ? `${gap}px` : `${-rect.width - 2}px`)
@@ -209,10 +209,13 @@
 
   function keepTogglePosition(root, update) {
     const before = hudMode(root), rect = root.getBoundingClientRect();
-    root.__ctiLayout[before] ||= {x:rect.left, y:rect.top};
-    if (before === 'compact') syncExpandedAnchor(root, rect.left, rect.top);
+    const dockedEdge = root.dataset.docked === 'true' ? root.dataset.dockEdge : null;
+    root.__ctiLayout[before] = {...(root.__ctiLayout[before] || {}), x:rect.left, y:rect.top};
     update();
-    root.__ctiLayout[hudMode(root)] ||= {x:rect.left, y:rect.top};
+    const after = hudMode(root);
+    root.__ctiLayout[after] = {...(root.__ctiLayout[after] || {}), x:rect.left, y:rect.top};
+    if (dockedEdge === 'left' || dockedEdge === 'right') root.__ctiLayout[after].edge = dockedEdge;
+    else delete root.__ctiLayout[after].edge;
     saveLayout(root); applyStoredHudPosition(root);
   }
 
