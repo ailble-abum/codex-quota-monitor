@@ -19,11 +19,12 @@ async function main() {
     const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'quota-runtime-panel-'));
     let context, worker, lines, exited;
     try {
-      for (const [key, count, total] of [['one', 250, 700], ['two', 500, 900]]) {
+      for (const [key, count, total] of [['one', 800, 700], ['two', null, null]]) {
         const rows = [{type: 'session_meta', payload: {id: key}},
-          {type: 'event_msg', payload: {type: 'token_count', info: {
-            last_token_usage: {input_tokens: count}, total_token_usage: {total_tokens: total},
-            model_context_window: 1000}}}];
+          {type: 'turn_context', payload: {model: 'synthetic', effort: 'high'}}];
+        if (count !== null) rows.push({type: 'event_msg', payload: {type: 'token_count', info: {
+          last_token_usage: {input_tokens: count}, total_token_usage: {total_tokens: total},
+          model_context_window: 1000}}});
         await fs.writeFile(path.join(temp, `${key}.jsonl`), rows.map(JSON.stringify).join('\n') + '\n');
       }
       context = await chromium.launchPersistentContext(path.join(temp, 'profile'), {
@@ -77,10 +78,13 @@ async function main() {
         document.querySelector('[data-context] [role="meter"]')?.getAttribute('aria-valuenow') === String(value), value);
       const empty = () => page.waitForFunction(() =>
         !document.querySelector('[data-context] [role="meter"]') && document.querySelector('[data-metrics]')?.textContent === '');
+      const contextUnknown = () => page.waitForFunction(() =>
+        !document.querySelector('[data-context] [role="meter"]') &&
+        /(?:不可用|unavailable)/i.test(document.querySelector('[data-context]')?.textContent || ''));
       await mount();
       await select('one');
       assert.equal(await step(), 'updated');
-      await meter(25);
+      await meter(80);
       if (process.env.QUOTA_ACCOUNT_CLI) {
         const deadline = Date.now() + 15000;
         let live = false;
@@ -106,7 +110,20 @@ async function main() {
       await select('two');
       await empty();
       assert.equal(await step(), 'updated');
-      await meter(50);
+      await contextUnknown();
+      await fs.appendFile(path.join(temp, 'two.jsonl'), JSON.stringify({type: 'event_msg', payload: {
+        type: 'token_count', info: {last_token_usage: {input_tokens: 25},
+          total_token_usage: {total_tokens: 900}, model_context_window: 1000}}}) + '\n');
+      assert.equal(await step(), 'updated');
+      await meter(2.5);
+      await fs.appendFile(path.join(temp, 'two.jsonl'), JSON.stringify({type: 'compacted', payload: {}}) + '\n');
+      assert.equal(await step(), 'updated');
+      await contextUnknown();
+      await fs.appendFile(path.join(temp, 'two.jsonl'), JSON.stringify({type: 'event_msg', payload: {
+        type: 'token_count', info: {last_token_usage: {input_tokens: 30},
+          total_token_usage: {total_tokens: 900}, model_context_window: 1000}}}) + '\n');
+      assert.equal(await step(), 'updated');
+      await meter(3);
       await page.locator('.cti-edge-mascot').focus();
       await page.locator('[data-details] summary').click();
       assert.match(await page.locator('[data-metrics]').innerText(), /900/);
@@ -129,13 +146,13 @@ async function main() {
       // V2 restores the missing renderer after reload without test-side injection.
       await mount();
       assert.equal(await step(), 'updated');
-      await meter(50);
+      await meter(3);
       assert.equal(await step(), 'updated');
       assert.equal(await page.locator('.cti-hud').count(), 1);
       assert.equal(await page.locator('.cti-edge-mascot').count(), 1);
       assert.deepEqual(errors, []);
       assert.deepEqual(unexpected, []);
-      console.log(`Chromium ${colorScheme}: real CDP, append, switch, missing, autonomous expiry clear, reload, singleton passed`);
+      console.log(`Chromium ${colorScheme}: real CDP, append, tokenless switch, compaction refresh, missing, autonomous expiry clear, reload, singleton passed`);
       worker.stdin.end('stop\n');
       const [code] = await exited;
       assert.equal(code, 0, stderr);
