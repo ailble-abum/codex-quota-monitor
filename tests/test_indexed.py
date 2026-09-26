@@ -387,6 +387,38 @@ class NamedDirectoryTests(unittest.TestCase):
             self.assertEqual(summary['latest_context_tokens'], 77)
             self.assertIn('local:' + hover, summary['thread_keys'])
 
+    def test_named_pending_active_or_hover_never_republishes_stale_summary(self):
+        from quota_monitor.indexed import NamedDirectorySource
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            active_path = root / 'rollout-date-active.jsonl'
+            hover_path = root / 'rollout-date-hover.jsonl'
+            self.write_rollout(active_path, 'active', 80)
+            self.write_rollout(hover_path, 'hover', 77)
+            source = NamedDirectorySource(root)
+            source.prioritize('hover')
+            self.assertEqual(source.read('active')['sidebarStatus']['status'], 'ready')
+
+            with active_path.open('a') as stream:
+                stream.write('{"type":')
+            active_pending = source.read('active')
+            self.assertEqual(source.status, 'loading')
+            self.assertIsNone(active_pending['selectedThreadId'])
+            self.assertEqual(active_pending['sidebarStatus'],
+                             {'threadId': 'hover', 'status': 'ready'})
+            self.assertEqual({item['thread_id'] for item in active_pending['summaries']},
+                             {'hover'})
+
+            active_path.write_text(active_path.read_text() + '}\n')
+            source.read('active')
+            with hover_path.open('a') as stream:
+                stream.write('{"type":')
+            hover_pending = source.read('active')
+            self.assertEqual(hover_pending['sidebarStatus'],
+                             {'threadId': 'hover', 'status': 'loading'})
+            self.assertNotIn('hover', {item['thread_id']
+                                       for item in hover_pending['summaries']})
+
     def test_named_hover_loading_reports_bounded_byte_progress(self):
         from quota_monitor.indexed import NamedDirectorySource
         with tempfile.TemporaryDirectory() as directory:

@@ -264,6 +264,7 @@ class DirectorySource:
             for path, reading in path_readings:
                 candidate = reading.get('thread_id')
                 if (reading.get('status') != 'ok' or
+                        reading.get('more') or reading.get('pending') or
                         reading.get('identity_status') != 'verified' or
                         not isinstance(candidate, str) or
                         not path.name.endswith('-' + candidate + '.jsonl')):
