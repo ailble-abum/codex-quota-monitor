@@ -122,6 +122,33 @@ class CompatibilityTests(unittest.TestCase):
         self.assertTrue(payload['health']['recommendHandoff'])
         self.assertNotIn('private', repr(payload['health']))
 
+    def test_sidebar_health_snapshots_remain_bound_to_each_task(self):
+        first = reading()
+        first['health'] = {'count': 0, 'after': None, 'afterPercent': None,
+                           'private': 'drop first'}
+        second = reading()
+        second['thread_id'] = 'two'
+        second['health'] = {'count': 12, 'after': 375, 'afterPercent': 37.5,
+                            'private': 'drop second'}
+        payload = panel_payload({'one': first, 'two': second}, 'one')
+        summaries = {item['thread_id']: item for item in payload['summaries']}
+        self.assertEqual(summaries['one']['compaction_count'], 0)
+        self.assertIsNone(summaries['one']['post_compaction_tokens'])
+        self.assertIsNone(summaries['one']['post_compaction_percent'])
+        self.assertEqual(summaries['two']['compaction_count'], 12)
+        self.assertEqual(summaries['two']['post_compaction_tokens'], 375)
+        self.assertEqual(summaries['two']['post_compaction_percent'], 37.5)
+        self.assertNotIn('private', repr(summaries))
+        self.assertEqual(payload['healthThreadId'], 'one')
+
+    def test_sidebar_health_unknowns_are_not_filled_with_zero(self):
+        result = reading()
+        result['health'] = {'count': None, 'after': None, 'afterPercent': None}
+        summary = panel_summary('one', result)
+        self.assertIsNone(summary['compaction_count'])
+        self.assertIsNone(summary['post_compaction_tokens'])
+        self.assertIsNone(summary['post_compaction_percent'])
+
     def test_partial_selected_summary_is_opt_in(self):
         result = reading()
         result['more'] = True

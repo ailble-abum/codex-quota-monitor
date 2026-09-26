@@ -28,6 +28,13 @@ def panel_summary(thread_id, reading, *, allow_partial=False):
               'context_window': state.get('window'),
               'latest_context_tokens': state['last'].get('input_tokens'),
               'latest_context_percent': state.get('context_percent')}
+    health = reading.get('health')
+    if isinstance(health, dict):
+        # Sidebar summaries need only the count, post-request token marker and
+        # percentage. Do not reuse the selected task's richer health projection.
+        result['compaction_count'] = health.get('count')
+        result['post_compaction_tokens'] = health.get('after')
+        result['post_compaction_percent'] = health.get('afterPercent')
     project = reading.get('project')
     if isinstance(project, dict):
         project_key, project_label = project.get('projectKey'), project.get('projectLabel')

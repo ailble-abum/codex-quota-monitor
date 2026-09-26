@@ -70,12 +70,25 @@
 
   function hostSummaryNote(item) {
     const zh = uiLanguage() === 'zh';
+    const compactionCount = Number.isSafeInteger(item.compaction_count) && item.compaction_count >= 0
+      ? `${item.compaction_count} ${zh ? '次' : item.compaction_count === 1 ? 'time' : 'times'}`
+      : zh ? '等待数据…' : 'Waiting for data…';
+    const postCompaction = hostFinite(item.post_compaction_percent)
+        && item.post_compaction_percent >= 0 && item.post_compaction_percent <= 100
+      ? hostPercent(item.post_compaction_percent)
+      : item.compaction_count === 0
+        ? zh ? '尚未压缩' : 'No compaction yet'
+        : hostFinite(item.post_compaction_tokens) && item.post_compaction_tokens >= 0
+          ? zh ? '暂无占比' : 'Percentage unavailable'
+          : zh ? '等待首次请求…' : 'Waiting for first request…';
     return JSON.stringify([
       [zh ? '会话总计' : 'Session total', hostNumber(item.session_total_tokens)],
       [zh ? '输入' : 'Input', hostNumber(item.session_input_tokens)],
       [zh ? '缓存输入' : 'Cached input', hostNumber(item.session_cached_input_tokens)],
       [zh ? '输出' : 'Output', hostNumber(item.session_output_tokens)],
       [zh ? '推理' : 'Reasoning', hostNumber(item.session_reasoning_tokens)],
+      [zh ? '压缩次数' : 'Compactions', compactionCount],
+      [zh ? '压后首请求' : 'First after compaction', postCompaction],
     ]);
   }
 

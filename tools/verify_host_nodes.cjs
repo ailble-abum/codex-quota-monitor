@@ -41,6 +41,7 @@ async function verifyTooltip(engine) {
       #top{top:0}#bottom{bottom:0}</style>
       <div class="shell" data-app-shell-active-page="true">
         <button id="top" data-app-action-sidebar-thread-row data-app-action-sidebar-thread-id="one" data-app-action-sidebar-thread-kind="local" data-app-action-sidebar-thread-host-id="local">one</button>
+        <button id="other" style="top:32px" data-app-action-sidebar-thread-row data-app-action-sidebar-thread-id="two" data-app-action-sidebar-thread-kind="local" data-app-action-sidebar-thread-host-id="local">two</button>
         <button id="bottom" data-app-action-sidebar-thread-row data-app-action-sidebar-thread-id="one" data-app-action-sidebar-thread-kind="local" data-app-action-sidebar-thread-host-id="local">one</button>
       </div>
       <div data-app-shell-active-page="false">
@@ -56,7 +57,11 @@ async function verifyTooltip(engine) {
       const style = document.createElement('style'); style.textContent = panelCSS(); document.head.append(style);
       window.testPayload = {summaries:[{thread_id:'one', session_total_tokens:9007199254740991,
         session_input_tokens:123456789012345, session_cached_input_tokens:98765432101234,
-        session_output_tokens:76543210987654, session_reasoning_tokens:54321098765432}]};
+        session_output_tokens:76543210987654, session_reasoning_tokens:54321098765432,
+        compaction_count:1234567890, post_compaction_tokens:987000, post_compaction_percent:98.7},
+        {thread_id:'two', session_total_tokens:222, session_input_tokens:200,
+        session_cached_input_tokens:150, session_output_tokens:22, session_reasoning_tokens:11,
+        compaction_count:2, post_compaction_tokens:375, post_compaction_percent:37.5}]};
       projectHostDetails(window.testPayload);
     }, {styles, host});
     assert.equal(await page.locator('#inactive').getAttribute('data-cti-v2-sidebar-note'), null,
@@ -66,7 +71,7 @@ async function verifyTooltip(engine) {
       await page.mouse.move(initialRowBox.x + initialRowBox.width / 2, initialRowBox.y + initialRowBox.height / 2);
       const tip = page.locator('#cti-v2-sidebar-tooltip');
       await tip.waitFor();
-      assert.equal(await tip.locator('span').count(), 10);
+      assert.equal(await tip.locator('span').count(), 14);
       const geometry = await tip.evaluate(node => {
         const rect = node.getBoundingClientRect();
         const values = [...node.querySelectorAll('.cti-v2-sidebar-tooltip-value')].map(item => item.getBoundingClientRect());
@@ -92,12 +97,23 @@ async function verifyTooltip(engine) {
       await tip.evaluate(node => { node.__testIdentity = 'preserved'; });
       await page.evaluate(() => projectHostDetails({summaries:[{thread_id:'one', session_total_tokens:9007199254740991,
         session_input_tokens:123456789012345, session_cached_input_tokens:98765432101234,
-        session_output_tokens:76543210987654, session_reasoning_tokens:54321098765432}]}));
+        session_output_tokens:76543210987654, session_reasoning_tokens:54321098765432,
+        compaction_count:1234567890, post_compaction_tokens:987000, post_compaction_percent:98.7}]}));
       assert.equal(await tip.evaluate(node => node.__testIdentity), 'preserved',
         'repeated publishing must preserve the tooltip being read');
       await page.mouse.move(219, 95);
       await page.waitForFunction(() => !document.getElementById('cti-v2-sidebar-tooltip'), null, {timeout:1000});
     }
+    await page.evaluate(() => projectHostDetails(window.testPayload));
+    await page.mouse.move(36, 44);
+    await page.waitForSelector('#cti-v2-sidebar-tooltip');
+    const otherText = await page.locator('#cti-v2-sidebar-tooltip').innerText();
+    assert.match(otherText, /2 (?:次|times)/, 'second row must use its own compaction count');
+    assert.match(otherText, /37\.5%/, 'second row must use its own post-compaction percentage');
+    assert.doesNotMatch(otherText, /98\.7%|1234567890/,
+      'second row must not reuse the selected conversation health');
+    await page.mouse.move(219, 95);
+    await page.waitForFunction(() => !document.getElementById('cti-v2-sidebar-tooltip'));
     if (evidenceDir) {
       fs.mkdirSync(evidenceDir, {recursive:true});
       await page.setViewportSize({width:360,height:180});
@@ -126,8 +142,30 @@ async function verifyTooltip(engine) {
     await page.evaluate(() => projectHostDetails({summaries:[],sidebarStatus:{threadId:'one',status:'not_found'}}));
     assert.match(await page.locator('#cti-v2-sidebar-tooltip').innerText(), /暂无本机|No local/);
     await page.evaluate(() => projectHostDetails(window.testPayload));
-    assert.equal(await page.locator('#cti-v2-sidebar-tooltip span').count(), 10,
+    assert.equal(await page.locator('#cti-v2-sidebar-tooltip span').count(), 14,
       'completed data should populate the same hovered tooltip without another mouse movement');
+    await page.evaluate(() => projectHostDetails({summaries:[{thread_id:'one', session_total_tokens:1,
+      session_input_tokens:1, session_cached_input_tokens:0, session_output_tokens:0,
+      session_reasoning_tokens:0, compaction_count:1, post_compaction_tokens:null,
+      post_compaction_percent:null}]}));
+    let pendingText = await page.locator('#cti-v2-sidebar-tooltip').innerText();
+    assert.match(pendingText, /等待首次请求|Waiting for first request/);
+    assert.doesNotMatch(pendingText, /压后首请求\s+0(?:\.0)?%|First after compaction\s+0(?:\.0)?%/,
+      'a pending real request must not be rendered as zero percent');
+    await page.evaluate(() => projectHostDetails({summaries:[{thread_id:'one', session_total_tokens:1,
+      session_input_tokens:1, session_cached_input_tokens:0, session_output_tokens:0,
+      session_reasoning_tokens:0, compaction_count:1, post_compaction_tokens:400,
+      post_compaction_percent:null}]}));
+    pendingText = await page.locator('#cti-v2-sidebar-tooltip').innerText();
+    assert.match(pendingText, /暂无占比|Percentage unavailable/,
+      'known post-compaction tokens without a context window are unavailable, not pending');
+    await page.evaluate(() => projectHostDetails({summaries:[{thread_id:'one', session_total_tokens:1,
+      session_input_tokens:1, session_cached_input_tokens:0, session_output_tokens:0,
+      session_reasoning_tokens:0, compaction_count:0, post_compaction_tokens:null,
+      post_compaction_percent:null}]}));
+    pendingText = await page.locator('#cti-v2-sidebar-tooltip').innerText();
+    assert.match(pendingText, /0 (?:次|times)/, 'zero compactions must remain explicit');
+    assert.match(pendingText, /尚未压缩|No compaction yet/);
     await page.mouse.move(page.viewportSize().width - 1, page.viewportSize().height - 1);
     await page.waitForFunction(() => !document.getElementById('cti-v2-sidebar-tooltip'));
     await page.evaluate(() => projectHostDetails({summaries:[]}));
