@@ -6,12 +6,25 @@
 
   function scheduleDockHide(root) {
     clearDockHide(root);
-    if (root.dataset.dockPinned === 'true') return;
+    if (root.dataset.docked !== 'true' || root.dataset.dockPinned === 'true') return;
     root.__ctiDockHideTimer = setTimeout(() => {
+      if (root.dataset.docked !== 'true') return;
       const mascot = document.getElementById(MASCOT_ID);
-      if (root.matches(':hover') || mascot?.matches(':hover')) return;
+      const focused = document.activeElement;
+      const keyboardFocused = (root.contains(focused) || focused === mascot)
+        && focused?.matches?.(':focus-visible');
+      if (root.matches(':hover') || mascot?.matches(':hover')
+          || keyboardFocused) return;
       root.dataset.revealed = 'false';
-      applyStoredHudPosition(root);
+      if (root.dataset.collapsed !== 'true') {
+        keepTogglePosition(root, () => {
+          root.dataset.collapsed = 'true';
+          try { localStorage.setItem(COLLAPSE_KEY, 'true'); } catch (_) {}
+          const toggle = root.querySelector('[data-cti-toggle]');
+          if (toggle) toggle.textContent = '+';
+          updateHudTitle(root);
+        });
+      } else applyStoredHudPosition(root);
     }, 500);
   }
 
@@ -54,10 +67,11 @@
     mascot.style.left = edge === 'left' ? '0px' : 'auto';
     mascot.style.right = edge === 'right' ? '0px' : 'auto';
     mascot.style.top = `${mascotY}px`;
-    // Include the gauge protruding from the mascot so the revealed panel never
-    // covers it, even at the largest companion scale.
+    // Leave room for the companion while its redundant gauge retracts whenever
+    // either compact or expanded panel content is visible.
     const gap = 60 * scale;
     const visible = root.dataset.revealed === 'true';
+    mascot.dataset.panelRevealed = String(visible);
     root.style.left = edge === 'left' ? (visible ? `${gap}px` : `${-rect.width - 2}px`)
       : (visible ? `${window.innerWidth - rect.width - gap}px` : `${window.innerWidth + 2}px`);
     root.style.top = `${panelY}px`;
@@ -84,7 +98,10 @@
     }
     for (const key of ['docked', 'dockEdge', 'revealed']) delete root.dataset[key];
     const mascot = document.getElementById(MASCOT_ID);
-    if (mascot) mascot.dataset.visible = 'false';
+    if (mascot) {
+      mascot.dataset.visible = 'false';
+      delete mascot.dataset.panelRevealed;
+    }
     const x = Number.isFinite(wanted.x) ? wanted.x : 14;
     const y = Number.isFinite(wanted.y) ? wanted.y : window.innerHeight - rect.height - 16;
     root.style.left = `${Math.max(8, Math.min(window.innerWidth - rect.width - 8, x))}px`;
@@ -130,6 +147,8 @@
     });
     root.addEventListener('pointerenter', () => clearDockHide(root));
     root.addEventListener('pointerleave', () => scheduleDockHide(root));
+    root.addEventListener('focusin', () => clearDockHide(root));
+    root.addEventListener('focusout', () => scheduleDockHide(root));
     root.addEventListener('keydown', event => {
       if (event.key !== 'Escape' || root.dataset.docked !== 'true') return;
       root.dataset.dockPinned = 'false';

@@ -79,9 +79,12 @@ class PanelBuildTests(unittest.TestCase):
         self.assertIn('width:9px; height:30px', styles)
         self.assertIn('background:var(--cti-tone); border-radius:2px', styles)
         self.assertIn('flex-direction:column; gap:4px; width:7px', styles)
-        self.assertIn('[data-edge="right"] [data-gauge] { left:-3px; }', styles)
+        self.assertIn('[data-edge="right"] [data-gauge] { left:-7px; }', styles)
         self.assertIn('[data-skin="tea"] { --cti-gauge-left:5.9px; --cti-gauge-right:-7px; }', styles)
-        self.assertIn('left:var(--cti-gauge-left,-7px)', styles)
+        self.assertIn('left:calc(var(--cti-gauge-left,-7px) - 4px)', styles)
+        self.assertIn('[data-panel-revealed="true"] [data-gauge]', styles)
+        self.assertIn('opacity:0; transform:translateY(-50%) scaleX(0)', styles)
+        self.assertIn('[data-gauge] { transition:none; }', styles)
         self.assertIn('overflow-x:hidden; overflow-y:auto', styles)
         self.assertIn('zoom:var(--cti-scale,1)', styles)
         self.assertIn('background:linear-gradient(135deg,transparent 60%', styles)
@@ -120,6 +123,16 @@ class PanelBuildTests(unittest.TestCase):
         self.assertIn('if (gesture.moved && event.type === \'pointercancel\')', companion)
         self.assertIn('} else if (gesture.moved) {\n        saveLayout(root);', companion)
         self.assertNotIn('saveLayout(root); applyStoredHudPosition(root)', companion)
+
+    def test_dock_auto_hide_restores_compact_mode_and_respects_focus(self):
+        layout = (Path(__file__).parents[1] / 'quota_monitor/panel_layout_runtime.js').read_text()
+        self.assertIn("root.dataset.collapsed = 'true'", layout)
+        self.assertIn("localStorage.setItem(COLLAPSE_KEY, 'true')", layout)
+        self.assertIn("if (root.dataset.docked !== 'true' || root.dataset.dockPinned === 'true') return", layout)
+        self.assertIn("if (root.dataset.docked !== 'true') return", layout)
+        self.assertIn("focused?.matches?.(':focus-visible')", layout)
+        self.assertIn("root.addEventListener('focusin'", layout)
+        self.assertIn("root.addEventListener('focusout'", layout)
 
     def test_compact_bar_hover_prefers_time_budget(self):
         shell = (Path(__file__).parents[1] / 'quota_monitor/panel_shell.js').read_text()

@@ -64,16 +64,18 @@ const {chromium, webkit} = require('playwright');
      const visibleLeft=artRect.x+artRect.width*86/320;
      const visibleRight=artRect.x+artRect.width;
      if(edge==='right') {
-      assert.ok(Math.abs(visibleLeft-(gaugeRect.x+gaugeRect.width))<.35,
-        `${engine.name()} right ${scale}: gauge must touch the tea alpha bounds`);
+      assert.ok(Math.abs(visibleLeft-(gaugeRect.x+gaugeRect.width)-4*scale)<.35,
+        `${engine.name()} right ${scale}: gauge must keep space from the tea alpha bounds`);
       assert.ok(panelRect.x+panelRect.width<=gaugeRect.x-2,
         `${engine.name()} right ${scale}: panel must not cover the gauge`);
      } else {
-      assert.ok(Math.abs(gaugeRect.x-visibleRight)<.35,
-        `${engine.name()} left ${scale}: gauge must touch the tea alpha bounds`);
+      assert.ok(Math.abs(gaugeRect.x-visibleRight-4*scale)<.35,
+        `${engine.name()} left ${scale}: gauge must keep space from the tea alpha bounds`);
       assert.ok(gaugeRect.x+gaugeRect.width<=panelRect.x-2,
         `${engine.name()} left ${scale}: panel must not cover the gauge`);
      }
+     assert.equal(await gauge.evaluate(node=>getComputedStyle(node).opacity),'0',
+       `${engine.name()} ${edge} ${scale}: revealed panel must retract the gauge`);
     }
     await page.evaluate(() => {
      localStorage.removeItem('cti-mascot-scale');
@@ -177,8 +179,10 @@ const {chromium, webkit} = require('playwright');
        ? artRect.x+artRect.width*alphaLeft/320
        : artRect.x+artRect.width*alphaRight/320;
      const gaugeBoundary=edge==='right' ? gaugeRect.x+gaugeRect.width : gaugeRect.x;
-     assert.ok(Math.abs(boundary-gaugeBoundary)<.35,
-       `${engine.name()} ${edge} ${skin}: gauge must touch the stable expression alpha bounds`);
+     const scale=artRect.width/48;
+     const gap=edge==='right' ? boundary-gaugeBoundary : gaugeBoundary-boundary;
+     assert.ok(Math.abs(gap-4*scale)<.35,
+       `${engine.name()} ${edge} ${skin}: gauge must keep space from the stable expression alpha bounds`);
      if(edge==='right') assert.ok(panelRect.x+panelRect.width<=gaugeRect.x-2,
        `${engine.name()} right ${skin}: panel must not cover the gauge`);
      else assert.ok(gaugeRect.x+gaugeRect.width<=panelRect.x-2,
