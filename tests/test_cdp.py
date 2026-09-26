@@ -141,6 +141,15 @@ class CDPTests(unittest.IsolatedAsyncioTestCase):
                 release.set()
             self.assertEqual(await task, 1)
 
+    async def test_large_renderer_request_fits_default_transport_limit(self):
+        expression = 'x' * (2 * 1024 * 1024)
+        async def handler(ws):
+            request = json.loads(await ws.recv())
+            self.assertEqual(request['params']['expression'], expression)
+            await ws.send(json.dumps({'id': request['id'], 'result': {'result': {'value': True}}}))
+        async with CDPClient(await self.server(handler, max_size=8 * 1024 * 1024)) as client:
+            self.assertTrue(await client.evaluate(expression))
+
     async def test_oversize_request_is_not_sent(self):
         requests = []
         async def handler(ws):

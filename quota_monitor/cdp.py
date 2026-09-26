@@ -22,7 +22,7 @@ class CDPError(Exception):
 
 
 class CDPClient:
-    def __init__(self, endpoint, *, timeout=2.0, max_message=1048576):
+    def __init__(self, endpoint, *, timeout=2.0, max_message=8 * 1024 * 1024):
         try:
             url = urlsplit(endpoint)
             address = ipaddress.ip_address(url.hostname)
