@@ -269,6 +269,15 @@ class DirectorySource:
                         not isinstance(candidate, str) or
                         not path.name.endswith('-' + candidate + '.jsonl')):
                     continue
+                # Uniqueness belongs to the filename inventory, not only to
+                # journals that have already reached a complete identity row.
+                # A second same-suffix file may still be pending or may not
+                # have exposed its session_meta yet, so neither candidate is
+                # publishable until that inventory ambiguity is resolved.
+                if sum(other.name.endswith('-' + candidate + '.jsonl')
+                       for other, _reading in path_readings) != 1:
+                    duplicate.add(candidate)
+                    continue
                 if candidate in verified:
                     duplicate.add(candidate)
                 else:

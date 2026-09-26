@@ -419,6 +419,25 @@ class NamedDirectoryTests(unittest.TestCase):
             self.assertNotIn('hover', {item['thread_id']
                                        for item in hover_pending['summaries']})
 
+    def test_named_pending_duplicate_suffix_blocks_complete_hover_summary(self):
+        from quota_monitor.indexed import NamedDirectorySource
+        for pending_prefix in (
+                json.dumps({'type': 'session_meta', 'payload': {'id': 'hover'}}) + '\n',
+                ''):
+            with self.subTest(identity_known=bool(pending_prefix)), \
+                    tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                self.write_rollout(root / 'rollout-date-active.jsonl', 'active', 11)
+                self.write_rollout(root / 'rollout-a-hover.jsonl', 'hover', 77)
+                (root / 'rollout-b-hover.jsonl').write_text(pending_prefix + '{"type":')
+                source = NamedDirectorySource(root)
+                source.prioritize('hover')
+                payload = source.read('active')
+                self.assertEqual(payload['sidebarStatus'],
+                                 {'threadId': 'hover', 'status': 'loading'})
+                self.assertNotIn('hover', {item['thread_id']
+                                           for item in payload['summaries']})
+
     def test_named_hover_loading_reports_bounded_byte_progress(self):
         from quota_monitor.indexed import NamedDirectorySource
         with tempfile.TemporaryDirectory() as directory:
