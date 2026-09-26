@@ -107,6 +107,16 @@ async function main() {
       assert.equal(await page.evaluate(() => window.__quotaMonitorV2Snapshot.sidebarStatus?.threadId), 'two');
       assert.equal(await page.evaluate(() => window.__quotaMonitorV2Snapshot.activeThreadId), 'one');
       assert.match(await page.locator('#cti-v2-sidebar-tooltip').innerText(), /会话总计/);
+      await fs.appendFile(logPath('one'), '{"type":');
+      assert.equal(await step(), 'data_loading');
+      assert.equal(await page.evaluate(() => window.__quotaMonitorV2Snapshot.selectedThreadId), null);
+      assert.equal(await page.evaluate(() => window.__quotaMonitorV2Snapshot.sidebarStatus?.status), 'ready');
+      assert.match(await page.locator('#cti-v2-sidebar-tooltip').innerText(), /会话总计/,
+        'a ready hovered conversation must remain readable while the active log is unfinished');
+      await empty();
+      await fs.appendFile(logPath('one'), '"ignored"}\n');
+      assert.equal(await step(), 'updated');
+      await meter(80);
       await page.mouse.move(600, 650);
       await fs.appendFile(logPath('one'), JSON.stringify({type: 'event_msg', payload: {
         type: 'token_count', info: {last_token_usage: {input_tokens: 350}, model_context_window: 1000}}}) + '\n');
