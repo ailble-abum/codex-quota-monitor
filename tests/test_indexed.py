@@ -414,3 +414,42 @@ class NamedDirectoryTests(unittest.TestCase):
             self.assertNotIn('sidebarStatus', source.read('active'))
             with self.assertRaises(ValueError):
                 source.prioritize('bad/key')
+
+    def test_named_first_hover_reuses_completed_background_journal(self):
+        from quota_monitor.indexed import NamedDirectorySource
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.write_rollout(root / 'rollout-date-active.jsonl', 'active', 11)
+            self.write_rollout(root / 'rollout-date-hover.jsonl', 'hover', 77)
+            source = NamedDirectorySource(root)
+            self.assertEqual(source.read('active')['selectedThreadId'], 'active')
+            source.prioritize('hover')
+            payload = source.read('active')
+            self.assertEqual(source.bytes_read, 0)
+            self.assertEqual(payload['sidebarStatus'],
+                             {'threadId': 'hover', 'status': 'ready'})
+            self.assertEqual(next(item for item in payload['summaries']
+                                  if item['thread_id'] == 'hover')['latest_context_tokens'], 77)
+
+    def test_named_discarded_long_body_does_not_hide_complete_hover_numbers(self):
+        from quota_monitor.indexed import NamedDirectorySource
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.write_rollout(root / 'rollout-date-active.jsonl', 'active', 11)
+            hover = root / 'rollout-date-hover.jsonl'
+            rows = [
+                {'type': 'session_meta', 'payload': {'id': 'hover'}},
+                {'type': 'response_item', 'payload': {'body': 'x' * 300}},
+                {'type': 'event_msg', 'payload': {'type': 'token_count', 'info': {
+                    'last_token_usage': {'input_tokens': 77},
+                    'model_context_window': 100}}},
+            ]
+            hover.write_text(''.join(json.dumps(row) + '\n' for row in rows))
+            source = NamedDirectorySource(root)
+            source.line_limit = 200
+            source.prioritize('hover')
+            payload = source.read('active')
+            self.assertEqual(payload['sidebarStatus'],
+                             {'threadId': 'hover', 'status': 'ready'})
+            self.assertEqual(next(item for item in payload['summaries']
+                                  if item['thread_id'] == 'hover')['latest_context_tokens'], 77)

@@ -81,6 +81,27 @@ class SessionTests(unittest.TestCase):
         self.state.accept(event(110, 5, 200))
         self.assertEqual(self.state.snapshot()['context_percent'], 2.5)
 
+    def test_compaction_ignores_zero_accounting_context_until_real_request(self):
+        self.state.accept(event(100, 80, 200))
+        self.state.accept({'type': 'compacted', 'payload': {}})
+        self.state.accept(event(100, 0, 200))
+        snapshot = self.state.snapshot()
+        self.assertIsNone(snapshot['context_percent'])
+        self.assertIsNone(snapshot['last']['input_tokens'])
+        self.assertEqual(snapshot['total']['total_tokens'], 100)
+        self.state.accept(event(130, 30, 200))
+        self.assertEqual(self.state.snapshot()['context_percent'], 15)
+
+    def test_compaction_ignores_missing_input_but_keeps_total_snapshot(self):
+        self.state.accept(event())
+        self.state.accept({'type': 'compacted', 'payload': {}})
+        row = event(150, 0, 200)
+        del row['payload']['info']['last_token_usage']['input_tokens']
+        self.state.accept(row)
+        snapshot = self.state.snapshot()
+        self.assertIsNone(snapshot['context_percent'])
+        self.assertEqual(snapshot['total']['total_tokens'], 150)
+
     def test_unknown_and_malformed_events_are_ignored(self):
         original = self.state.snapshot()
         for item in (None, [], {'type': 'event_msg', 'payload': []}, {'type': 'turn_context', 'payload': None}, {'type': 'response_item', 'payload': {'text': 'private'}}):

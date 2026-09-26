@@ -29,6 +29,7 @@ class SessionState:
         self.window = None
         self.compactions = 0
         self.counter_resets = 0
+        self.post_compaction_pending = False
 
     def accept(self, row):
         if not isinstance(row, dict) or not isinstance(row.get('payload'), dict):
@@ -46,6 +47,7 @@ class SessionState:
             self.compactions += 1
             self.last = usage(None)
             self.window = None
+            self.post_compaction_pending = True
         elif kind == 'event_msg' and payload.get('type') == 'token_count':
             info = payload.get('info')
             if not isinstance(info, dict):
@@ -55,8 +57,14 @@ class SessionState:
             if old is not None and new is not None and new < old:
                 self.counter_resets += 1
             self.total = incoming
-            self.last = usage(info.get('last_token_usage'))
-            self.window = count(info.get('model_context_window')) or None
+            incoming_last = usage(info.get('last_token_usage'))
+            incoming_window = count(info.get('model_context_window')) or None
+            if (self.post_compaction_pending and
+                    incoming_last.get('input_tokens') in (None, 0)):
+                return
+            self.post_compaction_pending = False
+            self.last = incoming_last
+            self.window = incoming_window
 
     def snapshot(self):
         tokens = self.last['input_tokens']

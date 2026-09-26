@@ -199,8 +199,7 @@ class DirectorySource:
                                  if path in priority_paths]
             if not priority_paths:
                 sidebar_status = 'not_found'
-            elif (any(reading.get('status') != 'ok' for reading in priority_readings)
-                  or any(path in self._tainted for path in priority_paths)):
+            elif any(reading.get('status') != 'ok' for reading in priority_readings):
                 sidebar_status = 'unavailable'
             elif any(reading.get('more') or reading.get('pending')
                      for reading in priority_readings):
@@ -348,15 +347,13 @@ class NamedDirectorySource(DirectorySource):
                 self._tainted.discard(path)
                 self._selected_tails.pop(path, None)
 
-    def _remember_selected(self, key):
+    def _remember_journals(self):
         self._selected_tails = {path: value for path, value in self._selected_tails.items()
                                 if path in self._journals}
-        suffix = '-' + key + '.jsonl'
         for path, journal in self._journals.items():
-            if path.name.endswith(suffix):
-                fingerprint = self._file_fingerprint(path, journal.reader._offset)
-                if fingerprint is not None:
-                    self._selected_tails[path] = fingerprint
+            fingerprint = self._file_fingerprint(path, journal.reader._offset)
+            if fingerprint is not None:
+                self._selected_tails[path] = fingerprint
 
     def prioritize(self, key):
         if key is not None and thread_key(key) != key:
@@ -379,7 +376,5 @@ class NamedDirectorySource(DirectorySource):
             self._dirs = None
             self._next_scan = float('-inf')
         result = super().read(key)
-        self._remember_selected(key)
-        if self._priority_key is not None and self._priority_key != key:
-            self._remember_selected(self._priority_key)
+        self._remember_journals()
         return result
