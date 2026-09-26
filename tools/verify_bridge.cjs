@@ -69,6 +69,27 @@ async function main() {
       await page.setContent('<button data-app-action-sidebar-thread-row data-app-action-sidebar-thread-id="local:one" data-app-action-sidebar-thread-host-id="local" data-app-action-sidebar-thread-kind="local" data-app-action-sidebar-thread-active="true"></button>');
       assert.equal(await readHost(), 'one');
       await page.evaluate(() => {
+        const inactive = document.createElement('section');
+        inactive.id = 'inactive-shell'; inactive.dataset.appShellActivePage = 'false';
+        const oldRow = document.querySelector('button').cloneNode();
+        oldRow.setAttribute('data-app-action-sidebar-thread-id', 'old-thread');
+        inactive.append(oldRow); document.body.append(inactive);
+      });
+      assert.equal(await readHost(), 'one', 'cached inactive Codex page must not make the current task ambiguous');
+      await page.evaluate(() => { document.getElementById('inactive-shell').dataset.appShellActivePage = 'true'; });
+      assert.equal(await readHost(), null, 'two active pages remain ambiguous');
+      await page.evaluate(() => {
+        document.getElementById('inactive-shell').dataset.appShellActivePage = 'false';
+        document.querySelector('body > button').remove();
+      });
+      assert.equal(await readHost(), null, 'never use the inactive task when no live row exists');
+      await page.evaluate(() => {
+        const inactive = document.getElementById('inactive-shell');
+        const row = inactive.querySelector('button');
+        row.setAttribute('data-app-action-sidebar-thread-id', 'local:one');
+        document.body.append(row); inactive.remove();
+      });
+      await page.evaluate(() => {
         const row = document.querySelector('button').cloneNode();
         row.setAttribute('data-app-action-sidebar-thread-active', 'false');
         row.setAttribute('data-app-action-sidebar-thread-selected', 'true');

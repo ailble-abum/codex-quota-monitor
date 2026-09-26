@@ -7,8 +7,9 @@
     };
     const current = () => {
         if (options.host !== 'codex-sidebar') return normalize(window.__quotaMonitorV2Thread);
-        const rows = document.querySelectorAll(
-            '[data-app-action-sidebar-thread-row][data-app-action-sidebar-thread-active="true"]');
+        const rows = Array.from(document.querySelectorAll(
+            '[data-app-action-sidebar-thread-row][data-app-action-sidebar-thread-active="true"]'))
+            .filter(row => !row.closest('[data-app-shell-active-page="false"]'));
         if (rows.length !== 1) return null;
         const row = rows[0];
         if (row.getAttribute('data-app-action-sidebar-thread-kind') !== 'local' ||
