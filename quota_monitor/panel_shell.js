@@ -54,7 +54,7 @@
     const quota = payload.quota || {status:'unavailable', windows:[]};
     const {age, live} = accountFreshness(quota);
     const blocked = live && (quota.ordinaryUsageAllowed === false || Boolean(quota.rateLimitReachedType));
-    renderAccountOverview(body, quota, live, blocked);
+    renderAccountOverview(body, quota, live, blocked, payload.contextSource);
     const id = activeThreadId();
     const fresh = typeof payload.observedAt !== 'number' || Date.now() / 1000 - payload.observedAt < 120;
     const selected = fresh ? (payload.summaries || []).find(item =>
@@ -68,7 +68,7 @@
     renderHealth(body, health);
     renderLocalSamples(body, payload.history);
     renderSessionDetails(body, selected);
-    renderContext(body, selected);
+    renderContext(body, selected, payload.contextSource);
     renderAccountStatus(body, quota, live, age);
     renderDiagnostics(body, payload);
     updateHudTitle(root);

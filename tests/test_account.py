@@ -1,6 +1,8 @@
 import asyncio
 import hashlib
 import json
+import os
+import signal
 import sys
 import tempfile
 import unittest
@@ -10,6 +12,93 @@ from quota_monitor import account
 
 
 class AccountTests(unittest.IsolatedAsyncioTestCase):
+    @unittest.skipIf(os.name != 'posix', 'POSIX child process group cleanup')
+    async def test_account_cleanup_kills_descendants_and_finishes_within_deadline(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            pid_file = root / 'child.pid'
+            script = root / 'server.py'
+            script.write_text('''import json,subprocess,sys,pathlib
+child=subprocess.Popen([sys.executable,'-c','import time;time.sleep(20)'])
+pathlib.Path(sys.argv[1]).write_text(str(child.pid))
+request=json.loads(input())
+print(json.dumps({'id':request['id'],'result':{}}),flush=True)
+input()
+request=json.loads(input())
+print(json.dumps({'id':request['id'],'result':{'rateLimits':{'primary':{'usedPercent':25}}}}),flush=True)
+request=json.loads(input())
+print(json.dumps({'id':request['id'],'error':{'code':-32601}}),flush=True)
+import time;time.sleep(20)
+''')
+            try:
+                result = await asyncio.wait_for(account.read_account(
+                    [sys.executable, str(script), str(pid_file)], timeout=1), 3)
+                self.assertEqual(result['status'], 'live')
+                gone = False
+                for _ in range(30):
+                    try:
+                        os.kill(int(pid_file.read_text()), 0)
+                    except ProcessLookupError:
+                        gone = True
+                        break
+                    await asyncio.sleep(.01)
+                self.assertTrue(gone, 'account refresh must not leave its child process running')
+            finally:
+                if pid_file.exists():
+                    try:
+                        os.kill(int(pid_file.read_text()), signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+
+    async def test_failure_retries_without_restart_then_returns_to_minute_polling(self):
+        from unittest.mock import AsyncMock, patch
+        from types import SimpleNamespace
+        source = account.AccountSource('/example/cli')
+        clock = [100.0]
+        live = {'status': 'live', 'updatedAt': 1000, 'windows': []}
+        read = AsyncMock(side_effect=[account.unavailable('timeout'),
+                                     account.unavailable('app_server'), live])
+        with patch.object(account, 'time', SimpleNamespace(monotonic=lambda: clock[0], time=lambda: 1000)), \
+                patch.object(account, 'read_account', read):
+            source.snapshot()
+            await source.task
+            self.assertEqual(source.next_read, 105)
+            clock[0] = 104
+            source.snapshot()
+            self.assertEqual(read.await_count, 1)
+            clock[0] = 105
+            source.snapshot()
+            await source.task
+            self.assertEqual(source.next_read, 115)
+            clock[0] = 115
+            source.snapshot()
+            await source.task
+            self.assertEqual(source.snapshot()['status'], 'live')
+            self.assertEqual(source.failures, 0)
+            self.assertEqual(source.next_read, 175)
+            await source.close()
+
+    async def test_refresh_error_is_contained_and_manual_refresh_resets_backoff(self):
+        from unittest.mock import AsyncMock, patch
+        source = account.AccountSource('/example/cli')
+        with patch.object(account, 'read_account', AsyncMock(side_effect=OSError('private'))):
+            for _ in range(10):
+                await source.refresh()
+            self.assertEqual(source.value, account.unavailable('app_server'))
+            self.assertEqual(source.failures, 5)
+            self.assertLessEqual(source.next_read - account.time.monotonic(), 60)
+            source.request_refresh()
+            self.assertEqual(source.failures, 0)
+            self.assertEqual(source.next_read, 0)
+
+    def test_server_usage_decision_takes_precedence_and_unknown_is_preserved(self):
+        for allowed in (True, False, None):
+            value = account.project({'ordinaryUsageAllowed': allowed,
+                'rateLimits': {'primary': {'usedPercent': 1}}}, now=1)
+            self.assertIs(value['ordinaryUsageAllowed'], allowed)
+        self.assertEqual(account.project({'ordinaryUsageAllowed': 'true',
+            'rateLimits': {'primary': {'usedPercent': 1}}}, now=1)['status'], 'unavailable')
+
     def test_cli_resolves_known_packaging_only_within_configured_bundle(self):
         with tempfile.TemporaryDirectory() as directory:
             resources = Path(directory) / 'Codex.app/Contents/Resources'

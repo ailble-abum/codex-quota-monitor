@@ -117,6 +117,44 @@ async function main() {
       await page.evaluate(() => document.body.append(document.querySelector('button').cloneNode()));
       assert.equal(await readHost(), null);
       await page.evaluate(() => document.querySelector('button').remove());
+      await page.evaluate(() => {
+        const row = document.querySelector('button');
+        row.setAttribute('data-app-action-sidebar-thread-id', 'local:client-new-thread:alias-one');
+        const portal = document.createElement('div');
+        portal.dataset.aboveComposerPortal = '';
+        portal.dataset.aboveComposerConversationId = 'one';
+        document.body.append(portal);
+      });
+      assert.equal(await readHost(), 'one', 'new-thread alias must use the resolved active composer ID');
+      await page.evaluate(() => { window.__quotaMonitorV2SidebarThread = 'one'; });
+      assert.equal(await readHover(), 'one', 'hovering the resolved active alias must request its own journal');
+      await page.evaluate(() => document.querySelector('[data-above-composer-portal]')
+        .setAttribute('data-above-composer-conversation-id', 'chatgpt:chat-one'));
+      assert.equal(await readHost(), null, 'ChatGPT must never read a local journal');
+      assert.equal(await call({action:'contextSource', expected:'about:blank', host:'codex-sidebar'}), 'chatgpt');
+      const accountOptions = {...options, host:'codex-sidebar', key:null,
+        payload:{activeThreadId:null, selectedThreadId:null, summaries:[],
+          quota:{status:'live',updatedAt:Date.now()/1000,windows:[{remaining:75}]}}};
+      assert.equal(await call(accountOptions), true, 'account publication must work without a local task');
+      assert.equal(await page.evaluate(() => window.__quotaMonitorV2Snapshot.quota.windows[0].remaining), 75);
+      await page.evaluate(() => {
+        const portal = document.querySelector('[data-above-composer-portal]');
+        portal.dataset.aboveComposerConversationId = 'one';
+        document.body.append(portal.cloneNode());
+      });
+      assert.equal(await readHost(), null, 'two active composers are ambiguous');
+      await page.evaluate(() => {
+        document.querySelector('[data-above-composer-portal]').remove();
+        const portal = document.querySelector('[data-above-composer-portal]');
+        const shell = document.createElement('section');
+        shell.dataset.appShellActivePage = 'false';
+        portal.replaceWith(shell); shell.append(portal);
+      });
+      assert.equal(await readHost(), null, 'an alias cannot use a hidden composer');
+      await page.evaluate(() => {
+        document.querySelector('section').remove();
+        document.querySelector('button').setAttribute('data-app-action-sidebar-thread-id', 'local:one');
+      });
       for (const [attribute, value] of [['kind', 'remote'], ['host-id', 'remote-host'],
         ['host-id', ''], ['id', 'invalid/key'], ['id', 'one\n'], ['active', 'false']]) {
         const name = 'data-app-action-sidebar-thread-' + attribute;

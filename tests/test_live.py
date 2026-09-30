@@ -249,6 +249,28 @@ class LiveCLITests(unittest.TestCase):
 
 
 class SupervisorTests(unittest.IsolatedAsyncioTestCase):
+    async def test_wait_mode_reconnects_after_repeated_socket_failures_without_exiting(self):
+        import asyncio
+        import contextlib
+        import io
+        from unittest.mock import patch, AsyncMock
+        from quota_monitor.live import supervise
+        class Loop:
+            values = iter(['disconnected'] * 7 + ['timeout', 'protocol_error', 'updated',
+                          'ambiguous', 'ambiguous'])
+            async def step(self):
+                return next(self.values)
+            async def shutdown(self):
+                return 'closed'
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), patch.object(asyncio, 'sleep', new_callable=AsyncMock) as sleep:
+            self.assertEqual(await supervise(Loop(), interval=1, max_failures=2,
+                                            once=False, wait_for_host=True), 2)
+        rows = [json.loads(line) for line in out.getvalue().splitlines()]
+        self.assertIn({'event': 'state', 'status': 'updated'}, rows)
+        self.assertLessEqual(max(call.args[0] for call in sleep.call_args_list), 60)
+        self.assertGreater(sleep.call_args_list[2].args[0], sleep.call_args_list[0].args[0])
+
     async def test_supervisor_records_panel_state_and_stop(self):
         import contextlib
         import io

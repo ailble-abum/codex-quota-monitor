@@ -43,6 +43,44 @@ class SelectionTests(unittest.TestCase):
 
 
 class LoopTests(unittest.IsolatedAsyncioTestCase):
+    async def test_chatgpt_selection_keeps_account_and_history_without_reading_local_logs(self):
+        loop = runtime.UpdateLoop('http://127.0.0.1:9222', 'about:blank', {},
+                                  account_cli='/example/codex')
+        loop.source.read = Mock(side_effect=AssertionError('no local log for ChatGPT'))
+        quota = {'status': 'live', 'updatedAt': 1000, 'windows': []}
+        loop.account.snapshot = Mock(return_value=quota)
+        loop.account.request_refresh = Mock()
+        loop.update.snapshot = Mock(return_value={'status': 'unavailable'})
+        loop.history = Mock()
+        loop.history.record.return_value = {'samples': 1}
+        loop.history.enrich_quota.side_effect = lambda value: value
+        client = AsyncMock()
+        client.endpoint = 'ws://127.0.0.1:9222/devtools/page/one'
+        client.evaluate.side_effect = [None, 'chatgpt', True, False, False, True]
+        loop.client = client
+        with patch.object(runtime, 'list_pages', return_value=[]), \
+                patch.object(runtime, 'select_page', return_value=client.endpoint):
+            self.assertEqual(await loop.step(), 'updated')
+        loop.source.read.assert_not_called()
+        loop.account.request_refresh.assert_called_once()
+        self.assertEqual(loop.history.record.call_args.args, (quota, {}, None, None))
+        payload = json.loads(client.evaluate.call_args.args[0][len(runtime._PAGE_BRIDGE) + 1:-1])['payload']
+        self.assertIsNone(payload['activeThreadId'])
+        self.assertEqual(payload['contextSource'], 'chatgpt')
+        self.assertEqual(payload['quota'], quota)
+        self.assertEqual(payload['summaries'], [])
+
+    async def test_disconnected_host_still_polls_account_and_updates_menu_samples(self):
+        loop = runtime.UpdateLoop('http://127.0.0.1:9222', 'about:blank', {},
+                                  account_cli='/example/codex')
+        quota = {'status': 'live', 'updatedAt': 1000, 'windows': []}
+        loop.account.snapshot = Mock(return_value=quota)
+        loop.history = Mock()
+        with patch.object(runtime, 'list_pages', side_effect=runtime.CDPError('discovery_unavailable')):
+            self.assertEqual(await loop.step(), 'discovery_unavailable')
+        loop.account.snapshot.assert_called_once()
+        loop.history.record.assert_called_once_with(quota, {}, None, None)
+
     async def test_sidebar_hover_prioritizes_loading_without_changing_active_task(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

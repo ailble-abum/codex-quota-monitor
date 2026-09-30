@@ -1,5 +1,5 @@
   // Snapshot selection remains the caller's responsibility; this owns presentation only.
-  function renderContext(body, summary) {
+  function renderContext(body, summary, source) {
     const current = body.querySelector('[data-context]');
     const next = current.cloneNode(false);
     const zh = uiLanguage() === 'zh';
@@ -14,7 +14,9 @@
     const tone = value === null ? 'unknown' : value < 70 ? 'safe' : value < 85 ? 'watch' : 'low';
     next.dataset.tone = summary ? tone : 'unknown';
     if (!summary) {
-      next.append(element('span', 'cti-muted', tr('noRecords')));
+      next.append(element('span', 'cti-muted', source === 'chatgpt'
+        ? zh ? 'ChatGPT 聊天未提供上下文用量' : 'ChatGPT context usage is unavailable'
+        : tr('noRecords')));
     } else {
       const heading = element('div', 'cti-line');
       const label = document.createElement('span');

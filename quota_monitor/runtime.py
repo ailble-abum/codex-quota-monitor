@@ -186,6 +186,9 @@ class UpdateLoop:
         return result
 
     async def step(self):
+        # Poll the account even while the host is restarting or its CDP socket
+        # is unavailable. A task selection is only required for local context.
+        quota = self.account.snapshot() if self.account is not None else None
         try:
             rows = await asyncio.wait_for(asyncio.to_thread(list_pages, self.origin), 5)
             endpoint = select_page(rows, self.page_url, self.origin)
@@ -196,12 +199,6 @@ class UpdateLoop:
             key = await self.client.evaluate(page_expression(
                 action='read', expected=self.page_url, host=self.host))
             key = thread_key(key)
-            if key is None:
-                if self.panel:
-                    await self.client.evaluate(page_expression(
-                        action='invalidate', expected=self.page_url, owner=self.owner))
-                self.status = 'unselected'
-                return self.status
             if self.consumer is not None:
                 ready = await self.client.evaluate(page_expression(
                     action='prepare', expected=self.page_url, key=key, host=self.host))
@@ -213,11 +210,13 @@ class UpdateLoop:
                 if ready != 'ready':
                     self.status = 'changed'
                     return self.status
-            if isinstance(self.source, NamedDirectorySource):
+            if key is not None and isinstance(self.source, NamedDirectorySource):
                 hovered = await self.client.evaluate(page_expression(
                     action='sidebarHover', expected=self.page_url, key=key, host=self.host))
                 self.source.prioritize(thread_key(hovered))
-            payload = self.source.read(key)
+            payload = self.source.read(key) if key is not None else panel_payload({}, None)
+            payload['contextSource'] = 'local' if key is not None else await self.client.evaluate(
+                page_expression(action='contextSource', expected=self.page_url, host=self.host))
             if self.account is not None:
                 requested = await self.client.evaluate(page_expression(
                     action='refresh', expected=self.page_url, key=key, host=self.host))
@@ -287,12 +286,17 @@ class UpdateLoop:
                             await asyncio.to_thread(self.notifier.notify, payload['quota'])
                     except CDPError:
                         pass
-                source_status = getattr(self.source, 'status', 'ok')
+                source_status = getattr(self.source, 'status', 'ok') if key is not None else 'ok'
                 if source_status != 'ok':
                     self.status = 'data_' + source_status
         except (CDPError, asyncio.TimeoutError) as error:
             await self.close()
             self.status = str(error) if isinstance(error, CDPError) else 'discovery_timeout'
+            if self.history is not None and quota is not None:
+                try:
+                    self.history.record(quota, {}, None, None)
+                except OSError:
+                    pass
         except BaseException:
             await self.close()
             raise

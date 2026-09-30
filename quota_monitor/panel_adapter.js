@@ -14,7 +14,8 @@
     if (!data || data !== panelData()) {
       data = {activeThreadId: null, selectedThreadId: null, summaries: [],
         detail: null, detailsByThread: {}, health: null, healthThreadId: null, history: null,
-        build: null, update: {status: 'not_configured'},
+        quota: appliedPayload?.quota, build: appliedPayload?.build,
+        contextSource: 'unselected', update: {status: 'not_configured'},
         observedAt: Date.now() / 1000};
     }
     appliedPayload = data;

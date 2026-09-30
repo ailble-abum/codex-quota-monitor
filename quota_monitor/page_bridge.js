@@ -5,6 +5,11 @@
         const key = value.replace(/^local:/, '');
         return /^[A-Za-z0-9_-]{1,128}$/.test(key) ? key : null;
     };
+    // This portal contains the resolved conversation ID, while a sidebar row
+    // can retain a client-new-thread alias after its first turn is created.
+    const composers = () => Array.from(document.querySelectorAll(
+        '[data-above-composer-portal][data-above-composer-conversation-id]'))
+        .filter(node => !node.closest('[data-app-shell-active-page="false"]'));
     const current = () => {
         if (options.host !== 'codex-sidebar') return normalize(window.__quotaMonitorV2Thread);
         const rows = Array.from(document.querySelectorAll(
@@ -14,10 +19,25 @@
         const row = rows[0];
         if (row.getAttribute('data-app-action-sidebar-thread-kind') !== 'local' ||
             row.getAttribute('data-app-action-sidebar-thread-host-id') !== 'local') return null;
-        return normalize(row.getAttribute('data-app-action-sidebar-thread-id'));
+        const id = row.getAttribute('data-app-action-sidebar-thread-id');
+        const portals = composers();
+        if (portals.length > 1) return null;
+        const resolved = portals.length === 1
+            ? normalize(portals[0].getAttribute('data-above-composer-conversation-id')) : null;
+        if (/^local:client-new-thread:[A-Za-z0-9_-]{1,128}$/.test(id || ''))
+            return resolved;
+        const key = normalize(id);
+        return portals.length && key !== resolved ? null : key;
     };
     if (location.href !== options.expected) return options.action === 'read' ? null : false;
     if (options.action === 'read') return current();
+    if (options.action === 'contextSource') {
+        const portals = composers();
+        return options.host === 'codex-sidebar' && portals.length === 1 &&
+            /^chatgpt:[A-Za-z0-9_-]{1,128}$/.test(
+                portals[0].getAttribute('data-above-composer-conversation-id'))
+            ? 'chatgpt' : 'unselected';
+    }
     if (options.action === 'invalidate' || options.action === 'release') {
         const previous = window.__quotaMonitorV2Delivery;
         if (previous && previous.owner !== options.owner) return true;
@@ -55,7 +75,8 @@
         if (!cleared) throw new Error('panel consumer unavailable');
         return true;
     }
-    if (!options.key || current() !== options.key) return false;
+    // Account data belongs to the account, even when no local log is selected.
+    if (options.key === undefined || current() !== options.key) return false;
 
     if (options.action === 'sidebarHover') {
         if (options.host !== 'codex-sidebar') return null;
@@ -65,7 +86,9 @@
             .some(row => !row.closest('[data-app-shell-active-page="false"]') &&
                 row.getAttribute('data-app-action-sidebar-thread-kind') === 'local' &&
                 row.getAttribute('data-app-action-sidebar-thread-host-id') === 'local' &&
-                normalize(row.getAttribute('data-app-action-sidebar-thread-id')) === wanted);
+                (normalize(row.getAttribute('data-app-action-sidebar-thread-id')) === wanted ||
+                    row.getAttribute('data-app-action-sidebar-thread-active') === 'true' &&
+                    current() === wanted));
         return found ? wanted : null;
     }
 
@@ -146,7 +169,9 @@
     let lastConsumer;
     const stop = () => clearInterval(timer);
     const empty = () => ({activeThreadId: null, selectedThreadId: null,
-        summaries: [], detail: null, detailsByThread: {}, observedAt: Date.now() / 1000});
+        summaries: [], detail: null, detailsByThread: {},
+        quota: options.payload?.quota, build: options.payload?.build,
+        contextSource: 'unselected', observedAt: Date.now() / 1000});
     const refresh = () => {
         try {
             const data = snapshot();

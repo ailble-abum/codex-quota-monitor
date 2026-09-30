@@ -50,8 +50,21 @@ async function main() {
       await page.goto('http://panel.invalid/');
       const port = Number((await fs.readFile(path.join(temp, 'profile/DevToolsActivePort'), 'utf8')).split('\n')[0]);
       await fs.writeFile(path.join(temp, 'consumer.js'), fixture.script);
+      const fakeCli = path.join(temp, 'account-cli');
+      await fs.writeFile(fakeCli, `#!${execFileSync(python, ['-c','import sys;print(sys.executable)'], {encoding:'utf8'}).trim()}
+import json
+request=json.loads(input())
+print(json.dumps({'id':request['id'],'result':{}}),flush=True)
+input()
+request=json.loads(input())
+print(json.dumps({'id':request['id'],'result':{'rateLimits':{'primary':{'usedPercent':25,'windowDurationMins':300}}}}),flush=True)
+request=json.loads(input())
+print(json.dumps({'id':request['id'],'error':{'code':-32601}}),flush=True)
+`);
+      await fs.chmod(fakeCli, 0o700);
       worker = spawn(python, [path.join(__dirname, 'panel_runtime_worker.py'),
-        `http://127.0.0.1:${port}`, 'http://panel.invalid/', temp], {stdio: ['pipe', 'pipe', 'pipe']});
+        `http://127.0.0.1:${port}`, 'http://panel.invalid/', temp], {
+          stdio: ['pipe', 'pipe', 'pipe'], env: {...process.env, QUOTA_ACCOUNT_CLI:fakeCli}});
       exited = once(worker, 'exit');
       let stderr = '';
       worker.stderr.on('data', data => { stderr += data; });
@@ -87,7 +100,7 @@ async function main() {
       await select('one');
       assert.equal(await step(), 'updated');
       await meter(80);
-      if (process.env.QUOTA_ACCOUNT_CLI) {
+      {
         const deadline = Date.now() + 15000;
         let live = false;
         while (Date.now() < deadline) {
@@ -96,11 +109,34 @@ async function main() {
           if (live) break;
           await new Promise(resolve => setTimeout(resolve, 100));
         }
-        assert.equal(live, true, 'real account read unavailable');
+        assert.equal(live, true, 'synthetic account read unavailable');
         assert.match(await page.locator('[data-freshness]').innerText(), /账户接口/);
         const expected = await page.evaluate(() => window.__quotaMonitorV2Snapshot.quota.windows.length);
         assert.equal(await page.locator('.cti-quota-window').count(), expected);
       }
+      await page.evaluate(() => {
+        document.querySelector('[data-app-action-sidebar-thread-id="one"]')
+          .setAttribute('data-app-action-sidebar-thread-id', 'local:client-new-thread:alias-one');
+        const portal = document.createElement('div');
+        portal.dataset.aboveComposerPortal = '';
+        portal.dataset.aboveComposerConversationId = 'one';
+        document.body.append(portal);
+      });
+      assert.equal(await step(), 'updated');
+      await meter(80);
+      await page.evaluate(() => {
+        document.querySelector('[data-above-composer-portal]')
+          .setAttribute('data-above-composer-conversation-id', 'local:one');
+      });
+      assert.equal(await step(), 'updated');
+      await meter(80);
+      assert.notEqual(await page.locator('[data-app-action-sidebar-thread-id="local:client-new-thread:alias-one"]')
+        .getAttribute('data-cti-v2-sidebar-note'), null, 'alias sidebar projection must normalize local: consistently');
+      await page.evaluate(() => {
+        document.querySelector('[data-app-action-sidebar-thread-id="local:client-new-thread:alias-one"]')
+          .setAttribute('data-app-action-sidebar-thread-id', 'one');
+        document.querySelector('[data-above-composer-portal]').remove();
+      });
       await page.locator('[data-app-action-sidebar-thread-id="two"]').hover();
       await page.waitForSelector('#cti-v2-sidebar-tooltip');
       assert.equal(await step(), 'updated');
@@ -124,10 +160,23 @@ async function main() {
       await meter(35);
       await page.evaluate(() => window.__quotaMonitorV2Delivery.stop());
       await select(null);
-      assert.equal(await step(), 'unselected');
+      await page.evaluate(() => {
+        const portal = document.createElement('div');
+        portal.dataset.aboveComposerPortal = '';
+        portal.dataset.aboveComposerConversationId = 'chatgpt:chat-one';
+        document.body.append(portal);
+      });
+      assert.equal(await step(), 'updated');
       await empty(); // Runtime must invalidate even when the page timer stopped.
+      assert.equal(await page.locator('.cti-quota-window').count(), 1);
+      assert.match(await page.locator('[data-quota]').innerText(), /Codex 账户额度/);
+      assert.match(await page.locator('[data-context]').innerText(), /ChatGPT 聊天未提供上下文用量/);
+      assert.equal(await page.evaluate(() => window.__quotaMonitorV2Snapshot.quota.status), 'live');
+      await page.evaluate(() => document.querySelector('[data-above-composer-portal]').remove());
       await select('two');
       await empty();
+      assert.equal(await page.locator('.cti-quota-window').count(), 1,
+        'changing tasks must clear local context while retaining fresh account data');
       assert.equal(await step(), 'updated');
       await contextUnknown();
       await fs.appendFile(logPath('two'), JSON.stringify({type: 'event_msg', payload: {

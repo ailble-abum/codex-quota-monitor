@@ -38,6 +38,7 @@ async function main() {
     const config = path.join(directory, 'config.json');
     const consumerSource = `(empty => {
       window.consumerMounts = (window.consumerMounts || 0) + 1;
+      if (!document.querySelector('output')) document.body.append(document.createElement('output'));
       window.__codexContextTokenInspectorUpdate = payload => {
         document.querySelector('output').textContent = payload.summaries[0]?.latest_context_tokens ?? '';
       };
@@ -68,7 +69,7 @@ async function main() {
       await until(() => run.rows.some(row => row.status === 'updated'));
       await page.waitForFunction(() => document.querySelector('output').textContent === '250');
       await page.reload();
-      await until(() => run.rows.some(row => row.status === 'unselected'));
+      await page.waitForFunction(() => window.__quotaMonitorV2Snapshot?.activeThreadId === null);
       await mount();
       await page.waitForFunction(() => document.querySelector('output').textContent === '250');
       assert.equal(await page.evaluate(() => window.consumerMounts), 1);

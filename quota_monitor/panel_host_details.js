@@ -57,7 +57,15 @@
   function hostThreadId(row) {
     const tagged = row.matches('[data-app-action-sidebar-thread-id]')
       ? row : row.querySelector('[data-app-action-sidebar-thread-id]');
-    return tagged?.dataset.appActionSidebarThreadId || null;
+    const id = tagged?.dataset.appActionSidebarThreadId || null;
+    if (!/^local:client-new-thread:[A-Za-z0-9_-]{1,128}$/.test(id || '')) return id;
+    if (tagged.getAttribute('data-app-action-sidebar-thread-active') !== 'true') return null;
+    const portals = Array.from(document.querySelectorAll(
+      '[data-above-composer-portal][data-above-composer-conversation-id]'))
+      .filter(node => !node.closest('[data-app-shell-active-page="false"]'));
+    const resolved = portals.length === 1
+      ? portals[0].dataset.aboveComposerConversationId.replace(/^local:/, '') : null;
+    return /^[A-Za-z0-9_-]{1,128}$/.test(resolved || '') ? resolved : null;
   }
 
   function hostPercent(value) {

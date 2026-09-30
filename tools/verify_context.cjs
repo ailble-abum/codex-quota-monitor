@@ -39,6 +39,15 @@ const source = ['panel_format.js', 'panel_context.js'].map(name => fs.readFileSy
       await page.evaluate(() => renderContext(document.querySelector('section'), null));
       assert.equal(await page.locator('[data-context]').textContent(), 'No records');
       assert.equal(await page.locator('[role=meter]').count(), 0);
+      for (const language of ['zh', 'en']) {
+        await page.evaluate(language => {
+          window.language = language;
+          renderContext(document.querySelector('section'), null, 'chatgpt');
+        }, language);
+        assert.match(await page.locator('[data-context]').textContent(),
+          language === 'zh' ? /ChatGPT 聊天未提供上下文用量/ : /ChatGPT context usage is unavailable/);
+        assert.equal(await page.locator('[role=meter]').count(), 0);
+      }
       console.log(engine.name() + ': context boundaries, invalid values, languages, unchanged nodes and missing records passed');
     } finally { await browser.close(); }
   }

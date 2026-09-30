@@ -17,7 +17,7 @@
     return prefix + durationPhrase(budget.seconds);
   }
 
-  function renderAccountOverview(body, quota, live, blocked) {
+  function renderAccountOverview(body, quota, live, blocked, contextSource) {
     const current = body.querySelector('[data-quota]'), next = current.cloneNode(false);
     const zh = uiLanguage() === 'zh';
     const text = (chinese, english) => zh ? chinese : english;
@@ -30,7 +30,10 @@
       const result = document.createElement('span'); result.className = 'cti-trust';
       result.dataset.kind = kind; result.textContent = label; return result;
     };
-    const source = node('cti-source-row'); source.append(badge('official', text('官方账户', 'Official account'))); next.append(source);
+    const source = node('cti-source-row');
+    source.append(badge('official', contextSource === 'chatgpt'
+      ? text('Codex 账户额度', 'Codex account quota') : text('官方账户', 'Official account')));
+    next.append(source);
     const windows = live ? quota.windows : [];
     if (windows.length) {
       const reset = blocked ? nearestResetText(windows) : '';

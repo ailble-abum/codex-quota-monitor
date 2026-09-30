@@ -5,6 +5,7 @@ import json
 import math
 import os
 from pathlib import Path
+import signal
 import time
 
 
@@ -91,6 +92,12 @@ def project(raw, *, now):
     # Preserve an explicit server block even if percentages look available.
     blocked = limits.get('rateLimitReachedType')
     result['ordinaryUsageAllowed'] = not bool(blocked) and not any(w['remaining'] == 0 for w in windows)
+    if 'ordinaryUsageAllowed' in raw:
+        allowed = raw['ordinaryUsageAllowed']
+        if allowed is not None and type(allowed) is not bool:
+            return unavailable()
+        # The server can report an unavailable decision despite fresh windows.
+        result['ordinaryUsageAllowed'] = allowed
     usage = project_usage(raw.get('usage'))
     if usage is not None:
         result['usage'] = usage
@@ -119,7 +126,8 @@ async def read_account(command, *, timeout=12):
     async def exchange():
         nonlocal process
         process = await asyncio.create_subprocess_exec(*command, stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL, limit=1048576)
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL, limit=1048576,
+            start_new_session=os.name == 'posix')
         async def send(message):
             process.stdin.write((json.dumps(message) + '\n').encode())
             await process.stdin.drain()
@@ -164,12 +172,22 @@ async def read_account(command, *, timeout=12):
         return unavailable('app_server')
     finally:
         if process is not None:
-            if process.returncode is None:
+            # This group belongs only to this read-only query. Descendants can
+            # inherit stdout and outlive the CLI; never kill the host app-server.
+            if os.name == 'posix':
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except OSError:
+                    pass
+            elif process.returncode is None:
                 try:
                     process.kill()
                 except ProcessLookupError:
                     pass
-            await process.wait()
+            try:
+                await asyncio.wait_for(process.wait(), 2)
+            except asyncio.TimeoutError:
+                pass
 
 
 class AccountSource:
@@ -179,11 +197,18 @@ class AccountSource:
         self.value = unavailable()
         self.task = None
         self.next_read = 0
+        self.failures = 0
 
     async def refresh(self):
         # Resolve each refresh so an app update does not pin a removed binary
         # until the monitor itself is restarted. Explicit external CLIs stay exact.
-        self.value = await read_account([resolve_cli(self.command[0]), *self.command[1:]])
+        try:
+            self.value = await read_account([resolve_cli(self.command[0]), *self.command[1:]])
+        except (OSError, ValueError, RuntimeError):
+            self.value = unavailable('app_server')
+        self.failures = 0 if self.value['status'] == 'live' else min(self.failures + 1, 5)
+        delay = 60 if not self.failures else min(60, 5 * 2 ** (self.failures - 1))
+        self.next_read = time.monotonic() + delay
 
     def snapshot(self):
         if time.monotonic() >= self.next_read and (self.task is None or self.task.done()):
@@ -195,6 +220,7 @@ class AccountSource:
         return self.value
 
     def request_refresh(self):
+        self.failures = 0
         self.next_read = 0
 
     async def close(self):

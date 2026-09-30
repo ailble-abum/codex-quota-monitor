@@ -143,7 +143,9 @@ async def supervise(loop, *, interval, max_failures, once, wait_for_host=False):
             failures = 0 if status in ('updated', 'unselected', 'changed',
                 'data_index_wait', 'data_loading', 'data_incomplete', 'data_unavailable',
                 'data_not_found', 'data_ambiguous') else failures + 1
-            if failures >= max_failures:
+            reconnecting = wait_for_host and status in {
+                'unavailable', 'disconnected', 'timeout', 'discovery_timeout', 'protocol_error'}
+            if failures >= max_failures and not reconnecting:
                 reason, code = 'failure_limit', 2
                 break
             await asyncio.sleep(min(60, interval * 2 ** min(max(0, failures - 1), 10)))
