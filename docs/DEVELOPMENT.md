@@ -35,6 +35,7 @@ npm run test:live
 ```sh
 .venv/bin/python tools/build_panel.py .local/panel-candidate
 node --check .local/panel-candidate/consumer.js
+node tools/verify_account_expiry.cjs .local/panel-candidate/consumer.js
 QUOTA_PANEL_CANDIDATE="$PWD/.local/panel-candidate/consumer.js" \
   node tools/verify_panel.cjs .local/panel-candidate .local/panel-artifacts --bridge
 ```

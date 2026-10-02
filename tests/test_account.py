@@ -208,6 +208,28 @@ print(json.dumps({'id':request['id'],'error':{'code':-1}}),flush=True)
         result = await account.read_account(['/nonexistent/quota-v2-cli'], timeout=.1)
         self.assertEqual(result['errorCode'], 'cli_missing')
 
+    async def test_overall_deadline_preserves_quota_when_optional_usage_stalls(self):
+        from unittest.mock import AsyncMock, Mock, patch
+        replies = iter([{'id': 1, 'result': {}}, {'id': 2, 'result': {
+            'rateLimits': {'primary': {'usedPercent': 35}}}}])
+        async def readline():
+            reply = next(replies, None)
+            if reply is None:
+                await asyncio.Event().wait()
+            return (json.dumps(reply) + '\n').encode()
+        # Keep this deadline regression independent of OS process-start latency.
+        # The real stdio handshake and process cleanup have separate integration tests.
+        process = Mock(pid=123, returncode=0)
+        process.stdin.drain = AsyncMock()
+        process.stdout.readline = readline
+        process.wait = AsyncMock(return_value=0)
+        with patch.object(account.asyncio, 'create_subprocess_exec', AsyncMock(return_value=process)), \
+                patch.object(account.os, 'killpg', create=True):
+            result = await asyncio.wait_for(account.read_account(['/synthetic/cli'], timeout=.05), 2)
+        self.assertEqual(result['status'], 'live')
+        self.assertEqual(result['windows'][0]['remaining'], 65)
+        self.assertNotIn('usage', result)
+
     async def test_background_does_not_block_and_failure_clears(self):
         from unittest.mock import patch
         gate = asyncio.Event()

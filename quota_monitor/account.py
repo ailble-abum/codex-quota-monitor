@@ -123,8 +123,9 @@ def project(raw, *, now):
 
 async def read_account(command, *, timeout=12):
     process = None
+    accepted_quota = None
     async def exchange():
-        nonlocal process
+        nonlocal process, accepted_quota
         process = await asyncio.create_subprocess_exec(*command, stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL, limit=1048576,
             start_new_session=os.name == 'posix')
@@ -154,6 +155,7 @@ async def read_account(command, *, timeout=12):
         quota = project(await response(2), now=time.time())
         if quota['status'] != 'live':
             return quota
+        accepted_quota = quota
         try:
             await send({'id': 3, 'method': 'account/usage/read'})
             usage = project_usage(await asyncio.wait_for(response(3), 3))
@@ -167,9 +169,11 @@ async def read_account(command, *, timeout=12):
     except FileNotFoundError:
         return unavailable('cli_missing')
     except asyncio.TimeoutError:
-        return unavailable('timeout')
+        # Optional activity must not erase this query's successful quota read
+        # when it consumes the remainder of the shared deadline.
+        return accepted_quota if accepted_quota is not None else unavailable('timeout')
     except (OSError, ValueError, RecursionError):
-        return unavailable('app_server')
+        return accepted_quota if accepted_quota is not None else unavailable('app_server')
     finally:
         if process is not None:
             # This group belongs only to this read-only query. Descendants can
@@ -191,7 +195,7 @@ async def read_account(command, *, timeout=12):
 
 
 class AccountSource:
-    """One background request at most per minute; local token updates never wait."""
+    """One background query at a time; retry failures without blocking local tokens."""
     def __init__(self, cli):
         self.command = [cli, 'app-server']
         self.value = unavailable()

@@ -22,6 +22,16 @@
     window.__codexContextTokenInspectorPayload = data;
     applyHud(data);
     projectHostDetails(data);
+    // The bridge stops delivering after a thread switch. Account freshness
+    // still has its own deadline, even if no subsequent poll reaches the page.
+    clearTimeout(accountExpiryTimer);
+    accountExpiryTimer = null;
+    if (accountFreshness(data.quota).live) {
+      const delay = Math.max(1, (data.quota.updatedAt + 120) * 1000 - Date.now());
+      accountExpiryTimer = setTimeout(() => {
+        if (!disposed) applyAll(panelData());
+      }, delay);
+    }
   }
   ensureStyle();
   applyAll(null);

@@ -122,7 +122,7 @@
       }).join('')
         + cell(chinese ? 'CTX 已用' : 'CTX used', context, contextTone(context), context, sub);
       if (title.innerHTML !== html) title.innerHTML = html;
-      const budget = blocked ? (chinese ? '账户已达上限' : 'Account at its limit') : accountBudgetText(quota);
+      const budget = !live ? '' : blocked ? (chinese ? '账户已达上限' : 'Account at its limit') : accountBudgetText(quota);
       const compaction = health?.count
         ? `${chinese ? '压缩' : 'Compactions'} ${health.count} · ${chinese ? '压后首次请求' : 'first post-compaction request'} ${afterPercent}` : '';
       title.setAttribute('aria-label', [compact, budget, `${chinese ? '上下文已用' : 'Context used'} ${pct(context)}`, compaction].filter(Boolean).join(' · '));

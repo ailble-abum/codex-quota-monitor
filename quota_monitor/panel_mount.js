@@ -5,6 +5,7 @@
   let disposed = false;
   let disposalOK = false;
   let appliedPayload = null;
+  let accountExpiryTimer = null;
   function ensureMascot(root) {
     if (disposed) throw new Error('consumer disposed');
     if (mountedMascot) {
@@ -27,6 +28,7 @@
     clean(() => mountedPanel?.__ctiRemoveResize?.());
     clean(() => mountedPanel?.__ctiClearHint?.());
     clean(() => disposeHostDetails());
+    clearTimeout(accountExpiryTimer);
     clearTimeout(mountedPanel?.__ctiDockHideTimer);
     clearTimeout(mountedMascot?.__ctiPetTimer);
     clearTimeout(mountedMascot?.__ctiReactionTimer);
