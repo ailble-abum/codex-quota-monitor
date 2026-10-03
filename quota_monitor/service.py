@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import plistlib
+import shlex
 import subprocess
 import sys
 
@@ -158,9 +159,29 @@ class Service:
         try:
             with self.menu_path.open('rb') as stream:
                 value = plistlib.load(stream)
-            return (value.get('Label') == MENU_LABEL and
-                    value.get('ProgramArguments', [])[:2] == [str(self.root / 'QuotaMenu'), '--run'])
-        except (OSError, ValueError, plistlib.InvalidFileException, AttributeError):
+            args = value.get('ProgramArguments')
+            if (value.get('Label') != MENU_LABEL or not isinstance(args, list) or len(args) < 2
+                    or not isinstance(args[0], str) or args[1] != '--run'):
+                return False
+            binary = str(self.root / 'QuotaMenu')
+            if args[0] == binary:
+                return True
+            # Accept display-name wrappers only when their complete body execs
+            # this exact binary from the dedicated local wrapper directory.
+            wrapper = Path(args[0])
+            folder = Path.home() / 'Library/Application Support/BackgroundItemNames/bin'
+            if wrapper.parent != folder or wrapper.is_symlink() or not os.access(wrapper, os.X_OK):
+                return False
+            with wrapper.open('rb') as stream:
+                raw = stream.read(4097)
+            if len(raw) > 4096:
+                return False
+            lines = raw.decode('utf-8').splitlines()
+            commands = {'exec ' + shlex.quote(binary) + ' "$@"'}
+            if not any(char in binary for char in '$`\\"\r\n'):
+                commands.add('exec "' + binary + '" "$@"')
+            return len(lines) == 2 and lines[0] == '#!/bin/sh' and lines[1] in commands
+        except (OSError, ValueError, UnicodeError, plistlib.InvalidFileException, AttributeError):
             return False
 
     def menu_status(self):

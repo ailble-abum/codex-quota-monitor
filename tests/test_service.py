@@ -18,6 +18,32 @@ class Result:
 
 
 class ServiceTests(unittest.TestCase):
+    def test_menu_display_name_wrapper_ownership_requires_exact_literal_target(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            root = home / 'runtime'; root.mkdir()
+            agents = home / 'agents'; agents.mkdir()
+            wrapper = home / 'Library/Application Support/BackgroundItemNames/bin/菜单栏'
+            wrapper.parent.mkdir(parents=True)
+            service = Service(root=root, agent_dir=agents, runner=lambda *args, **kw: Result())
+            with service.menu_path.open('wb') as stream:
+                plistlib.dump({'Label':MENU_LABEL,'ProgramArguments':[str(wrapper),'--run','synthetic-history']},stream)
+            valid = '#!/bin/sh\nexec "' + str(service.root/'QuotaMenu') + '" "$@"\n'
+            wrapper.write_text(valid); wrapper.chmod(0o700)
+            with patch('quota_monitor.service.Path.home', return_value=home):
+                self.assertTrue(service._menu_owned())
+                self.assertEqual(service.menu_status(),'running')
+                for invalid in (valid+'echo extra\n', valid.replace('QuotaMenu','OtherMenu'),
+                                valid.replace('"$@"','$(something)'), '#!/bin/sh\n'+valid,
+                                'x'*4097):
+                    wrapper.write_text(invalid)
+                    self.assertFalse(service._menu_owned())
+                wrapper.write_text(valid);wrapper.chmod(0o600)
+                self.assertFalse(service._menu_owned())
+                wrapper.chmod(0o700)
+                target=wrapper.with_name('target');wrapper.rename(target);wrapper.symlink_to(target)
+                self.assertFalse(service._menu_owned())
+
     def test_default_launch_domain_uses_numeric_user_id(self):
         with tempfile.TemporaryDirectory() as directory:
             service = Service(root=directory, agent_dir=directory)
