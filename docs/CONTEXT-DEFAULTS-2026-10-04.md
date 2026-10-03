@@ -42,3 +42,11 @@ PYTHON=/path/to/python node tools/verify_context_defaults_runtime.cjs /path/to/c
 ```
 
 本机安装结果另行补录；验收期间使用合成数据和独立临时目录。
+
+## 本机安装结果
+
+源码 `607141d` 已安装至现用 `codex-quota-monitor-v2.0.12`，更新 17 个文件。合并原发行清单与本机差异后，73 个文件摘要通过，11 个启动定义、入口、来源文件及真实 Codex 配置保持原样。监控配置仅更新面板文件摘要；没有替用户设置具体容量或压缩阈值。
+
+首次安装因菜单服务的命名入口未被原所有权检查识别而自动回退。补齐严格入口识别及隔离测试后重新安装成功，采集与菜单服务均为 running。只重载采集服务；当前 Codex 的进程保持不变，没有实际触发重启按钮。备份为 `.local/context-defaults-backup-20261004-retry/`，收据为 `.local/context-defaults-deployment-20261004.json`。
+
+现用安装的自动重启能力检查可用，但当前回环面板端口仍未开启，doctor 为 service=running、config=valid、panel=discovery_unavailable。文件已更新，现有窗口尚未加载新面板；首次须退出 Codex 后从「Codex（带悬浮窗）」入口打开。加载后，新「立即重启」会自行带回环参数重新打开 Codex 并恢复监控连接。原生重启与现有窗口可见验收仍待用户实际操作，此处不将隔离浏览器或启动替身的通过当作原生验收。
