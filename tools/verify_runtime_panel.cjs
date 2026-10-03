@@ -95,7 +95,7 @@ print(json.dumps({'id':request['id'],'error':{'code':-32601}}),flush=True)
         !document.querySelector('[data-context] [role="meter"]') && document.querySelector('[data-metrics]')?.textContent === '');
       const contextUnknown = () => page.waitForFunction(() =>
         !document.querySelector('[data-context] [role="meter"]') &&
-        /(?:不可用|unavailable)/i.test(document.querySelector('[data-context]')?.textContent || ''));
+        /(?:上下文暂不可读|Context usage unavailable)/i.test(document.querySelector('[data-context]')?.textContent || ''));
       await mount();
       await select('one');
       assert.equal(await step(), 'updated');
@@ -110,7 +110,7 @@ print(json.dumps({'id':request['id'],'error':{'code':-32601}}),flush=True)
           await new Promise(resolve => setTimeout(resolve, 100));
         }
         assert.equal(live, true, 'synthetic account read unavailable');
-        assert.match(await page.locator('[data-freshness]').innerText(), /账户接口/);
+        assert.match(await page.locator('[data-freshness]').innerText(), /刚刚更新|\d+ 秒前更新/);
         const expected = await page.evaluate(() => window.__quotaMonitorV2Snapshot.quota.windows.length);
         assert.equal(await page.locator('.cti-quota-window').count(), expected);
       }
@@ -142,12 +142,12 @@ print(json.dumps({'id':request['id'],'error':{'code':-32601}}),flush=True)
       assert.equal(await step(), 'updated');
       assert.equal(await page.evaluate(() => window.__quotaMonitorV2Snapshot.sidebarStatus?.threadId), 'two');
       assert.equal(await page.evaluate(() => window.__quotaMonitorV2Snapshot.activeThreadId), 'one');
-      assert.match(await page.locator('#cti-v2-sidebar-tooltip').innerText(), /会话总计/);
+      assert.match(await page.locator('#cti-v2-sidebar-tooltip').innerText(), /聊天累计/);
       await fs.appendFile(logPath('one'), '{"type":');
       assert.equal(await step(), 'data_loading');
       assert.equal(await page.evaluate(() => window.__quotaMonitorV2Snapshot.selectedThreadId), null);
       assert.equal(await page.evaluate(() => window.__quotaMonitorV2Snapshot.sidebarStatus?.status), 'ready');
-      assert.match(await page.locator('#cti-v2-sidebar-tooltip').innerText(), /会话总计/,
+      assert.match(await page.locator('#cti-v2-sidebar-tooltip').innerText(), /聊天累计/,
         'a ready hovered conversation must remain readable while the active log is unfinished');
       await empty();
       await fs.appendFile(logPath('one'), '"ignored"}\n');
@@ -169,8 +169,8 @@ print(json.dumps({'id':request['id'],'error':{'code':-32601}}),flush=True)
       assert.equal(await step(), 'updated');
       await empty(); // Runtime must invalidate even when the page timer stopped.
       assert.equal(await page.locator('.cti-quota-window').count(), 1);
-      assert.match(await page.locator('[data-quota]').innerText(), /Codex 账户额度/);
-      assert.match(await page.locator('[data-context]').innerText(), /ChatGPT 聊天未提供上下文用量/);
+      assert.match(await page.locator('[data-quota]').innerText(), /Codex 额度/);
+      assert.match(await page.locator('[data-context]').innerText(), /ChatGPT 未提供上下文数据/);
       assert.equal(await page.evaluate(() => window.__quotaMonitorV2Snapshot.quota.status), 'live');
       await page.evaluate(() => document.querySelector('[data-above-composer-portal]').remove());
       await select('two');
@@ -206,14 +206,14 @@ print(json.dumps({'id':request['id'],'error':{'code':-32601}}),flush=True)
       assert.equal(await page.evaluate(() => window.__quotaMonitorV2Snapshot.activeThreadId), 'two');
       let hoverText = await page.locator('#cti-v2-sidebar-tooltip').innerText();
       assert.match(hoverText, /压缩次数\s*0 次/);
-      assert.match(hoverText, /压后首请求\s*尚未压缩/);
+      assert.match(hoverText, /压缩后首轮\s*尚未压缩/);
       await page.mouse.move(600, 650);
       await page.locator('#cti-v2-sidebar-tooltip').waitFor({state:'hidden'});
       await page.locator('[data-app-action-sidebar-thread-id="two"]').hover();
       assert.equal(await step(), 'updated');
       hoverText = await page.locator('#cti-v2-sidebar-tooltip').innerText();
       assert.match(hoverText, /压缩次数\s*1 次/);
-      assert.match(hoverText, /压后首请求\s*3(?:\.0)?%/);
+      assert.match(hoverText, /压缩后首轮\s*3(?:\.0)?%/);
       await page.screenshot({path:path.join(artifacts, `hover-health-${colorScheme}.png`)});
       await page.mouse.move(600, 650);
       await page.locator('.cti-edge-mascot').focus();

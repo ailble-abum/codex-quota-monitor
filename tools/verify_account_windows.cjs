@@ -27,6 +27,7 @@ const source = fs.readFileSync(path.join(__dirname, '../quota_monitor/panel_acco
      assert.ok((await page.locator('main').textContent()).includes('<b>window</b>'));
      assert.equal(await page.locator('[role=meter]').getAttribute('aria-valuenow'), '80');
      assert.equal(await page.locator('.cti-quota-window').getAttribute('data-tone'), 'safe');
+     assert.ok((await page.locator('main').textContent()).includes(language === 'zh' ? '用量偏慢 3 个百分点' : 'Slower usage 3 percentage points'));
      assert.ok((await page.locator('main').textContent()).includes(language === 'zh' ? '耗尽' : 'exhausted'));
     }
     await page.evaluate(language => {
@@ -35,8 +36,8 @@ const source = fs.readFileSync(path.join(__dirname, '../quota_monitor/panel_acco
     }, language);
     assert.equal(await page.locator('[role=meter]').count(), 2);
     assert.deepEqual(await page.locator('.cti-quota-window').evaluateAll(nodes => nodes.map(node => node.dataset.tone)), ['low','low']);
-    assert.ok((await page.locator('main').textContent()).includes(language === 'zh' ? '慢于均匀进度' : 'Behind pace'));
-    assert.ok((await page.locator('main').textContent()).includes(language === 'zh' ? '符合均匀进度' : 'On steady pace'));
+    assert.ok((await page.locator('main').textContent()).includes(language === 'zh' ? '用量偏快 3 个百分点' : 'Faster usage 3 percentage points'));
+    assert.ok((await page.locator('main').textContent()).includes(language === 'zh' ? '用量平稳' : 'Steady usage'));
     assert.equal(await page.evaluate(() => accountWindowHTML([], false, 1000)), '');
    }
    console.log(engine.name()+': window rows, countdown thresholds, forecast, blocked groups and literal labels passed');

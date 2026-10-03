@@ -51,9 +51,9 @@ class QuotaNotifier:
             key = hashlib.sha256(identity.encode()).hexdigest()
             if key in self.seen:
                 continue
-            message = '{}配额剩余 {}%，请留意重置时间。'.format(
-                '5 小时' if window.get('duration') == 300 else '本周' if window.get('duration') == 10080
-                else '当前窗口', round(window['remaining']))
+            message = '{}额度剩余 {}%，留意重置时间。'.format(
+                '5 小时' if window.get('duration') == 300 else '7 天' if window.get('duration') == 10080
+                else '当前', round(window['remaining']))
             try:
                 if not self.sender(message):
                     continue

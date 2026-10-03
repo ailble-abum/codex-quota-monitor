@@ -28,20 +28,22 @@
     let message;
     if (live) {
       const plan = typeof quota.planType === 'string' ? quota.planType : '';
-      const planLabel = plan ? ` · ${plan[0].toUpperCase()}${plan.slice(1)}` : '';
-      const updated = age < 10 ? text('刚刚更新', 'just updated') : `${age}s ${text('前更新', 'ago')}`;
-      message = `${text('账户接口', 'Account')}${planLabel} · ${updated}`;
+      const planLabel = plan ? `${plan[0].toUpperCase()}${plan.slice(1)}` : '';
+      const updated = age < 10 ? text('刚刚更新', 'just updated')
+        : zh ? `${age} 秒前更新` : `${age}s ago`;
+      message = [planLabel, updated].filter(Boolean).join(' · ');
     } else {
       const errors = {
-        cli_missing: text('找不到 Codex CLI', 'Codex CLI missing'),
-        timeout: text('账户读取超时', 'Account read timed out'),
-        app_server: text('App Server 不可用', 'App Server unavailable'),
-        account_unavailable: text('账户暂不可用', 'Account unavailable'),
+        cli_missing: text('找不到 Codex 程序', 'Codex program missing'),
+        timeout: text('读取超时', 'Read timed out'),
+        app_server: text('暂时无法连接', 'Unable to connect'),
+        account_unavailable: text('读取失败', 'Read failed'),
       };
       const code = typeof quota.errorCode === 'string' ? quota.errorCode : '';
-      const error = code ? ` · ${Object.hasOwn(errors, code) ? errors[code] : code}` : '';
-      message = `${text('账户配额未更新', 'Account unavailable')}${error} · ${text('本地 Token 独立读取', 'local tokens independent')}`;
+      const error = code ? ` · ${Object.hasOwn(errors, code) ? errors[code] : text('读取失败', 'Read failed')}` : '';
+      message = `${text('额度未更新', 'Quota not updated')}${error}`;
     }
     const node = body.querySelector('[data-freshness]');
     if (node.textContent !== message) node.textContent = message;
+    node.title = !live && typeof quota.errorCode === 'string' ? quota.errorCode : '';
   }

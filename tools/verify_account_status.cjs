@@ -17,21 +17,24 @@ const source = fs.readFileSync(path.join(__dirname, '../quota_monitor/panel_acco
           renderAccountStatus(body, quota, live, age);
           const first = node.firstChild;
           renderAccountStatus(body, quota, live, age);
-          return {text: node.textContent, children: node.children.length, stable: first === node.firstChild};
+          return {text: node.textContent, title: node.title, children: node.children.length, stable: first === node.firstChild};
         }, {quota, live, age, language});
         let result = await render({planType: '<b>pro</b>'}, true, 9);
         assert.equal(result.children, 0); assert.equal(result.stable, true);
         assert.ok(result.text.includes('<b>pro</b>'));
         assert.ok(result.text.includes(language === 'zh' ? '刚刚更新' : 'just updated'));
         result = await render({planType: 'plus'}, true, 10);
-        assert.ok(result.text.includes('Plus')); assert.ok(result.text.includes('10s'));
+        assert.ok(result.text.includes('Plus')); assert.ok(result.text.includes(language === 'zh' ? '10 秒前更新' : '10s ago'));
         result = await render({errorCode: 'timeout'}, false, null);
         assert.ok(result.text.includes(language === 'zh' ? '读取超时' : 'timed out'));
         result = await render({errorCode: '<img src=x>'}, false, null);
-        assert.equal(result.children, 0); assert.ok(result.text.includes('<img src=x>'));
+        assert.equal(result.children, 0); assert.equal(result.title, '<img src=x>');
+        assert.equal(result.text.includes('<img src=x>'), false);
+        assert.ok(result.text.includes(language === 'zh' ? '读取失败' : 'Read failed'));
         result = await render({errorCode: {bad: 1}, planType: 12}, false, null);
         assert.equal(result.text.includes('[object'), false);
-        assert.ok(result.text.includes(language === 'zh' ? '本地 Token 独立读取' : 'local tokens independent'));
+        assert.ok(result.text.includes(language === 'zh' ? '额度未更新' : 'Quota not updated'));
+        assert.equal(result.title, '');
       }
       console.log(engine.name() + ': bilingual account status, literal fields, known errors and unchanged nodes passed');
     } finally { await browser.close(); }

@@ -12,7 +12,7 @@ assert.ok(context.mascotMarkup('plain','art').includes('🐾'));
 let buttons=context.skinButtons(); assert.ok(buttons.includes('data-skin-choice="cat"')); assert.ok(buttons.includes('<small>Cat</small>'));
 context.language='zh'; buttons=context.skinButtons(); assert.ok(buttons.includes('<small>猫</small>'));
 let readings=context.companionWindowReadings([{label:'5h left',remaining:51,budget:'1.6h'},{label:'7d left',remaining:82,budget:'4d'}],71,false);
-assert.deepEqual(JSON.parse(JSON.stringify(readings)),['5h left 1.6h','7d left 4d','CTX 71%']);
+assert.deepEqual(JSON.parse(JSON.stringify(readings)),['5h left 1.6h','7d left 4d','Context used 71%']);
 assert.equal(readings.some(item=>item.includes('51%')||item.includes('82%')),false);
 readings=context.companionWindowReadings([{label:'5h 剩余',remaining:51,budget:null}],null,true);
 assert.deepEqual(JSON.parse(JSON.stringify(readings)),['5h 剩余 时间估算暂不可用']);

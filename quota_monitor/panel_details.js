@@ -30,9 +30,9 @@
     const lines = [
       `${tr('input')}: ${token(input)} · ${tr('cachedInput')}: ${token(cached)} · ${tr('output')}: ${token(summary.latest_turn_output_tokens)}`,
       `${zh ? '模型' : 'Model'}: ${name(summary.model)} · ${zh ? '推理强度' : 'Reasoning'}: ${name(summary.reasoning_effort)}`,
-      `${zh ? '缓存占比' : 'Cached input share'}: ${share}`,
-      zh ? '缓存已包含在输入内。会话累计不等于上下文占用；Token 不可换算为账户剩余配额。'
-         : 'Cached tokens are part of input. Session totals differ from context usage. Tokens do not convert to account quota.',
+      `${zh ? '缓存输入占比' : 'Cached input share'}: ${share}`,
+      zh ? '缓存计入输入；聊天累计与上下文不同；Token 不能换算为额度。'
+         : 'Cache counts toward input. Chat totals differ from context. Tokens do not convert to quota.',
     ];
     lines.forEach((line, index) => {
       if (index) explanation.append(document.createElement('br'));

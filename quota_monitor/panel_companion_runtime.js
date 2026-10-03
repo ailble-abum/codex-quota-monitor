@@ -117,13 +117,13 @@
     if (!events.length) return;
     const zh = uiLanguage() === 'zh';
     const messages = {
-      'quota-watch':zh ? '额度剩余不多了，留意可用时长估算。' : 'Quota is getting low. Check the time estimate.',
-      'quota-low':zh ? '额度已低于或等于 10%，建议安排好当前步骤。' : 'Quota is at or below 10%. Plan the next step.',
-      'quota-empty':zh ? '额度已达上限，等待恢复。' : 'Quota limit reached. Waiting for recovery.',
-      'quota-restored':zh ? '已确认额度恢复，可以继续。' : 'Quota recovery confirmed.',
-      'ctx-high':zh ? '当前任务上下文偏高，可在阶段结束后整理进度。' : 'This task has high context usage. Consider a handoff.',
-      'ctx-critical':zh ? '当前任务上下文接近窗口上限，建议准备接续。' : 'Context is close to the window size. Prepare a handoff.',
-      compacted:zh ? '已观察到上下文压缩。' : 'Context compaction observed.',
+      'quota-watch':zh ? '额度不多了，留意剩余时间。' : 'Quota is low. Check the time estimate.',
+      'quota-low':zh ? '额度剩余不超过 10%，建议先完成当前步骤。' : 'Quota is 10% or less. Finish the current step.',
+      'quota-empty':zh ? '额度已用完，等待重置。' : 'Quota exhausted. Waiting for a reset.',
+      'quota-restored':zh ? '额度已恢复，可以继续。' : 'Quota restored.',
+      'ctx-high':zh ? '上下文偏高，建议整理进度。' : 'Context usage is high. Consider a handoff.',
+      'ctx-critical':zh ? '上下文接近上限，建议准备交接。' : 'Context is near its limit. Prepare a handoff.',
+      compacted:zh ? '上下文已压缩。' : 'Context compacted.',
     };
     let message = events.map(event => messages[event]).join(' ');
     if (events.some(event => event.startsWith('quota-')) && remaining.length) {
@@ -131,7 +131,7 @@
       message += estimates.length ? ` ${zh ? '预计可用' : 'Estimated time'} ${estimates.join(' / ')}。`
         : ` ${zh ? '时间估算暂不可用' : 'Time estimate unavailable'}.`;
     }
-    if (events.some(event => event.startsWith('ctx-'))) message += ` CTX ${Math.round(input.ctx)}% (${zh ? '最近观测' : 'last observed'})。`;
+    if (events.some(event => event.startsWith('ctx-'))) message += ` ${zh ? '上下文已用' : 'Context used'} ${Math.round(input.ctx)}% (${zh ? '最近记录' : 'last recorded'})。`;
     if (events.includes('quota-empty')) {
       const reset = nearestResetText(windows); if (reset) message += ` ${zh ? '最近重置' : 'Next reset'} ${reset}`;
     }

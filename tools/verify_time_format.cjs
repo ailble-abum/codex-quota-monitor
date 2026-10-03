@@ -23,10 +23,10 @@ for (const language of ['en','zh']) {
     assert.equal(context.windowLabel({duration},true), label + (zh ? ' 剩余' : ' left'));
   }
   for (const duration of [null,undefined,NaN,Infinity,-Infinity,'300',true,0,-1,[],{}]) {
-    assert.equal(context.windowLabel({duration,key:'primary'}), zh ? '主窗口 剩余' : 'Primary remaining');
-    assert.equal(context.windowLabel({duration,key:'secondary'},true), zh ? '次窗口 剩余' : 'Secondary left');
+    assert.equal(context.windowLabel({duration,key:'primary'}), zh ? '主要额度 剩余' : 'Primary remaining');
+    assert.equal(context.windowLabel({duration,key:'secondary'},true), zh ? '次要额度 剩余' : 'Secondary left');
   }
-  assert.equal(context.windowLabel(null), zh ? '次窗口 剩余' : 'Secondary remaining');
+  assert.equal(context.windowLabel(null), zh ? '次要额度 剩余' : 'Secondary remaining');
   for (const input of [null,undefined,NaN,Infinity,-Infinity,'60',true,[],{}]) {
     assert.equal(context.shortDuration(input), '-');
     assert.equal(context.durationPhrase(input), '-');

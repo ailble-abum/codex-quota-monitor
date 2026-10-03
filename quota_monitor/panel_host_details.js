@@ -22,18 +22,18 @@
     const zh = uiLanguage() === 'zh';
     if (!payload || payload.activeThreadId === null) {
       return JSON.stringify([[zh ? '用量' : 'Usage',
-        zh ? '请先打开一个本地对话' : 'Open a local conversation to read usage']]);
+        zh ? '打开 Codex 聊天查看用量' : 'Open a Codex chat to view usage']]);
     }
     const key = String(hostThreadId(row) || '').replace(/^local:/, '');
     const state = payload?.sidebarStatus;
     const status = state?.threadId === key ? state.status : 'loading';
     const messages = {
-      loading: zh ? '正在读取此对话的用量…' : 'Reading usage for this conversation…',
-      not_found: zh ? '暂无本机会话日志' : 'No local conversation log',
-      ambiguous: zh ? '存在重复日志，暂不可用' : 'Duplicate logs; usage unavailable',
-      unavailable: zh ? '暂时无法读取日志' : 'Log temporarily unavailable',
-      index_wait: zh ? '会话列表更新中，稍后重试…' : 'Conversation list updating; retrying…',
-      incomplete: zh ? '日志读取尚未完成' : 'Log reading is incomplete',
+      loading: zh ? '正在读取用量…' : 'Reading usage…',
+      not_found: zh ? '暂无聊天记录' : 'No chat log',
+      ambiguous: zh ? '记录重复，无法读取' : 'Duplicate logs; unavailable',
+      unavailable: zh ? '聊天记录暂不可读' : 'Chat log unavailable',
+      index_wait: zh ? '正在更新聊天列表…' : 'Updating chat list…',
+      incomplete: zh ? '聊天记录仍在读取' : 'Reading chat log',
       ready: zh ? '正在更新用量…' : 'Updating usage…',
     };
     let message = messages[status] || messages.unavailable;
@@ -41,7 +41,7 @@
         Number.isFinite(state.readBytes) && Number.isFinite(state.totalBytes) &&
         state.readBytes >= 0 && state.totalBytes > 0 && state.readBytes <= state.totalBytes) {
       const percent = Math.min(99, Math.floor(100 * state.readBytes / state.totalBytes));
-      message = zh ? `正在读取此对话的用量 ${percent}%…` : `Reading conversation usage ${percent}%…`;
+      message = zh ? `正在读取用量 ${percent}%…` : `Reading usage ${percent}%…`;
     }
     return JSON.stringify([[zh ? '用量' : 'Usage', message]]);
   }
@@ -87,16 +87,16 @@
       : item.compaction_count === 0
         ? zh ? '尚未压缩' : 'No compaction yet'
         : hostFinite(item.post_compaction_tokens) && item.post_compaction_tokens >= 0
-          ? zh ? '暂无占比' : 'Percentage unavailable'
-          : zh ? '等待首次请求…' : 'Waiting for first request…';
+          ? zh ? '占比未知' : 'Percentage unknown'
+          : zh ? '等待下一轮…' : 'Awaiting next turn…';
     return JSON.stringify([
-      [zh ? '会话总计' : 'Session total', hostNumber(item.session_total_tokens)],
+      [zh ? '聊天累计' : 'Chat total', hostNumber(item.session_total_tokens)],
       [zh ? '输入' : 'Input', hostNumber(item.session_input_tokens)],
       [zh ? '缓存输入' : 'Cached input', hostNumber(item.session_cached_input_tokens)],
       [zh ? '输出' : 'Output', hostNumber(item.session_output_tokens)],
       [zh ? '推理' : 'Reasoning', hostNumber(item.session_reasoning_tokens)],
       [zh ? '压缩次数' : 'Compactions', compactionCount],
-      [zh ? '压后首请求' : 'First after compaction', postCompaction],
+      [zh ? '压缩后首轮' : 'First after compaction', postCompaction],
     ]);
   }
 

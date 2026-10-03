@@ -28,7 +28,7 @@ const source=['panel_format.js','panel_time.js','panel_account_status.js','panel
    result=await render({...quota,budget:{kind:'exhaust',seconds:60},resetCredits:{availableCount:0,nextExpiresAt:Infinity}});
    assert.ok(result.text.includes(budgetText));assert.equal(result.extra.includes('Invalid Date'),false);
    result=await render({windows:[],status:'live',windowStatus:'not_reported'},true,true);
-   assert.ok(result.text.includes(language==='zh'?'已达上限':'at its limit'));
+   assert.ok(result.text.includes(language==='zh'?'已用完':'exhausted'));
    result=await render({windows:[],status:'loading'},false);
    assert.ok(result.text.includes(language==='zh'?'正在读取':'Reading quota'));
   }

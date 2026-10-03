@@ -11,6 +11,6 @@
     if (!button.isConnected) return;
     button.disabled = false;
     button.textContent = copied
-      ? (chinese ? '已复制，请粘贴到当前任务生成交接说明' : 'Copied; paste into this task to request a handoff.')
-      : (chinese ? '复制失败，请在当前任务要求生成交接说明' : 'Copy failed; request a handoff in this task.');
+      ? (chinese ? '已复制，粘贴到聊天即可' : 'Copied. Paste into this chat.')
+      : (chinese ? '复制失败，请重试' : 'Copy failed. Try again.');
   }

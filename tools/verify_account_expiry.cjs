@@ -36,11 +36,11 @@ const {chromium, webkit} = require('playwright');
       const remaining = () => page.locator('[data-quota] [role="meter"]').getAttribute('aria-valuenow');
       const expired = async () => {
         assert.equal(await page.locator('[data-quota] [role="meter"]').count(), 0);
-        assert.match(await page.locator('[data-freshness]').textContent(), /账户配额未更新/);
+        assert.match(await page.locator('[data-freshness]').textContent(), /额度未更新/);
         assert.doesNotMatch(await page.locator('[data-cti-title]').getAttribute('aria-label'), /还能用|73%|61%/);
         assert.equal(await page.locator('.cti-hud').getAttribute('data-tone'), 'unknown');
         assert.equal(await page.locator('[data-gauge]').getAttribute('data-state'), 'empty');
-        assert.match(await page.locator('.cti-edge-mascot').getAttribute('aria-label'), /配额暂不可用/);
+        assert.match(await page.locator('.cti-edge-mascot').getAttribute('aria-label'), /额度暂不可用/);
       };
       assert.equal(await initialize(), 'ready');
 

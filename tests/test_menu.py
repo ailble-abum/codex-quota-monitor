@@ -29,8 +29,8 @@ class MenuTests(unittest.TestCase):
                                     capture_output=True, text=True, timeout=5)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn('Codex · 25%', result.stdout)
-            self.assertIn('本地 7 天采样：1', result.stdout)
-            self.assertIn('主要项目：New 1', result.stdout)
+            self.assertIn('近 7 天采样：1', result.stdout)
+            self.assertIn('常用项目：New 1', result.stdout)
             self.assertNotIn('Old', result.stdout)
             self.assertNotIn(str(root), result.stdout)
 
@@ -57,17 +57,29 @@ class MenuTests(unittest.TestCase):
             self.assertIn('5 小时额度：剩余 35%', result.stdout)
             self.assertIn('7 天额度：剩余 80%', result.stdout)
             self.assertIn('重置', result.stdout)
-            self.assertIn('当前上下文：42%', result.stdout)
-            self.assertIn('Token 活动：最近日用量 1,234 · 累计 5,678', result.stdout)
+            self.assertIn('上下文已用：42%', result.stdout)
+            self.assertIn('Token：最近日用量 1,234 · 累计 5,678', result.stdout)
 
             history.write_text(json.dumps([{'at': now - 180, 'accountKey': 'a' * 64,
                 'windows': [{'key': 'primary', 'remaining': 35}],
                 'context': {'latest_context_percent': 42}}]))
             stale = subprocess.run([str(binary), '--report', str(history)],
                                    capture_output=True, text=True, timeout=5)
-            self.assertIn('当前数据：暂无有效采样', stale.stdout)
-            self.assertNotIn('当前上下文：42%', stale.stdout)
-            self.assertNotIn('Token 活动：最近日用量', stale.stdout)
+            self.assertIn('等待用量更新', stale.stdout)
+            self.assertNotIn('上下文已用：42%', stale.stdout)
+            self.assertNotIn('Token：最近日用量', stale.stdout)
+            self.assertIn('Codex · 未更新', stale.stdout)
+
+            history.unlink()
+            missing = subprocess.run([str(binary), '--report', str(history)],
+                                     capture_output=True, text=True, timeout=5)
+            self.assertEqual(missing.stdout.splitlines(), ['Codex · 未更新', '用量记录暂不可用'])
+            history.write_text('[]')
+            empty = subprocess.run([str(binary), '--report', str(history)],
+                                   capture_output=True, text=True, timeout=5)
+            self.assertIn('等待用量更新', empty.stdout)
+            self.assertIn('近 7 天采样：0', empty.stdout)
+            self.assertNotIn('V2', empty.stdout)
 
 
 if __name__ == '__main__':

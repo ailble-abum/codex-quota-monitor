@@ -20,16 +20,16 @@
   // Only labels used by the V2 panel live here; host details own their own copy.
   const I18N = {
     en: {monitor:'Usage', tokenUnit:'Token unit', rawUnit:'raw',
-      expandMonitor:'Open usage panel', collapseMonitor:'Minimize usage panel',
-      refreshQuota:'Refresh quota', displaySettings:'Display settings',
-      turn:'Latest request', session:'session', input:'Input', cachedInput:'Cached input',
-      output:'Output', noRecords:'No token records found.', unknown:'UNKNOWN',
+      expandMonitor:'Expand panel', collapseMonitor:'Collapse panel',
+      refreshQuota:'Refresh quota', displaySettings:'Settings',
+      turn:'Latest turn', session:'Chat total', input:'Input', cachedInput:'Cached input',
+      output:'Output', noRecords:'No context data', unknown:'UNKNOWN',
       high:'HIGH', watch:'WATCH', ok:'OK'},
     zh: {monitor:'用量', tokenUnit:'Token 单位', rawUnit:'原值',
-      expandMonitor:'打开用量面板', collapseMonitor:'收起用量面板',
-      refreshQuota:'刷新配额', displaySettings:'显示设置',
-      turn:'最近请求', session:'会话', input:'输入', cachedInput:'缓存输入',
-      output:'输出', noRecords:'暂无 Token 记录。', unknown:'未知',
+      expandMonitor:'展开面板', collapseMonitor:'收起面板',
+      refreshQuota:'刷新额度', displaySettings:'设置',
+      turn:'本轮用量', session:'聊天累计', input:'输入', cachedInput:'缓存输入',
+      output:'输出', noRecords:'暂无上下文数据', unknown:'未知',
       high:'高', watch:'注意', ok:'正常'},
   };
   const MASCOT_ART = __COMPANION_ART__;
@@ -111,7 +111,7 @@
       const context = contextMeterValue(root.__ctiContext), health = root.__ctiHealth;
       const afterPercent = Number.isFinite(health?.afterPercent) && health.afterPercent >= 0 && health.afterPercent <= 100
         ? pct(health.afterPercent) : '…';
-      const sub = health?.count ? `↻${health.count} · ${chinese ? '压后' : 'after'} ${afterPercent}` : '';
+      const sub = health?.count ? `↻${health.count} · ${chinese ? '压缩后' : 'after'} ${afterPercent}` : '';
       const blocked = live && (quota.ordinaryUsageAllowed === false || Boolean(quota.rateLimitReachedType));
       const html = windows.map(item => {
         const estimate = windowBudgetText(item);
@@ -120,11 +120,11 @@
         return cell(windowLabel(item, true), item.remaining,
           blocked ? 'low' : quotaTone(item.remaining), item.remaining, auxiliary);
       }).join('')
-        + cell(chinese ? 'CTX 已用' : 'CTX used', context, contextTone(context), context, sub);
+        + cell(chinese ? '上下文已用' : 'Context used', context, contextTone(context), context, sub);
       if (title.innerHTML !== html) title.innerHTML = html;
-      const budget = !live ? '' : blocked ? (chinese ? '账户已达上限' : 'Account at its limit') : accountBudgetText(quota);
+      const budget = !live ? '' : blocked ? (chinese ? '额度已用完' : 'Quota exhausted') : accountBudgetText(quota);
       const compaction = health?.count
-        ? `${chinese ? '压缩' : 'Compactions'} ${health.count} · ${chinese ? '压后首次请求' : 'first post-compaction request'} ${afterPercent}` : '';
+        ? `${chinese ? '压缩' : 'Compactions'} ${health.count} · ${chinese ? '压缩后首轮' : 'first turn after compaction'} ${afterPercent}` : '';
       title.setAttribute('aria-label', [compact, budget, `${chinese ? '上下文已用' : 'Context used'} ${pct(context)}`, compaction].filter(Boolean).join(' · '));
     } else if (title.textContent !== tr('monitor')) title.textContent = tr('monitor');
     updateHudLanguage(root);

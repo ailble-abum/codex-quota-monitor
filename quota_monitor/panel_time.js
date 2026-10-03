@@ -23,8 +23,8 @@
   function windowLabel(item, compact = false) {
     const chinese = uiLanguage() === 'zh';
     const minutes = item?.duration;
-    let label = item?.key === 'primary' ? (chinese ? '主窗口' : 'Primary')
-      : (chinese ? '次窗口' : 'Secondary');
+    let label = item?.key === 'primary' ? (chinese ? '主要额度' : 'Primary')
+      : (chinese ? '次要额度' : 'Secondary');
     if (Number.isFinite(minutes) && minutes > 0) {
       const [size, suffix] = [[1440, 'd'], [60, 'h'], [1, 'm']]
         .find(([size]) => size === 1 || minutes % size === 0);

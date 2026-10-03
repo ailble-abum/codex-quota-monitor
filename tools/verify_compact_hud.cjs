@@ -47,7 +47,7 @@ async function main() {
       const strong = await page.locator('.cti-mini strong').allTextContents();
       const sub = await page.locator('.cti-mini em').allTextContents();
       assert.deepEqual(strong, ['62%', '37%']);
-      assert.deepEqual(sub, ['↻3 · 压后 20.2%']);
+      assert.deepEqual(sub, ['↻3 · 压缩后 20.2%']);
       assert.ok(!(await page.locator('[data-cti-title]').innerText()).includes('52.3K'));
       const oneWindowWidth = await page.locator('.cti-hud').evaluate(node => node.getBoundingClientRect().width);
       assert.ok(oneWindowWidth >= 195 && oneWindowWidth <= 215, `unexpected one-window width ${oneWindowWidth}`);
@@ -70,7 +70,7 @@ async function main() {
       payload.quota.windows[0].exhaustInSec = 31680;
       assert.equal(await publish(), true);
       assert.deepEqual(await page.locator('.cti-mini strong').allTextContents(), ['62%', '37%']);
-      assert.deepEqual(await page.locator('.cti-mini em').allTextContents(), ['约 8.8h', '↻3 · 压后 20.2%']);
+      assert.deepEqual(await page.locator('.cti-mini em').allTextContents(), ['约 8.8h', '↻3 · 压缩后 20.2%']);
       assert.ok(await page.locator('[data-cti-title]').evaluate(node => node.scrollWidth <= node.clientWidth + 1));
       await page.locator('.cti-hud').screenshot({path:path.join(artifacts, `${engine.name()}-one-window.png`)});
 
@@ -87,7 +87,7 @@ async function main() {
       payload.health = {count:1, afterPercent:null};
       assert.equal(await publish(), true);
       assert.deepEqual(await page.locator('.cti-mini strong').allTextContents(), ['—']);
-      assert.deepEqual(await page.locator('.cti-mini em').allTextContents(), ['↻1 · 压后 …']);
+      assert.deepEqual(await page.locator('.cti-mini em').allTextContents(), ['↻1 · 压缩后 …']);
       assert.ok(await page.locator('[data-cti-title]').evaluate(node => node.scrollWidth <= node.clientWidth + 1));
 
       await page.evaluate(() => {

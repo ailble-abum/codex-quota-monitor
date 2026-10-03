@@ -9,8 +9,8 @@ struct LocalReport {
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
               data.count <= 4_000_000,
               let rows = (try? JSONSerialization.jsonObject(with: data)) as? [[String: Any]] else {
-            title = "Codex · —"
-            lines = ["本地历史未启用或不可读取"]
+            title = "Codex · 未更新"
+            lines = ["用量记录暂不可用"]
             return
         }
         let valid = rows.filter { row in
@@ -29,7 +29,7 @@ struct LocalReport {
                   value.isFinite && value >= 0 && value <= 100 else { return nil }
             return value
         }.min()
-        title = recent && remaining != nil ? "Codex · \(Int(remaining!.rounded()))%" : "Codex · —"
+        title = recent && remaining != nil ? "Codex · \(Int(remaining!.rounded()))%" : "Codex · 未更新"
         var current = [String]()
         if recent, let latest {
             let windows = latest["windows"] as? [[String: Any]] ?? []
@@ -58,7 +58,7 @@ struct LocalReport {
             if let context = latest["context"] as? [String: Any],
                let value = context["latest_context_percent"] as? Double,
                value.isFinite && (0...100).contains(value) {
-                current.append("当前上下文：\(Int(value.rounded()))%")
+                current.append("上下文已用：\(Int(value.rounded()))%")
             }
             let activity = latest["activity"] as? [String: Any] ?? [:]
             let daily = activity["latestDailyTokens"] as? Double
@@ -67,9 +67,9 @@ struct LocalReport {
                 guard let value, value.isFinite, value >= 0, value <= 8.64e12 else { return "—" }
                 return NumberFormatter.localizedString(from: NSNumber(value: value), number: .decimal)
             }
-            current.append("Token 活动：最近日用量 \(count(daily)) · 累计 \(count(total))")
+            current.append("Token：最近日用量 \(count(daily)) · 累计 \(count(total))")
         }
-        if current.isEmpty { current = ["当前数据：暂无有效采样"] }
+        if current.isEmpty { current = ["等待用量更新"] }
         var models: [String: Int] = [:]
         var projects: [String: Int] = [:]
         for row in selected {
@@ -85,9 +85,9 @@ struct LocalReport {
             values.sorted { $0.value == $1.value ? $0.key < $1.key : $0.value > $1.value }
                 .prefix(3).map { "\($0.key) \($0.value)" }.joined(separator: " · ")
         }
-        lines = current + ["本地 7 天采样：\(selected.count)",
-                 "主要模型：\(leaders(models).isEmpty ? "—" : leaders(models))",
-                 "主要项目：\(leaders(projects).isEmpty ? "—" : leaders(projects))"]
+        lines = current + ["近 7 天采样：\(selected.count)",
+                 "常用模型：\(leaders(models).isEmpty ? "—" : leaders(models))",
+                 "常用项目：\(leaders(projects).isEmpty ? "—" : leaders(projects))"]
     }
 }
 
@@ -115,12 +115,12 @@ final class MenuApp: NSObject {
             row.isEnabled = true
             menu.addItem(row)
         }
-        let openReport = NSMenuItem(title: "打开本地七天报告", action: #selector(showReport), keyEquivalent: "")
+        let openReport = NSMenuItem(title: "查看 7 天报告", action: #selector(showReport), keyEquivalent: "")
         openReport.target = self
         openReport.isEnabled = FileManager.default.fileExists(atPath: reportURL.path)
         menu.addItem(openReport)
         menu.addItem(.separator())
-        let quit = NSMenuItem(title: "退出 V2 菜单栏", action: #selector(quitApp), keyEquivalent: "q")
+        let quit = NSMenuItem(title: "退出菜单栏", action: #selector(quitApp), keyEquivalent: "q")
         quit.target = self
         menu.addItem(quit)
         item.menu = menu

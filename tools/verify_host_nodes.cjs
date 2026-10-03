@@ -140,7 +140,7 @@ async function verifyTooltip(engine) {
     assert.ok(!(await page.locator('#cti-v2-sidebar-tooltip').innerText()).includes('%'),
       'a pending unfinished line must not appear as 100% complete');
     await page.evaluate(() => projectHostDetails({summaries:[],sidebarStatus:{threadId:'one',status:'not_found'}}));
-    assert.match(await page.locator('#cti-v2-sidebar-tooltip').innerText(), /暂无本机|No local/);
+    assert.match(await page.locator('#cti-v2-sidebar-tooltip').innerText(), /暂无聊天记录|No chat log/);
     await page.evaluate(() => projectHostDetails(window.testPayload));
     assert.equal(await page.locator('#cti-v2-sidebar-tooltip span').count(), 14,
       'completed data should populate the same hovered tooltip without another mouse movement');
@@ -149,15 +149,15 @@ async function verifyTooltip(engine) {
       session_reasoning_tokens:0, compaction_count:1, post_compaction_tokens:null,
       post_compaction_percent:null}]}));
     let pendingText = await page.locator('#cti-v2-sidebar-tooltip').innerText();
-    assert.match(pendingText, /等待首次请求|Waiting for first request/);
-    assert.doesNotMatch(pendingText, /压后首请求\s+0(?:\.0)?%|First after compaction\s+0(?:\.0)?%/,
+    assert.match(pendingText, /等待下一轮|Awaiting next turn/);
+    assert.doesNotMatch(pendingText, /压缩后首轮\s+0(?:\.0)?%|First after compaction\s+0(?:\.0)?%/,
       'a pending real request must not be rendered as zero percent');
     await page.evaluate(() => projectHostDetails({summaries:[{thread_id:'one', session_total_tokens:1,
       session_input_tokens:1, session_cached_input_tokens:0, session_output_tokens:0,
       session_reasoning_tokens:0, compaction_count:1, post_compaction_tokens:400,
       post_compaction_percent:null}]}));
     pendingText = await page.locator('#cti-v2-sidebar-tooltip').innerText();
-    assert.match(pendingText, /暂无占比|Percentage unavailable/,
+    assert.match(pendingText, /占比未知|Percentage unknown/,
       'known post-compaction tokens without a context window are unavailable, not pending');
     await page.evaluate(() => projectHostDetails({summaries:[{thread_id:'one', session_total_tokens:1,
       session_input_tokens:1, session_cached_input_tokens:0, session_output_tokens:0,
@@ -180,11 +180,11 @@ async function verifyTooltip(engine) {
     await page.mouse.move(page.viewportSize().width - 1, page.viewportSize().height - 1);
     await page.mouse.move(36, 12);
     await page.waitForSelector('#cti-v2-sidebar-tooltip');
-    assert.match(await page.locator('#cti-v2-sidebar-tooltip').innerText(), /请先打开|Open a local/,
+    assert.match(await page.locator('#cti-v2-sidebar-tooltip').innerText(), /打开 Codex 聊天|Open a Codex chat/,
       'without a selected local conversation, do not promise that a log read is running');
     await page.evaluate(() => projectHostDetails({activeThreadId:'one', summaries:[],
       sidebarStatus:{threadId:'one',status:'index_wait'}}));
-    assert.match(await page.locator('#cti-v2-sidebar-tooltip').innerText(), /会话列表更新|Conversation list updating/);
+    assert.match(await page.locator('#cti-v2-sidebar-tooltip').innerText(), /正在更新聊天列表|Updating chat list/);
     await page.evaluate(() => clearHostProjection());
     for (const [kind, host] of [[null, 'local'], ['local', null], ['cloud', 'local'], ['local', 'remote']]) {
       await page.evaluate(({kind, host}) => {

@@ -37,7 +37,7 @@ const source = fs.readFileSync(path.join(__dirname, '../quota_monitor/panel_hand
   });
   await page.evaluate(async () => {finishCopy();await pending;});
   assert.equal(await page.locator('button').textContent(), 'Replacement');
-  assert.equal(await page.evaluate(() => oldButton.textContent), 'Copy failed; request a handoff in this task.');
+  assert.equal(await page.evaluate(() => oldButton.textContent), 'Copy failed. Try again.');
   await page.evaluate(async () => {Object.defineProperty(navigator,'clipboard',{value:undefined}); await copyHandoff(document.querySelector('button'));});
   assert.ok((await page.locator('button').textContent()).includes('Copy failed'));
   console.log(engine.name()+': bilingual copy, failure, duplicate prevention and detached completion passed');

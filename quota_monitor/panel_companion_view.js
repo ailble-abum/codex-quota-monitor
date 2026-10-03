@@ -39,7 +39,7 @@
     mascot.style.setProperty('--cti-ring-left', `${x - size / 2}px`);
     mascot.style.setProperty('--cti-ring-top', `${y - size / 2}px`);
     mascot.style.setProperty('--cti-ring-size', `${size}px`);
-    mascot.dataset.skinLabel = `${skin[uiLanguage() === 'zh' ? 'zh' : 'en']} · ${uiLanguage() === 'zh' ? '上下拖动调整位置，点击保持展开' : 'Drag vertically to move; click to pin'}`;
+    mascot.dataset.skinLabel = `${skin[uiLanguage() === 'zh' ? 'zh' : 'en']} · ${uiLanguage() === 'zh' ? '上下拖动，点击固定' : 'Drag up/down; click to pin'}`;
     const image = mascot.querySelector('img');
     if (image?.complete) queueMicrotask(() => positionContextHint(root));
     else image?.addEventListener('load', () => positionContextHint(root), {once:true});
@@ -53,7 +53,7 @@
       const estimate = windowBudgetText(item);
       return `${windowLabel(item, true)} ${estimate || (zh ? '时间估算暂不可用' : 'time estimate unavailable')}`;
     });
-    if (context !== null) parts.push(`CTX ${Math.round(context)}%`);
+    if (context !== null) parts.push(`${zh ? '上下文已用' : 'Context used'} ${Math.round(context)}%`);
     return parts;
   }
 
@@ -90,7 +90,7 @@
     const zh = uiLanguage() === 'zh';
     const context = contextMeterValue(root.__ctiContext);
     const parts = companionWindowReadings(windows, context, zh);
-    if (!live) parts.push(quota.status === 'loading' ? (zh ? '正在读取配额…' : 'Reading quota…') : (zh ? '配额暂不可用' : 'Quota unavailable'));
+    if (!live) parts.push(quota.status === 'loading' ? (zh ? '正在读取额度…' : 'Reading quota…') : (zh ? '额度暂不可用' : 'Quota unavailable'));
     if (blocked) {
       const reset = nearestResetText(windows);
       parts.push(zh ? `已达上限${reset ? `，${reset} 重置` : '，等待重置'}` : `Limit reached${reset ? ` · resets ${reset}` : ''}`);

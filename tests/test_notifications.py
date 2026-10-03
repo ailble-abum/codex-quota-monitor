@@ -25,13 +25,16 @@ class QuotaNotificationTests(unittest.TestCase):
         self.assertEqual(QuotaNotifier(self.root, sender=lambda _: True,
                                        clock=lambda: self.now).notify(self.quota), 0)
         self.assertEqual(len(self.messages), 1)
+        self.assertEqual(self.messages[0], '5 小时额度剩余 20%，留意重置时间。')
         state = (self.root / 'notifications.json').read_text()
         self.assertNotIn('a' * 64, state)
         self.assertEqual(len(json.loads(state)), 1)
         self.quota['accountKey'] = 'b' * 64
         self.assertEqual(self.notifier.notify(self.quota), 1)
         self.quota['windows'][0]['resetsAt'] += 3600
+        self.quota['windows'][0]['duration'] = 10080
         self.assertEqual(self.notifier.notify(self.quota), 1)
+        self.assertEqual(self.messages[-1], '7 天额度剩余 20%，留意重置时间。')
 
     def test_stale_or_invalid_data_never_sends(self):
         self.quota['updatedAt'] -= 120

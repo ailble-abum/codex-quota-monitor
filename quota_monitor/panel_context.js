@@ -15,21 +15,21 @@
     next.dataset.tone = summary ? tone : 'unknown';
     if (!summary) {
       next.append(element('span', 'cti-muted', source === 'chatgpt'
-        ? zh ? 'ChatGPT 聊天未提供上下文用量' : 'ChatGPT context usage is unavailable'
+        ? zh ? 'ChatGPT 未提供上下文数据' : 'ChatGPT context data is unavailable'
         : tr('noRecords')));
     } else {
       const heading = element('div', 'cti-line');
       const label = document.createElement('span');
-      const badge = element('span', 'cti-trust', zh ? '本地会话' : 'Local session');
+      const badge = element('span', 'cti-trust', zh ? '当前聊天' : 'Current chat');
       badge.dataset.kind = 'local';
-      label.append(badge, document.createTextNode(zh ? ' 上下文最近观测' : ' Last observed context'));
+      label.append(badge, document.createTextNode(zh ? ' 上下文已用' : ' Context used'));
       heading.append(label, element('span', 'cti-value', pct(value)));
       next.append(heading);
       if (value === null) {
-        next.append(element('div', 'cti-muted', zh ? '上下文占用暂不可用' : 'Context usage unavailable'));
+        next.append(element('div', 'cti-muted', zh ? '上下文暂不可读' : 'Context usage unavailable'));
       } else {
         const meter = element('div', 'cti-meter');
-        for (const [key, attribute] of Object.entries({role: 'meter', 'aria-label': zh ? '上下文占用' : 'Context used',
+        for (const [key, attribute] of Object.entries({role: 'meter', 'aria-label': zh ? '上下文已用' : 'Context used',
           'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(value)})) meter.setAttribute(key, attribute);
         const fill = document.createElement('span');
         fill.style.width = `${value}%`;

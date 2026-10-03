@@ -6,8 +6,8 @@
   function hudBase(root) {
     if (hudMode(root) === 'expanded') return 292;
     // Compact cells are content-sized; reserve only the toggle and cell seams.
-    // This keeps one-window accounts narrow without clipping additional windows.
-    return Math.max(180, 65 + Math.max(1, root.querySelectorAll('.cti-mini').length) * 70);
+    // Reserve room for the full context label and post-compaction caption.
+    return Math.max(180, 75 + Math.max(1, root.querySelectorAll('.cti-mini').length) * 70);
   }
 
   function dockSafeTop() {

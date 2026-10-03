@@ -28,20 +28,20 @@ const source = ['panel_format.js', 'panel_health.js'].map(name => fs.readFileSyn
         result = await render({count: 1, recommendHandoff: true, reason: 'frequency'}, language);
         assert.ok(result.title.includes('5'));
         result = await render({count: 1, recommendHandoff: true, reason: 'unknown'}, language);
-        assert.ok(result.title.includes(language === 'zh' ? '依据未提供' : 'basis unavailable'));
+        assert.ok(result.title.includes(language === 'zh' ? '依据未知' : 'basis unknown'));
         result = await render({count: 1, after: null, recommendHandoff: 'true'}, language);
         assert.equal(result.warning, 'false'); assert.equal(result.bold, 0);
-        assert.ok(result.text.includes(language === 'zh' ? '等待后续请求' : 'Awaiting next request'));
+        assert.ok(result.text.includes(language === 'zh' ? '等待下一轮' : 'Awaiting next turn'));
         for (const count of ['<b>5</b>', -1, 1.2, Infinity, NaN]) {
           result = await render({count, recommendHandoff: true}, language);
           assert.equal(result.warning, 'false'); assert.equal(result.injected, 0);
           assert.ok(result.text.includes(language === 'zh' ? '暂不可用' : 'unavailable'));
         }
         result = await render({count: 1, after: -1, afterPercent: Infinity}, language);
-        assert.ok(result.text.includes(language === 'zh' ? '暂不可用' : 'unavailable'));
+        assert.ok(result.text.includes(language === 'zh' ? '暂不可读' : 'unavailable'));
         result = await render(null, language);
         assert.equal(result.warning, 'false'); assert.equal(result.bold, 0);
-        assert.ok(result.text.includes(language === 'zh' ? '尚未观察' : 'No observed'));
+        assert.ok(result.text.includes(language === 'zh' ? '暂无压缩记录' : 'No compaction recorded'));
       }
       console.log(engine.name() + ': health values, invalid input, strict warnings, bilingual text and unchanged nodes passed');
     } finally { await browser.close(); }

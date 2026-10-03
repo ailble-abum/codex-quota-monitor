@@ -26,7 +26,7 @@ const source = ['panel_format.js', 'panel_context.js'].map(name => fs.readFileSy
           assert.equal(await box.locator('[role=meter]').count(), value === null ? 0 : 1);
           if (value !== null) {
             assert.equal(await box.locator('[role=meter]').getAttribute('aria-valuenow'), String(value));
-            assert.equal(await box.locator('[role=meter]').getAttribute('aria-label'), language === 'zh' ? '上下文占用' : 'Context used');
+            assert.equal(await box.locator('[role=meter]').getAttribute('aria-label'), language === 'zh' ? '上下文已用' : 'Context used');
             assert.ok((await box.textContent()).includes('500 / 1K'));
           }
           assert.equal(await page.evaluate(() => {
@@ -45,7 +45,7 @@ const source = ['panel_format.js', 'panel_context.js'].map(name => fs.readFileSy
           renderContext(document.querySelector('section'), null, 'chatgpt');
         }, language);
         assert.match(await page.locator('[data-context]').textContent(),
-          language === 'zh' ? /ChatGPT 聊天未提供上下文用量/ : /ChatGPT context usage is unavailable/);
+          language === 'zh' ? /ChatGPT 未提供上下文数据/ : /ChatGPT context data is unavailable/);
         assert.equal(await page.locator('[role=meter]').count(), 0);
       }
       console.log(engine.name() + ': context boundaries, invalid values, languages, unchanged nodes and missing records passed');

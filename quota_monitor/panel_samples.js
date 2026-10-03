@@ -10,15 +10,15 @@
     if (!valid) {
       const empty = document.createElement('span');
       empty.className = 'cti-muted';
-      empty.textContent = text('本地历史未启用或暂无采样', 'Local history is disabled or has no samples');
+      empty.textContent = text('暂无用量记录', 'No usage history');
       next.append(empty);
     } else {
       const title = document.createElement('div');
       title.className = 'cti-line';
       const label = document.createElement('span');
-      label.textContent = text('本地历史', 'Local history');
+      label.textContent = text('用量记录', 'Usage history');
       const count = document.createElement('span');
-      count.className = 'cti-value'; count.textContent = `${samples.samples}`;
+      count.className = 'cti-value'; count.textContent = `${samples.samples} ${text('次采样', 'samples')}`;
       title.append(label, count); next.append(title);
       const values = [];
       if (Number.isFinite(samples.spanSeconds) && samples.spanSeconds > 0)
@@ -28,9 +28,9 @@
       if (Number.isFinite(samples.peakContext))
         values.push(`${text('上下文峰值', 'peak context')} ${Math.round(samples.peakContext)}%`);
       if (Number.isFinite(samples.averageCachedShare))
-        values.push(`${text('平均缓存', 'cached avg')} ${Math.round(samples.averageCachedShare)}%`);
+        values.push(`${text('缓存均值', 'cached avg')} ${Math.round(samples.averageCachedShare)}%`);
       const summary = document.createElement('p');
-      summary.className = 'cti-muted'; summary.textContent = values.join(' · ') || text('历史数据不足', 'Not enough history yet');
+      summary.className = 'cti-muted'; summary.textContent = values.join(' · ') || text('记录不足', 'Not enough data yet');
       next.append(summary);
       if (Array.isArray(samples.models) && samples.models.length) {
         const models = document.createElement('p');
@@ -42,7 +42,7 @@
       if (weekly && Array.isArray(weekly.days) && weekly.days.length === 7) {
         const heading = document.createElement('p');
         heading.className = 'cti-muted';
-        heading.textContent = text('近 7 天采样报告（UTC）', 'Last 7 days of samples (UTC)');
+        heading.textContent = text('近 7 天记录（UTC）', '7-day history (UTC)');
         next.append(heading);
         for (const day of weekly.days) {
           if (!/^\d{4}-\d{2}-\d{2}$/.test(day.date) || !Number.isSafeInteger(day.samples)) continue;
@@ -58,7 +58,7 @@
         if (Array.isArray(weekly.modelCounts) && weekly.modelCounts.length) {
           const ranking = document.createElement('p');
           ranking.className = 'cti-muted';
-          ranking.textContent = `${text('模型采样次数', 'Model sample counts')}：` +
+          ranking.textContent = `${text('模型采样', 'Model samples')}：` +
             weekly.modelCounts.filter(item => typeof item.model === 'string' && Number.isSafeInteger(item.samples))
               .map(item => `${item.model} ${item.samples}`).join(' · ');
           next.append(ranking);
@@ -66,7 +66,7 @@
         if (Array.isArray(weekly.projectCounts) && weekly.projectCounts.length) {
           const ranking = document.createElement('p');
           ranking.className = 'cti-muted';
-          ranking.textContent = `${text('项目采样次数', 'Project sample counts')}：` +
+          ranking.textContent = `${text('项目采样', 'Project samples')}：` +
             weekly.projectCounts.filter(item => typeof item.project === 'string' && Number.isSafeInteger(item.samples))
               .map(item => `${item.project} ${item.samples}`).join(' · ');
           next.append(ranking);

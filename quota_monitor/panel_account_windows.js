@@ -26,8 +26,8 @@
       let pace = '';
       if (item.paceDelta != null) {
         const delta = item.paceDelta;
-        pace = Math.abs(delta) < 2 ? text('符合均匀进度', 'On steady pace')
-          : `${delta > 0 ? text('快于均匀进度', 'Ahead of pace') : text('慢于均匀进度', 'Behind pace')} ${Math.round(Math.abs(delta))}pt`;
+        pace = Math.abs(delta) < 2 ? text('用量平稳', 'Steady usage')
+          : `${delta > 0 ? text('用量偏慢', 'Slower usage') : text('用量偏快', 'Faster usage')} ${Math.round(Math.abs(delta))}${text(' 个百分点', ' percentage points')}`;
       }
       const status = node('div', 'cti-line'); status.style.marginBottom = '6px';
       status.append(node('span', 'cti-status', toneLabel(tone)), node('span', 'cti-muted', pace));
@@ -41,7 +41,7 @@
       }
       const timing = node('div', 'cti-muted', `${item.resetsAt == null ? '—' : date(item.resetsAt)} ${text('重置', 'reset')} · ${countdown}`);
       if (item.projectedExhaustAt != null) timing.append(document.createElement('br'),
-        document.createTextNode(`${text('按当前速度预计', 'At current pace')} ${date(item.projectedExhaustAt)} ${text('耗尽', 'exhausted')}`));
+        document.createTextNode(`${text('预计', 'Estimated')} ${date(item.projectedExhaustAt)} ${text('耗尽', 'exhausted')}`));
       windowNode.append(heading, meter, status, timing); container.append(windowNode);
     }
     return container.innerHTML;

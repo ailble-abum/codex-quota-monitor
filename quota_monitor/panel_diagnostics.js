@@ -7,12 +7,12 @@
     };
     const build = payload.build || {}, parts = [];
     if (typeof build.pluginVersion === 'string' && build.pluginVersion)
-      parts.push(`${text('插件', 'plugin')} ${build.pluginVersion}`);
+      parts.push(`${text('版本', 'Version')} ${build.pluginVersion}`);
     if (Number.isSafeInteger(build.runtimeVersion) && build.runtimeVersion >= 0)
-      parts.push(`${text('运行时', 'runtime')} ${build.runtimeVersion}`);
+      parts.push(`${text('组件', 'Component')} ${build.runtimeVersion}`);
     if (Number.isFinite(build.installedAt) && build.installedAt >= 0 && build.installedAt <= 8.64e12)
       parts.push(`${text('安装于', 'installed')} ${new Date(build.installedAt * 1000).toLocaleString(zh ? 'zh-CN' : 'en', {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}`);
-    write('[data-build]', parts.length ? parts.join(' · ') : text('版本信息未记录', 'Build information not recorded'));
+    write('[data-build]', parts.length ? parts.join(' · ') : text('版本未知', 'Version unknown'));
 
     const current = body.querySelector('[data-update]');
     if (current) {
@@ -37,7 +37,7 @@
       if (update.status === 'update_available' && typeof update.latestSemver === 'string' && update.latestSemver) {
         const row = document.createElement('div'); row.className = 'cti-update-row';
         const badge = document.createElement('span'); badge.className = 'cti-update-badge';
-        badge.textContent = text('新版本可用', 'Update available');
+        badge.textContent = text('有新版本', 'Update available');
         const version = document.createElement('strong'); version.textContent = 'v' + update.latestSemver;
         row.append(badge, version);
         try {
@@ -51,13 +51,13 @@
         next.append(row);
       } else if (update.status === 'up_to_date') {
         const label = document.createElement('span'); label.className = 'cti-muted';
-        label.textContent = text('已是最新版本', 'Up to date'); next.append(label);
+        label.textContent = text('已是最新版', 'Up to date'); next.append(label);
       }
       const check = document.createElement('button');
       check.type = 'button'; check.className = 'cti-text-button'; check.dataset.updateCheck = '';
       check.disabled = update.status === 'checking' || update.status === 'not_configured';
-      check.textContent = update.status === 'checking' ? text('检测中…', 'Checking…')
-        : text('检测更新', 'Check for updates');
+      check.textContent = update.status === 'checking' ? text('检查中…', 'Checking…')
+        : text('检查更新', 'Check for updates');
       next.append(check);
       if (next.dataset.prompt === 'waiting' && update.status !== 'checking') {
         if (update.status === 'update_available' || update.status === 'up_to_date' || update.status === 'unavailable')
@@ -69,26 +69,26 @@
         prompt.setAttribute('aria-label', text('软件更新', 'Software update'));
         const message = document.createElement('p');
         message.textContent = next.dataset.prompt === 'installing'
-          ? text('正在准备更新。安装完成后服务会重启，旧版保留用于回退。', 'Preparing the update. The service will restart; the old version remains for rollback.')
+          ? text('正在更新，完成后自动恢复。旧版可用于回退。', 'Updating. The monitor will resume automatically; the old version is kept for rollback.')
           : update.installStatus === 'failed'
-            ? text('自动更新失败，旧版仍可使用。请重试或打开发布页。',
-                'Automatic update failed; the previous version is still available. Retry or open the release page.')
+            ? text('更新失败，旧版仍可用。可重试或手动安装。',
+                'Update failed. The old version still works. Retry or install manually.')
           : update.status === 'update_available'
             ? update.installable === true
-              ? text(`发现 v${update.latestSemver}。安装会下载并校验正式包，然后重启服务。`,
-                  `Version ${update.latestSemver} is available. Installation downloads and verifies the release, then restarts the service.`)
-              : text(`发现 v${update.latestSemver}。此安装不能自动替换，请打开发布页安装。`,
-                  `Version ${update.latestSemver} is available. Open the release page to install this version.`)
+              ? text(`可更新至 v${update.latestSemver}。更新后会重启额度监控。`,
+                  `Update to v${update.latestSemver}. The quota monitor will restart.`)
+              : text(`可更新至 v${update.latestSemver}，请到发布页手动安装。`,
+                  `Version ${update.latestSemver} is available. Install it from the release page.`)
             : update.status === 'up_to_date'
-              ? text('已是最新版本。', 'You are up to date.')
+              ? text('已是最新版。', 'You are up to date.')
               : update.status === 'unavailable'
-                ? text('更新检查失败，请稍后再试。', 'Update check failed. Try again later.')
+                ? text('检查失败，稍后重试。', 'Check failed. Try again later.')
                 : text('正在检查更新…', 'Checking for updates…');
         prompt.append(message);
         if (next.dataset.prompt === 'show' && update.status === 'update_available' && update.installable === true) {
           const install = document.createElement('button'); install.type = 'button';
           install.dataset.updateInstall = '';
-          install.textContent = text('安装并重启', 'Install and restart'); prompt.append(install);
+          install.textContent = text('立即更新', 'Update now'); prompt.append(install);
         }
         if (next.dataset.prompt === 'show' || next.dataset.prompt === 'waiting') {
           const dismiss = document.createElement('button'); dismiss.type = 'button';
@@ -110,13 +110,17 @@
     const hasActive = typeof probe?.activeRow === 'boolean';
     const hasId = typeof probe?.conversationId === 'boolean';
     if (!hasRows && !hasActive && !hasId) {
-      write('[data-dom]', text('界面探测未提供', 'DOM probe not provided'));
+      write('[data-dom]', '');
+      if (body.querySelector('[data-dom]')) body.querySelector('[data-dom]').title = '';
     } else {
       const fields = [];
       if (hasRows) fields.push(`${text('会话', 'threads')} ${probe.sidebarRows}`);
-      fields.push(`${text('活动行', 'active')} ${hasActive ? (probe.activeRow ? '✓' : '✗') : '?'}`);
-      fields.push(`${text('会话ID', 'id')} ${hasId ? (probe.conversationId ? '✓' : '✗') : '?'}`);
-      if (hasRows && (probe.sidebarRows === 0 || (hasActive && !probe.activeRow))) fields.push(text('界面可能已更新', 'UI may have changed'));
-      write('[data-dom]', `${text('界面探测', 'DOM probe')} · ${fields.join(' · ')}`);
+      fields.push(`${text('当前聊天', 'Current chat')} ${hasActive ? (probe.activeRow ? '✓' : '✗') : '?'}`);
+      fields.push(`${text('聊天标识', 'Chat ID')} ${hasId ? (probe.conversationId ? '✓' : '✗') : '?'}`);
+      const complete = hasRows && hasActive && hasId;
+      const recognized = complete && probe.sidebarRows > 0 && probe.activeRow && probe.conversationId;
+      write('[data-dom]', `${text('聊天识别', 'Chat detection')} · ${!complete
+        ? text('信息不足', 'Incomplete') : recognized ? text('正常', 'Ready') : text('未识别', 'Not detected')}`);
+      if (body.querySelector('[data-dom]')) body.querySelector('[data-dom]').title = fields.join(' · ');
     }
   }
