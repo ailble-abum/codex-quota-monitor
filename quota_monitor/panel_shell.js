@@ -71,6 +71,7 @@
     renderContext(body, selected, payload.contextSource);
     renderAccountStatus(body, quota, live, age);
     renderDiagnostics(body, payload);
+    renderContextDefaults(root, payload);
     updateHudTitle(root);
     updateUnitButtons(root);
     root.querySelector('[data-cti-toggle]').textContent = root.dataset.collapsed === 'true' ? '+' : '−';

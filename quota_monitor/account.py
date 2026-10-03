@@ -5,8 +5,9 @@ import json
 import math
 import os
 from pathlib import Path
-import signal
 import time
+
+from .app_server import AppServer
 
 
 def resolve_cli(configured):
@@ -122,76 +123,29 @@ def project(raw, *, now):
 
 
 async def read_account(command, *, timeout=12):
-    process = None
     accepted_quota = None
     async def exchange():
-        nonlocal process, accepted_quota
-        process = await asyncio.create_subprocess_exec(*command, stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL, limit=1048576,
-            start_new_session=os.name == 'posix')
-        async def send(message):
-            process.stdin.write((json.dumps(message) + '\n').encode())
-            await process.stdin.drain()
-        async def response(request_id):
-            total = 0
-            for _ in range(128):
-                line = await process.stdout.readline()
-                total += len(line)
-                if not line or total > 1048576:
-                    raise ValueError('invalid response')
-                message = json.loads(line)
-                if not isinstance(message, dict):
-                    raise ValueError('invalid response')
-                if type(message.get('id')) is int and message['id'] == request_id:
-                    if 'error' in message or 'result' not in message:
-                        raise ValueError('request failed')
-                    return message['result']
-            raise ValueError('message limit')
-        await send({'id': 1, 'method': 'initialize', 'params': {'clientInfo': {
-            'name': 'quota_monitor_v2', 'version': '0.2.0'}}})
-        await response(1)
-        await send({'method': 'initialized'})
-        await send({'id': 2, 'method': 'account/rateLimits/read'})
-        quota = project(await response(2), now=time.time())
-        if quota['status'] != 'live':
+        nonlocal accepted_quota
+        async with AppServer(command) as server:
+            quota = project(await server.request('account/rateLimits/read'), now=time.time())
+            if quota['status'] != 'live':
+                return quota
+            accepted_quota = quota
+            try:
+                usage = project_usage(await asyncio.wait_for(server.request('account/usage/read'), 3))
+                if usage is not None:
+                    quota['usage'] = usage
+            except (OSError, ValueError, asyncio.TimeoutError):
+                pass
             return quota
-        accepted_quota = quota
-        try:
-            await send({'id': 3, 'method': 'account/usage/read'})
-            usage = project_usage(await asyncio.wait_for(response(3), 3))
-            if usage is not None:
-                quota['usage'] = usage
-        except (OSError, ValueError, asyncio.TimeoutError):
-            pass
-        return quota
     try:
         return await asyncio.wait_for(exchange(), timeout)
     except FileNotFoundError:
         return unavailable('cli_missing')
     except asyncio.TimeoutError:
-        # Optional activity must not erase this query's successful quota read
-        # when it consumes the remainder of the shared deadline.
         return accepted_quota if accepted_quota is not None else unavailable('timeout')
     except (OSError, ValueError, RecursionError):
         return accepted_quota if accepted_quota is not None else unavailable('app_server')
-    finally:
-        if process is not None:
-            # This group belongs only to this read-only query. Descendants can
-            # inherit stdout and outlive the CLI; never kill the host app-server.
-            if os.name == 'posix':
-                try:
-                    os.killpg(process.pid, signal.SIGKILL)
-                except OSError:
-                    pass
-            elif process.returncode is None:
-                try:
-                    process.kill()
-                except ProcessLookupError:
-                    pass
-            try:
-                await asyncio.wait_for(process.wait(), 2)
-            except asyncio.TimeoutError:
-                pass
 
 
 class AccountSource:

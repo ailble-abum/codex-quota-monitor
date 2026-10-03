@@ -15,6 +15,7 @@ from pathlib import Path
 
 from .cdp import CDPClient, CDPError
 from .account import AccountSource
+from .context_defaults import ContextDefaultsSource
 from .compat import panel_payload, thread_key
 from .journal import SessionJournal
 from .indexed import DirectorySource, NamedDirectorySource
@@ -130,10 +131,12 @@ class UpdateLoop:
         self.status_store = StatusStore(status_root) if status_root is not None else None
         self.update = UpdateSource(update_url or RELEASE_API, current=version)
         self.install_config = None
+        self.context_restart = None
         self.host = host
         if type(panel) is not bool:
             raise ValueError('invalid panel mode')
         self.panel = panel
+        self.context_defaults = ContextDefaultsSource(account_cli) if panel and account_cli is not None else None
         if consumer is not None and not panel:
             raise ValueError('consumer requires panel mode')
         self.consumer = load_consumer(consumer) if consumer is not None else None
@@ -178,6 +181,10 @@ class UpdateLoop:
             try:
                 if self.account is not None:
                     await self.account.close()
+                if self.context_defaults is not None:
+                    await self.context_defaults.close()
+                if self.context_restart is not None:
+                    await self.context_restart.close()
             finally:
                 try:
                     await self.update.close()
@@ -217,6 +224,35 @@ class UpdateLoop:
             payload = self.source.read(key) if key is not None else panel_payload({}, None)
             payload['contextSource'] = 'local' if key is not None else await self.client.evaluate(
                 page_expression(action='contextSource', expected=self.page_url, host=self.host))
+            if self.context_defaults is not None:
+                if self.context_restart is None and sys.platform == 'darwin' and self.install_config is not None:
+                    from .service import Service
+                    from .host_restart import HostRestarter, HostRestartSource
+                    try:
+                        self.context_restart = HostRestartSource(HostRestarter(
+                            self.account.command[0], self.origin, self.page_url, Service()))
+                    except (OSError, ValueError):
+                        pass
+                requested = await self.client.evaluate(page_expression(
+                    action='contextDefaults', expected=self.page_url, key=key, host=self.host))
+                if payload['contextSource'] == 'chatgpt':
+                    payload['contextDefaults'] = {'status': 'not_applicable'}
+                else:
+                    if isinstance(requested, dict) and (self.context_restart is None or
+                            self.context_restart.value.get('status') != 'restarting'):
+                        self.context_defaults.request(requested)
+                    payload['contextDefaults'] = self.context_defaults.snapshot()
+                payload['contextRestart'] = {'status': 'unavailable'}
+                if self.context_restart is not None:
+                    requested = await self.client.evaluate(page_expression(
+                        action='hostRestart', expected=self.page_url, key=key, host=self.host))
+                    state = payload['contextDefaults']
+                    if (isinstance(requested, dict) and set(requested) == {'revision'}
+                            and state.get('status') == 'ready' and state.get('feedback') == 'saved'
+                            and requested['revision'] == state.get('revision')
+                            and self.context_restart.snapshot(state.get('revision')).get('status') != 'reopened'):
+                        self.context_restart.request(requested['revision'])
+                    payload['contextRestart'] = self.context_restart.snapshot(state.get('revision'))
             if self.account is not None:
                 requested = await self.client.evaluate(page_expression(
                     action='refresh', expected=self.page_url, key=key, host=self.host))
@@ -312,4 +348,8 @@ class UpdateLoop:
         finally:
             if self.account is not None:
                 await self.account.close()
+            if self.context_defaults is not None:
+                await self.context_defaults.close()
+            if self.context_restart is not None:
+                await self.context_restart.close()
             await self.close()

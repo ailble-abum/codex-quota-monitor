@@ -5,6 +5,8 @@
     return null;
   }
   function restoreDisclosures(fragment, previousBody) {
+    const defaults = fragment.querySelector('[data-context-defaults]');
+    if (defaults) defaults.open = previousBody.querySelector('[data-context-defaults]')?.open === true;
     for (const selector of ['details[data-details]', 'details[data-skins]']) {
       const node = fragment.querySelector(selector);
       const previous = previousBody.querySelector(selector);

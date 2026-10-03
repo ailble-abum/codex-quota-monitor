@@ -1,0 +1,118 @@
+// Synthetic UI + real page bridge. No real config, authentication or app changes.
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const {chromium, webkit} = require('playwright');
+(async () => {
+  const script = fs.readFileSync(process.argv[2], 'utf8');
+  const artifacts = process.argv[3];
+  const bridge = fs.readFileSync(path.join(__dirname, '../quota_monitor/page_bridge.js'), 'utf8');
+  const revision = 'sha256:' + 'a'.repeat(64);
+  for (const engine of [chromium, webkit]) {
+    const browser = await engine.launch();
+    try {
+      const page = await browser.newPage({viewport: {width: 900, height: 1000}});
+      await page.route('**/*', route => route.fulfill({body: '<html><head></head><body></body></html>'}));
+      await page.goto('http://context-defaults.invalid/');
+      await page.evaluate(() => {window.__quotaMonitorV2Thread = 'one'; localStorage.setItem('cti-language', 'zh');});
+      const base = {expected: 'http://context-defaults.invalid/', key: 'one', owner: 'synthetic-owner'};
+      const call = options => page.evaluate(({bridge, options}) => (0, eval)(bridge)(options), {bridge, options});
+      assert.equal(await call({...base, action: 'initialize', consumer: {source: script}}), 'ready');
+      const payload = {activeThreadId: 'one', selectedThreadId: 'one', summaries: [], detailsByThread: {},
+        observedAt: Date.now()/1000, contextSource: 'local', contextDefaults: {status: 'idle'}};
+      const publish = () => call({...base, action: 'publish', panel: true, payload});
+      await publish();
+      assert.equal(await call({...base, action: 'contextDefaults'}), null, 'mount never writes or reads config');
+      await page.locator('[data-settings-toggle]').click();
+      await page.locator('[data-context-defaults] summary').click();
+      await page.waitForFunction(() => window.__quotaMonitorV2ContextDefaultsRequested?.action === 'read');
+      const read = await call({...base, action: 'contextDefaults'});
+      assert.equal(read.action, 'read');
+      assert.equal(await call({...base, action: 'contextDefaults'}), null, 'one request per click');
+      assert.equal(await page.locator('[data-context-default-action="save"]').isDisabled(), true);
+      payload.contextDefaults = {status: 'ready', requestId: read.id, revision, windowTokens: 200000, compactTokens: 170000, model: 'synthetic-model'};
+      await publish();
+      assert.equal(await page.locator('[data-context-window]').inputValue(), '200000');
+      await page.locator('[data-context-window]').fill('180000');
+      await page.locator('[data-context-compact]').fill('150000');
+      for (let i = 0; i < 3; i++) await publish();
+      assert.equal(await page.locator('[data-context-window]').inputValue(), '180000', 'polling must preserve edits');
+      assert.match(await page.locator('[data-context-default-status]').innerText(), /尚未保存/);
+      await page.locator('[data-language]').selectOption('en');
+      assert.equal(await page.locator('[data-context-defaults]').evaluate(node => node.open), true);
+      assert.equal(await page.locator('[data-context-window]').inputValue(), '180000', 'language switch preserves draft');
+      await page.locator('[data-context-compact]').fill('180000');
+      await page.locator('[data-context-default-action="save"]').click();
+      assert.equal(await call({...base, action: 'contextDefaults'}), null);
+      await publish();
+      assert.match(await page.locator('[data-context-default-status]').innerText(), /threshold below/);
+      await page.locator('[data-context-compact]').fill('150000');
+      await page.locator('[data-context-default-action="save"]').click();
+      const save = await call({...base, action: 'contextDefaults'});
+      assert.deepEqual({...save, id: 'id'}, {id: 'id', action: 'save', revision, windowTokens: 180000, compactTokens: 150000});
+      assert.equal(await page.locator('[data-context-default-action="save"]').isDisabled(), true);
+      payload.contextDefaults = {...payload.contextDefaults, requestId: save.id, feedback: 'conflict', revision: 'sha256:' + 'b'.repeat(64)};
+      await publish();
+      assert.match(await page.locator('[data-context-default-status]').innerText(), /Settings changed/);
+      assert.equal(await page.locator('[data-context-default-action="save"]').isDisabled(), true);
+      await page.locator('[data-context-default-action="read"]').click();
+      const refresh = await call({...base, action: 'contextDefaults'});
+      payload.contextDefaults = {...payload.contextDefaults, requestId: refresh.id, feedback: ''};
+      await publish();
+      await page.locator('[data-context-default-action="reset"]').click();
+      const reset = await call({...base, action: 'contextDefaults'});
+      assert.deepEqual({...reset, id: 'id'}, {id: 'id', action: 'reset', revision: payload.contextDefaults.revision});
+      payload.contextDefaults = {...payload.contextDefaults, requestId: reset.id, windowTokens: null, compactTokens: null, feedback: 'saved'};
+      payload.contextRestart = {status: 'available', attempt: 0};
+      await publish();
+      assert.equal(await page.locator('[data-context-window]').inputValue(), '');
+      assert.match(await page.locator('[data-context-default-status]').innerText(), /Restart Codex/);
+      assert.equal(await page.locator('[data-context-restart]').isVisible(), true);
+      assert.equal(await call({...base, action: 'hostRestart'}), null, 'saving never auto-restarts');
+      await page.locator('[data-context-restart-later]').click();
+      assert.equal(await page.locator('[data-context-restart]').isVisible(), false);
+      assert.equal(await call({...base, action: 'hostRestart'}), null, 'later never restarts');
+      payload.contextDefaults.revision = 'sha256:' + 'c'.repeat(64);
+      await publish();
+      assert.equal(await page.locator('[data-context-restart]').isVisible(), true);
+      await page.locator('[data-language]').selectOption('zh');
+      if (artifacts) {
+        fs.mkdirSync(artifacts, {recursive: true});
+        await page.locator('[data-context-defaults]').screenshot({path: path.join(artifacts, engine.name() + '-context-defaults.png')});
+        const bounds = await page.locator('[data-context-defaults]').evaluate(node => ({scroll: node.scrollWidth, client: node.clientWidth}));
+        assert.ok(bounds.scroll <= bounds.client, 'no horizontal clipping');
+      }
+      await page.locator('[data-context-restart-now]').click();
+      assert.deepEqual(await call({...base, action: 'hostRestart'}), {revision: payload.contextDefaults.revision});
+      assert.equal(await call({...base, action: 'hostRestart'}), null);
+      assert.equal(await page.locator('[data-context-default-action="save"]').isDisabled(), true);
+      payload.contextRestart = {status: 'restarting', revision: payload.contextDefaults.revision, attempt: 1};
+      await publish();
+      assert.match(await page.locator('[data-context-default-status]').innerText(), /正在重启/);
+      payload.contextRestart.status = 'failed'; await publish();
+      assert.match(await page.locator('[data-context-default-status]').innerText(), /重启未完成/);
+      assert.equal(await page.locator('[data-context-restart-now]').isEnabled(), true);
+      await page.locator('[data-context-restart-now]').click();
+      assert.equal(await page.locator('[data-context-default-action="save"]').isDisabled(), true, 'retry cannot double-submit');
+      assert.deepEqual(await call({...base, action: 'hostRestart'}), {revision: payload.contextDefaults.revision});
+      payload.contextRestart.status = 'reopened'; payload.contextRestart.attempt = 2; await publish();
+      assert.equal(await page.locator('[data-context-restart]').isVisible(), false);
+      assert.match(await page.locator('[data-context-default-status]').innerText(), /插件已连接/);
+      payload.contextSource = 'chatgpt'; payload.contextDefaults = {status: 'not_applicable'};
+      await publish();
+      for (const action of ['read','save','reset']) assert.equal(await page.locator(`[data-context-default-action="${action}"]`).isDisabled(), true);
+      assert.match(await page.locator('[data-context-default-status]').innerText(), /本机 Codex/);
+      payload.contextSource = 'local'; payload.contextDefaults = {status: 'unavailable', requestId: 'timeout', feedback: 'write_unconfirmed'};
+      await publish();
+      assert.match(await page.locator('[data-context-default-status]').innerText(), /结果未确认/);
+      assert.equal(await page.locator('[data-context-default-action="read"]').isEnabled(), true);
+      // A task mismatch cannot consume a queued action.
+      await page.locator('[data-context-default-action="read"]').click();
+      assert.equal(await call({...base, key: 'other', action: 'contextDefaults'}), false);
+      assert.equal((await call({...base, action: 'contextDefaults'})).action, 'read');
+      await call({...base, action: 'release'});
+      assert.equal(await page.locator('[data-context-defaults]').count(), 0);
+      console.log(engine.name() + ': context defaults controls, validation, drafts, restart now/later/retry, scope and lifecycle passed');
+    } finally {await browser.close();}
+  }
+})().catch(error => {console.error(error); process.exitCode = 1;});

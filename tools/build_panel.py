@@ -12,7 +12,7 @@ MODULES = (
     'panel_layout_runtime.js', 'panel_templates.js', 'panel_styles.js', 'panel_language.js',
     'panel_companion_preferences.js', 'panel_layout_data.js', 'panel_layout_preference.js',
     'panel_scale_preference.js', 'panel_edge_preference.js', 'panel_skin_preference.js',
-    'panel_controls.js', 'panel_details.js', 'panel_context.js', 'panel_health.js',
+    'panel_controls.js', 'panel_details.js', 'panel_context.js', 'panel_context_defaults.js', 'panel_health.js',
     'panel_account_status.js', 'panel_account_windows.js', 'panel_account_overview.js',
     'panel_diagnostics.js', 'panel_samples.js', 'panel_disclosures.js', 'panel_body.js', 'panel_handoff.js',
     'panel_position_reset.js', 'panel_host_details.js', 'panel_mount.js', 'panel_adapter.js',

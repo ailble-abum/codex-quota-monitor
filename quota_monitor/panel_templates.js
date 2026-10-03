@@ -30,6 +30,31 @@
         <p class="cti-muted" data-explanation></p>
       </details>
       <div class="cti-settings" data-settings hidden>
+        <details data-context-defaults>
+          <summary>${text('默认上下文', 'Context defaults')}</summary>
+          <p class="cti-muted">${text('本机 Codex 新对话默认值，ChatGPT 聊天不适用。', 'Defaults for new local Codex chats. Not applicable to ChatGPT chats.')}</p>
+          <p class="cti-muted" data-context-default-model></p>
+          <label>${text('上下文容量（Token）', 'Context capacity (tokens)')}
+            <input type="number" min="1" max="2147483647" step="1" data-context-window placeholder="${text('跟随模型', 'Model default')}">
+          </label>
+          <label>${text('自动压缩阈值（Token）', 'Auto-compact threshold (tokens)')}
+            <input type="number" min="1" max="2147483647" step="1" data-context-compact placeholder="${text('跟随模型', 'Model default')}">
+          </label>
+          <p class="cti-muted">${text('留空跟随模型。容量受模型上限限制，实际压缩可能更早。', 'Leave blank for model defaults. Model limits apply; compaction may occur earlier.')}</p>
+          <div class="cti-context-default-actions">
+            <button type="button" data-context-default-action="save" disabled>${text('保存', 'Save')}</button>
+            <button type="button" data-context-default-action="reset" disabled>${text('恢复默认', 'Reset')}</button>
+            <button type="button" data-context-default-action="read">${text('刷新', 'Refresh')}</button>
+          </div>
+          <p class="cti-muted" role="status" data-context-default-status></p>
+          <div data-context-restart hidden>
+            <p>${text('现在重启 Codex？插件会自动连接。', 'Restart Codex now? The monitor will reconnect automatically.')}</p>
+            <div class="cti-context-default-actions">
+              <button type="button" data-context-restart-now>${text('立即重启', 'Restart now')}</button>
+              <button type="button" data-context-restart-later>${text('稍后', 'Later')}</button>
+            </div>
+          </div>
+        </details>
         <div data-units></div>
         <label>${text('语言', 'Language')}
           <select data-language>

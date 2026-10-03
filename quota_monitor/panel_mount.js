@@ -28,6 +28,9 @@
     clean(() => mountedPanel?.__ctiRemoveResize?.());
     clean(() => mountedPanel?.__ctiClearHint?.());
     clean(() => disposeHostDetails());
+    if (window.__quotaMonitorV2ContextDefaultsRequested?.id === contextDefaultsPending)
+      clean(() => { delete window.__quotaMonitorV2ContextDefaultsRequested; });
+    if (contextRestartPending) clean(() => { delete window.__quotaMonitorV2HostRestartRequested; });
     clearTimeout(accountExpiryTimer);
     clearTimeout(mountedPanel?.__ctiDockHideTimer);
     clearTimeout(mountedMascot?.__ctiPetTimer);
@@ -84,11 +87,18 @@
     panel.addEventListener('pointerdown', event => {
       if (event.target.closest('[data-cti-unit],[data-cti-title],[data-cti-toggle]')) event.stopPropagation();
     });
-    panel.addEventListener('toggle', event => handleDisclosureToggle(panel, event), true);
+    panel.addEventListener('toggle', event => {
+      handleDisclosureToggle(panel, event);
+      if (event.target.matches('details[data-context-defaults]') && event.target.open &&
+          ['idle', 'unavailable'].includes(window.__codexContextTokenInspectorPayload?.contextDefaults?.status))
+        contextDefaultsRequest(panel, 'read');
+    }, true);
     panel.addEventListener('input', event => {
       if (event.target.matches('[data-mascot-scale]')) {
         setMascotScalePreference(event.target.valueAsNumber / 100);
         applyStoredHudPosition(panel);
+      } else if (event.target.matches('[data-context-window],[data-context-compact]')) {
+        contextDefaultsInput(panel);
       }
     });
     panel.addEventListener('change', event => {
@@ -112,7 +122,14 @@
     panel.addEventListener('click', event => {
       const button = event.target.closest('button');
       if (!button || !panel.contains(button)) return;
-      if (button.hasAttribute('data-skin-choice')) {
+      if (button.hasAttribute('data-context-restart-now')) {
+        requestContextRestart(panel);
+      } else if (button.hasAttribute('data-context-restart-later')) {
+        contextRestartDismissedRevision = window.__codexContextTokenInspectorPayload?.contextDefaults?.revision;
+        renderContextDefaults(panel, window.__codexContextTokenInspectorPayload);
+      } else if (button.hasAttribute('data-context-default-action')) {
+        contextDefaultsRequest(panel, button.dataset.contextDefaultAction);
+      } else if (button.hasAttribute('data-skin-choice')) {
         setMascotSkin(button.dataset.skinChoice);
         applyMascotSkin(panel);
         updateSkinButtons(panel);

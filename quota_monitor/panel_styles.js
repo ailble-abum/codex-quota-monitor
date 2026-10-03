@@ -68,6 +68,10 @@
         text-overflow:ellipsis; white-space:nowrap;
       }
       #codex-context-token-inspector-root fieldset { border:0; margin:0; padding:0; }
+      #codex-context-token-inspector-root [data-context-defaults] label { display:grid; gap:4px; margin-top:8px; }
+      #codex-context-token-inspector-root [data-context-defaults] input { width:100%; min-width:0; padding:5px; border:1px solid GrayText; border-radius:6px; background:Canvas; }
+      #codex-context-token-inspector-root .cti-context-default-actions { display:flex; flex-wrap:wrap; gap:6px; }
+      #codex-context-token-inspector-root [data-context-defaults] button:disabled { opacity:.5; cursor:default; }
       #codex-context-token-inspector-root legend { margin-bottom:4px; font-weight:650; }
       #codex-context-token-inspector-root .cti-muted { color:color-mix(in srgb,CanvasText 64%,transparent); }
       #codex-context-token-inspector-root [data-history],

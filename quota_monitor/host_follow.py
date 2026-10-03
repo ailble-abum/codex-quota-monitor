@@ -38,8 +38,8 @@ class HostFollower:
 
     def _run(self, *args):
         try:
-            return self.runner(list(args), capture_output=True, text=True, check=False)
-        except (OSError, TypeError):
+            return self.runner(list(args), capture_output=True, text=True, check=False, timeout=25)
+        except (OSError, TypeError, subprocess.TimeoutExpired):
             return None
 
     def _pid(self):
@@ -74,6 +74,9 @@ class HostFollower:
         self.last_attempt = now
         if not self._quit() or not self._wait_exit(pid):
             return 'quit_failed'
+        return self.launch()
+
+    def launch(self):
         args = ('open', '-a', str(self.app_path), '--args',
                 '--remote-debugging-address=127.0.0.1',
                 f'--remote-debugging-port={self.port}',

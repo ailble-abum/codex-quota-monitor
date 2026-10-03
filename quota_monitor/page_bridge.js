@@ -98,6 +98,19 @@
         return requested;
     }
 
+    if (options.action === 'contextDefaults') {
+        const requested = window.__quotaMonitorV2ContextDefaultsRequested;
+        try { delete window.__quotaMonitorV2ContextDefaultsRequested; } catch (_) {}
+        if (!requested || typeof requested !== 'object' || Array.isArray(requested)) return null;
+        // Backend validates exact fields, token limits and the config revision.
+        return requested;
+    }
+    if (options.action === 'hostRestart') {
+        const requested = window.__quotaMonitorV2HostRestartRequested;
+        try { delete window.__quotaMonitorV2HostRestartRequested; } catch (_) {}
+        return requested && typeof requested === 'object' && !Array.isArray(requested) ? requested : null;
+    }
+
     if (options.action === 'updateCheck') {
         const requested = window.__quotaMonitorV2UpdateCheckRequested === true;
         try { delete window.__quotaMonitorV2UpdateCheckRequested; } catch (_) {}
