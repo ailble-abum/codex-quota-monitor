@@ -34,16 +34,30 @@
           <summary>${text('默认上下文', 'Context defaults')}</summary>
           <p class="cti-muted">${text('本机 Codex 新对话默认值，ChatGPT 聊天不适用。', 'Defaults for new local Codex chats. Not applicable to ChatGPT chats.')}</p>
           <p class="cti-muted" data-context-default-model></p>
-          <label>${text('上下文容量（Token）', 'Context capacity (tokens)')}
-            <input type="number" min="1" max="2147483647" step="1" data-context-window placeholder="${text('跟随模型', 'Model default')}">
+          <label>${text('档位', 'Preset')}
+            <select data-context-preset disabled>
+              <option value="current">${text('保持当前（默认）', 'Keep current (default)')}</option>
+              <option value="short">${text('短任务（128K）', 'Short tasks (128K)')}</option>
+              <option value="everyday">${text('日常任务（256K）', 'Everyday tasks (256K)')}</option>
+              <option value="long">${text('长任务（512K）', 'Long tasks (512K)')}</option>
+              <option value="manual">${text('手动输入', 'Manual')}</option>
+            </select>
           </label>
-          <label>${text('自动压缩阈值（Token）', 'Auto-compact threshold (tokens)')}
-            <input type="number" min="1" max="2147483647" step="1" data-context-compact placeholder="${text('跟随模型', 'Model default')}">
-          </label>
-          <p class="cti-muted">${text('留空跟随模型。容量受模型上限限制，实际压缩可能更早。', 'Leave blank for model defaults. Model limits apply; compaction may occur earlier.')}</p>
+          <p class="cti-muted" data-context-preset-hint></p>
+          <p data-context-preset-values></p>
+          <div data-context-manual hidden>
+            <label>${text('上下文容量（Token）', 'Context capacity (tokens)')}
+              <input type="number" min="1" max="2147483647" step="1" data-context-window placeholder="${text('跟随模型', 'Model default')}">
+            </label>
+            <label>${text('自动压缩阈值（Token）', 'Auto-compact threshold (tokens)')}
+              <input type="number" min="1" max="2147483647" step="1" data-context-compact placeholder="${text('跟随模型', 'Model default')}">
+            </label>
+            <p class="cti-muted">${text('留空跟随模型。', 'Leave blank for model defaults.')}</p>
+          </div>
+          <p class="cti-muted">${text('容量受模型上限限制，实际压缩可能更早。', 'Model limits apply; compaction may occur earlier.')}</p>
           <div class="cti-context-default-actions">
             <button type="button" data-context-default-action="save" disabled>${text('保存', 'Save')}</button>
-            <button type="button" data-context-default-action="reset" disabled>${text('恢复默认', 'Reset')}</button>
+            <button type="button" data-context-default-action="reset" disabled>${text('跟随模型', 'Use model defaults')}</button>
             <button type="button" data-context-default-action="read">${text('刷新', 'Refresh')}</button>
           </div>
           <p class="cti-muted" role="status" data-context-default-status></p>

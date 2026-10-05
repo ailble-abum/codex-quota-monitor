@@ -102,7 +102,9 @@
       }
     });
     panel.addEventListener('change', event => {
-      if (event.target.matches('[data-alerts]')) {
+      if (event.target.matches('[data-context-preset]')) {
+        contextDefaultsPresetInput(panel);
+      } else if (event.target.matches('[data-alerts]')) {
         try { localStorage.setItem('cti-alerts', String(event.target.checked)); }
         catch (_) { event.target.checked = false; }
       } else if (event.target.matches('[data-edge-dock]')) {

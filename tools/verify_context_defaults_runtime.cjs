@@ -49,6 +49,23 @@ const {chromium} = require('playwright');
     await page.locator('[data-context-defaults] summary').click();
     await page.waitForFunction(()=>window.__quotaMonitorV2ContextDefaultsRequested?.action==='read');
     await waitFor(()=>page.evaluate(()=>window.__quotaMonitorV2Snapshot?.contextDefaults?.status==='ready'));
+    assert.equal(await page.locator('[data-context-preset]').inputValue(),'current');
+    assert.equal(await page.locator('[data-context-default-action="save"]').isDisabled(),true);
+    const unchanged = await fs.readFile(config,'utf8');
+    for (const [preset, capacity, threshold] of [['short',128000,96000],['everyday',256000,192000],['long',512000,384000]]) {
+      const before = await fs.readFile(config,'utf8');
+      await page.locator('[data-context-preset]').selectOption(preset);
+      await step();
+      assert.equal(await fs.readFile(config,'utf8'),before,'choosing a preset does not save');
+      await page.locator('[data-context-default-action="save"]').click();
+      await waitFor(()=>page.evaluate(capacity=>window.__quotaMonitorV2Snapshot?.contextDefaults?.feedback==='saved' &&
+        window.__quotaMonitorV2Snapshot.contextDefaults.windowTokens===capacity,capacity));
+      const saved = await fs.readFile(config,'utf8');
+      assert.ok(saved.includes(`model_context_window = ${capacity}`) && saved.includes(`model_auto_compact_token_limit = ${threshold}`));
+      assert.equal(await page.locator('[data-context-preset]').inputValue(),'current');
+    }
+    assert.ok(unchanged.includes('# keep') && !unchanged.includes('model_context_window'));
+    await page.locator('[data-context-preset]').selectOption('manual');
     await page.locator('[data-context-window]').fill('180000');
     await page.locator('[data-context-compact]').fill('150000');
     await page.locator('[data-context-default-action="save"]').click();
@@ -61,7 +78,7 @@ const {chromium} = require('playwright');
     const after = await fs.readFile(config,'utf8');
     assert.ok(after.includes('# keep') && after.includes('web_search = "disabled"'));
     assert.ok(!after.includes('model_context_window') && !after.includes('model_auto_compact_token_limit'));
-    console.log('runtime: UI read/save/reset -> CDP -> monitor -> real Codex config RPC passed in temporary home');
+    console.log('runtime: current default, three preset saves, manual save/reset -> CDP -> monitor -> real Codex config RPC passed in temporary home');
   } finally {
     if (worker) {
       const stopped = new Promise(resolve => worker.once('exit',resolve));
