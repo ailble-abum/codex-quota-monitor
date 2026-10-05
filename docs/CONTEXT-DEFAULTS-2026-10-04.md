@@ -75,3 +75,5 @@ PYTHON=/path/to/python node tools/verify_context_defaults_runtime.cjs /path/to/c
 验证：Python 270 项通过；最终面板在 Chromium / WebKit 通过三档精确保存、保持当前无写入、手动输入、刷新、语言与轮询保留、冲突、重启选择及生命周期检查，并确认没有短任务选项。临时 `CODEX_HOME` 中完整 UI → CDP → 监控 → 本机官方 RPC 三档及手动保存/重置通过。明暗主题的双浏览器挂载、切换、过期与单例回归通过，模板检查通过。最终合成截图目视核对且无横向裁切。没有修改真实认证、会话或上下文配置；原生 macOS、Windows 与发行验收未执行。
 
 256K 起步版本 `37c8355` 已更新至现用安装，移除短任务档的这一轮更新 5 个文件，合并差异后的 73 个文件摘要通过，11 个受保护文件保持原样。采集与菜单服务 running，配置 valid，真实 Codex 上下文设置与宿主进程未改变。该轮备份 `.local/context-presets-256k-backup-20261005/`，收据 `.local/context-presets-256k-deployment-20261005.json`。当前面板端口仍未开启，doctor 为 panel=discovery_unavailable；新界面须退出后从「Codex（带悬浮窗）」打开加载，尚未进行真实窗口可见验收。
+
+补齐 1M 后的最终源码 `9ed5772` 已安装，更新 5 个文件，73 个文件摘要和 11 个受保护文件检查通过。两项服务 running、配置 valid；没有修改实际上下文设置，也没有重启宿主。Python 全量 270 项及三档临时配置、双浏览器验证再次通过，1M 合成截图显示容量 1M / 压缩 750K，说明清楚且无裁切。最终备份 `.local/context-presets-1m-backup-20261005/`，收据 `.local/context-presets-1m-deployment-20261005.json`。当前窗口依然等待从专用入口重新打开后加载；不将文件安装成功当作真实面板或 1M 推理容量的验收。
