@@ -25,6 +25,8 @@
 
 该记录验证实际宿主中的渲染和 UI 事件路径，不等同于物理鼠标/触控板或所有窗口组合的人工验收。
 
+[v2.0.15](https://github.com/ailble-abum/codex-quota-monitor/releases/tag/v2.0.15) 已发布为最新正式版。ZIP、RELEASE.json、SHA256SUMS 回下载与本地产物逐字节一致，SHA-256 与临时解压后的 73 文件审计通过。最终复核采集、菜单 running，配置 valid、面板 updated。
+
 ## 本机临时目录清理
 
 按用户要求保留浏览器及开发依赖。移除 13 个已核对的旧候选或完全重复证据目录，共 15,893,840 字节，约 15.16 MiB：两份 `panel-round2-*`、四份 `compact-hud-round3-candidate*`、`panel-bugfix-review`、两份 `panel-copy-20261003-*`、`panel-adaptation-20260930-final`、示例 `panel-candidate` 和两份已有精确副本的证据目录。
