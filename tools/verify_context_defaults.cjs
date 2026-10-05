@@ -34,13 +34,15 @@ const {chromium, webkit} = require('playwright');
       await publish();
       const preset = page.locator('[data-context-preset]');
       const saveButton = page.locator('[data-context-default-action="save"]');
+      assert.deepEqual(await preset.locator('option').evaluateAll(nodes=>nodes.map(node=>node.value)),
+        ['current','everyday','long','manual'], 'recommendations start at 256K; no short-task tier');
       assert.equal(await preset.inputValue(), 'current', 'initial choice keeps the existing settings');
       assert.equal(await page.locator('[data-context-manual]').isVisible(), false);
       assert.equal(await saveButton.isDisabled(), true, 'keep current cannot write unchanged settings');
       assert.match(await page.locator('[data-context-preset-values]').innerText(), /200K.*170K/);
       assert.equal(await call({...base, action: 'contextDefaults'}), null);
       for (const [name, windowTokens, compactTokens] of [
-        ['short', 128000, 96000], ['everyday', 256000, 192000], ['long', 512000, 384000],
+        ['everyday', 256000, 192000], ['long', 512000, 384000],
       ]) {
         const before = {...payload.contextDefaults};
         await preset.selectOption(name);
@@ -169,7 +171,7 @@ const {chromium, webkit} = require('playwright');
       assert.equal((await call({...base, action: 'contextDefaults'})).action, 'read');
       await call({...base, action: 'release'});
       assert.equal(await page.locator('[data-context-defaults]').count(), 0);
-      console.log(engine.name() + ': current default, three presets, manual input, explicit save, drafts, restart now/later/retry, scope and lifecycle passed');
+      console.log(engine.name() + ': current default, 256K/512K presets, manual input, explicit save, drafts, restart now/later/retry, scope and lifecycle passed');
     } finally {await browser.close();}
   }
 })().catch(error => {console.error(error); process.exitCode = 1;});

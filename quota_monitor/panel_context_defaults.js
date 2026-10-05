@@ -5,7 +5,6 @@
   let contextDefaultsValidation = false;
   // Convenience choices, not model capability claims or official recommendations.
   const contextDefaultsPresets = {
-    short: {window: '128000', compact: '96000'},
     everyday: {window: '256000', compact: '192000'},
     long: {window: '512000', compact: '384000'},
   };
@@ -109,7 +108,6 @@
     const text = (zh, en) => contextDefaultsText(zh, en);
     const hints = {
       current: text('保留现有设置。', 'Keep your existing settings.'),
-      short: text('适合简短任务，较早压缩。', 'For short tasks, with earlier compaction.'),
       everyday: text('适合日常多轮任务。', 'For everyday, multi-turn tasks.'),
       long: text('适合长任务，需模型支持 512K 上下文。', 'For long tasks. Requires a model supporting 512K context.'),
       manual: text('自行填写容量和压缩阈值。', 'Enter the capacity and compaction threshold.'),

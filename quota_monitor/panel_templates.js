@@ -37,7 +37,6 @@
           <label>${text('档位', 'Preset')}
             <select data-context-preset disabled>
               <option value="current">${text('保持当前（默认）', 'Keep current (default)')}</option>
-              <option value="short">${text('短任务（128K）', 'Short tasks (128K)')}</option>
               <option value="everyday">${text('日常任务（256K）', 'Everyday tasks (256K)')}</option>
               <option value="long">${text('长任务（512K）', 'Long tasks (512K)')}</option>
               <option value="manual">${text('手动输入', 'Manual')}</option>
