@@ -154,7 +154,22 @@
       #codex-context-token-inspector-root fieldset { border:0; margin:0; padding:0; }
       #codex-context-token-inspector-root [data-context-defaults] label { display:grid; gap:4px; margin-top:8px; }
       #codex-context-token-inspector-root [data-context-defaults] input { width:100%; min-width:0; padding:6px 8px; border:1px solid var(--cti-border); border-radius:7px; background:Canvas; }
-      #codex-context-token-inspector-root [data-context-preset] { width:100%; min-width:0; }
+      #codex-context-token-inspector-root .cti-preset-fieldset { margin-top:12px; }
+      #codex-context-token-inspector-root .cti-preset-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
+      #codex-context-token-inspector-root [data-context-defaults] .cti-preset-option {
+        position:relative; display:grid; gap:4px; min-width:0; margin:0; padding:10px;
+        border:1px solid var(--cti-border); border-radius:8px; background:Canvas; cursor:pointer;
+        transition:border-color .12s ease,background-color .12s ease;
+      }
+      #codex-context-token-inspector-root .cti-preset-option span { font-size:11px; color:var(--cti-muted); }
+      #codex-context-token-inspector-root .cti-preset-option strong { display:flex; flex-wrap:wrap; align-items:center; gap:5px; font-size:14px; font-weight:550; }
+      #codex-context-token-inspector-root .cti-preset-option small { padding:1px 4px; border-radius:4px; font-size:10px; font-weight:400; color:var(--cti-accent); background:color-mix(in srgb,var(--cti-safe) 9%,Canvas); }
+      #codex-context-token-inspector-root .cti-preset-option:has(input:checked) { border-color:color-mix(in srgb,var(--cti-safe) 55%,transparent); background:color-mix(in srgb,var(--cti-safe) 6%,Canvas); color:var(--cti-accent); }
+      #codex-context-token-inspector-root .cti-preset-option:has(input:checked)::after { content:'✓'; position:absolute; top:7px; right:7px; font-size:11px; color:var(--cti-accent); pointer-events:none; }
+      #codex-context-token-inspector-root .cti-preset-option > span { padding-right:12px; }
+      #codex-context-token-inspector-root .cti-preset-option:has(input:focus-visible) { outline:2px solid var(--cti-accent); outline-offset:2px; }
+      #codex-context-token-inspector-root .cti-preset-option:has(input:disabled) { opacity:.5; cursor:default; }
+      #codex-context-token-inspector-root .cti-preset-option input[type="radio"] { position:absolute; inset:0; width:100%; height:100%; margin:0; padding:0; opacity:0; border:0; cursor:inherit; }
       #codex-context-token-inspector-root .cti-context-default-actions { display:flex; flex-wrap:wrap; gap:6px; }
       #codex-context-token-inspector-root [data-context-defaults] button:disabled { opacity:.5; cursor:default; }
       #codex-context-token-inspector-root legend { margin-bottom:8px; font-weight:400; }

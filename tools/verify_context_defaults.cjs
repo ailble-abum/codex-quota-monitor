@@ -14,6 +14,7 @@ const {chromium, webkit} = require('playwright');
       const page = await browser.newPage({viewport: {width: 900, height: 1000}});
       await page.route('**/*', route => route.fulfill({body: '<html><head></head><body></body></html>'}));
       await page.goto('http://context-defaults.invalid/');
+      await page.emulateMedia({reducedMotion:'reduce'});
       await page.evaluate(() => {window.__quotaMonitorV2Thread = 'one'; localStorage.setItem('cti-language', 'zh');});
       const base = {expected: 'http://context-defaults.invalid/', key: 'one', owner: 'synthetic-owner'};
       const call = options => page.evaluate(({bridge, options}) => (0, eval)(bridge)(options), {bridge, options});
@@ -33,25 +34,31 @@ const {chromium, webkit} = require('playwright');
       payload.contextDefaults = {status: 'ready', requestId: read.id, revision, windowTokens: 200000, compactTokens: 170000, model: 'synthetic-model'};
       await publish();
       const preset = page.locator('[data-context-preset]');
+      const chosen = () => page.locator('[data-context-preset]:checked').inputValue();
+      const choose = name => page.locator(`[data-context-preset][value="${name}"]`).check();
+      const locked = () => preset.evaluateAll(nodes=>nodes.every(node=>node.disabled));
       const saveButton = page.locator('[data-context-default-action="save"]');
-      assert.deepEqual(await preset.locator('option').evaluateAll(nodes=>nodes.map(node=>node.value)),
-        ['current','everyday','long','extended','manual'], 'recommendations cover 256K, 512K and 1M; no short-task tier');
-      assert.equal(await preset.inputValue(), 'current', 'initial choice keeps the existing settings');
-      assert.equal(await page.locator('[data-context-manual]').isVisible(), false);
-      assert.equal(await saveButton.isDisabled(), true, 'keep current cannot write unchanged settings');
-      assert.match(await page.locator('[data-context-preset-values]').innerText(), /200K.*170K/);
+      assert.deepEqual(await preset.evaluateAll(nodes=>nodes.map(node=>node.value)),
+        ['everyday','long','extended','manual'], 'recommendations cover 256K, 512K and 1M; no short-task tier');
+      assert.equal(await chosen(), 'manual', 'custom saved values must select manual');
+      assert.equal(await page.locator('select[data-context-preset]').count(),0);
+      assert.match(await page.locator('.cti-preset-option:has([value="everyday"])').innerText(),/256K.*默认/s);
+      assert.equal(await page.locator('[data-context-manual]').isVisible(), true);
+      assert.equal(await saveButton.isDisabled(), true, 'opening the panel must not queue configuration writes');
+      assert.equal(await page.locator('[data-context-window]').inputValue(),'200000');
+      assert.equal(await page.locator('[data-context-compact]').inputValue(),'170000');
       assert.equal(await call({...base, action: 'contextDefaults'}), null);
       for (const [name, windowTokens, compactTokens] of [
         ['everyday', 256000, 192000], ['long', 512000, 384000],
         ['extended', 1000000, 750000],
       ]) {
         const before = {...payload.contextDefaults};
-        await preset.selectOption(name);
+        await choose(name);
         assert.equal(await page.locator('[data-context-manual]').isVisible(), false);
         assert.equal(await page.locator('[data-context-window]').inputValue(), String(windowTokens));
         assert.equal(await page.locator('[data-context-compact]').inputValue(), String(compactTokens));
         for (let i = 0; i < 3; i++) await publish();
-        assert.equal(await preset.inputValue(), name, 'polling preserves chosen preset');
+        assert.equal(await chosen(), name, 'polling preserves chosen preset');
         assert.equal(await call({...base, action: 'contextDefaults'}), null, 'selecting a preset never writes');
         if (name === 'long') assert.match(await page.locator('[data-context-preset-hint]').innerText(), /需模型支持 512K/);
         if (name === 'extended') {
@@ -62,26 +69,44 @@ const {chromium, webkit} = require('playwright');
             await page.locator('[data-context-defaults]').screenshot({path:path.join(artifacts,engine.name()+'-context-1m.png')});
           }
         }
-        await preset.selectOption('current');
-        assert.equal(await page.locator('[data-context-window]').inputValue(), String(before.windowTokens));
-        assert.equal(await saveButton.isDisabled(), true);
-        assert.equal(await call({...base, action: 'contextDefaults'}), null, 'keep current discards a pending preset without writing');
-        await preset.selectOption(name);
         await saveButton.click();
         const presetSave = await call({...base, action: 'contextDefaults'});
         assert.deepEqual({...presetSave, id:'id'}, {id:'id', action:'save', revision, windowTokens, compactTokens});
-        assert.equal(await preset.isDisabled(), true, 'preset choice locks while saving');
+        assert.equal(await locked(), true, 'preset choice locks while saving');
         payload.contextDefaults = {...before, requestId: presetSave.id, windowTokens, compactTokens, feedback:'saved'};
         await publish();
-        assert.equal(await preset.inputValue(), 'current', 'saved settings become the current default');
+        assert.equal(await chosen(), name, 'saved settings must keep their matching preset selected');
+        await page.locator('[data-context-defaults] summary').click();
+        await page.locator('[data-context-defaults] summary').click();
+        await page.locator('[data-language]').selectOption('en');
+        assert.equal(await chosen(),name);
+        await page.locator('[data-language]').selectOption('zh');
+        assert.equal(await chosen(),name);
+        await page.locator('[data-context-default-action="read"]').click();
+        const readBack=await call({...base,action:'contextDefaults'});
+        payload.contextDefaults={...payload.contextDefaults,requestId:readBack.id,feedback:''};
+        await publish();
+        assert.equal(await chosen(),name,'refresh must match the saved preset');
+        assert.equal(await page.locator('[data-context-preset]:checked').count(),1);
         assert.equal(await saveButton.isDisabled(), true);
         assert.equal(await call({...base, action:'hostRestart'}), null, 'preset save never auto-restarts');
       }
-      // An external refresh is reflected without silently guessing a preset.
+      // Matching the capacity alone must not hide a custom compaction threshold.
+      payload.contextDefaults={...payload.contextDefaults,windowTokens:512000,compactTokens:350000,feedback:''};
+      await publish();assert.equal(await chosen(),'manual');
+      // Native radio keyboard navigation changes only the draft.
+      await choose('everyday');await page.locator('[data-context-preset][value="everyday"]').focus();
+      await page.keyboard.press('ArrowRight');assert.equal(await chosen(),'long');
+      assert.equal(await call({...base,action:'contextDefaults'}),null);
+      await page.locator('[data-context-default-action="read"]').click();
+      const discard=await call({...base,action:'contextDefaults'});
+      payload.contextDefaults={...payload.contextDefaults,requestId:discard.id};
+      await publish();assert.equal(await chosen(),'manual');
+      // External configuration changes select the actual stored values.
       payload.contextDefaults = {...payload.contextDefaults, windowTokens:200000, compactTokens:170000, feedback:''};
       await publish();
       assert.equal(await page.locator('[data-context-window]').inputValue(), '200000');
-      await preset.selectOption('manual');
+      await choose('manual');
       assert.equal(await page.locator('[data-context-manual]').isVisible(), true);
       assert.equal(await page.locator('[data-context-preset-values]').isVisible(), false);
       await page.locator('[data-context-window]').fill('180000');
@@ -91,7 +116,7 @@ const {chromium, webkit} = require('playwright');
       assert.match(await page.locator('[data-context-default-status]').innerText(), /尚未保存/);
       await page.locator('[data-language]').selectOption('en');
       assert.equal(await page.locator('[data-context-defaults]').evaluate(node => node.open), true);
-      assert.equal(await preset.inputValue(), 'manual');
+      assert.equal(await chosen(), 'manual');
       assert.equal(await page.locator('[data-context-manual]').isVisible(), true);
       assert.equal(await page.locator('[data-context-window]').inputValue(), '180000', 'language switch preserves draft');
       await page.locator('[data-context-compact]').fill('180000');
@@ -107,13 +132,13 @@ const {chromium, webkit} = require('playwright');
       payload.contextDefaults = {...payload.contextDefaults, requestId: save.id, feedback: 'conflict', revision: 'sha256:' + 'b'.repeat(64)};
       await publish();
       assert.match(await page.locator('[data-context-default-status]').innerText(), /Settings changed/);
-      assert.equal(await preset.isDisabled(), true);
+      assert.equal(await locked(), true);
       assert.equal(await page.locator('[data-context-default-action="save"]').isDisabled(), true);
       await page.locator('[data-context-default-action="read"]').click();
       const refresh = await call({...base, action: 'contextDefaults'});
       payload.contextDefaults = {...payload.contextDefaults, requestId: refresh.id, feedback: ''};
       await publish();
-      assert.equal(await preset.inputValue(), 'current', 'refresh discards stale manual draft');
+      assert.equal(await chosen(), 'manual', 'refresh discards stale draft and selects custom stored values');
       await page.locator('[data-context-default-action="reset"]').click();
       const reset = await call({...base, action: 'contextDefaults'});
       assert.deepEqual({...reset, id: 'id'}, {id: 'id', action: 'reset', revision: payload.contextDefaults.revision});
@@ -121,8 +146,9 @@ const {chromium, webkit} = require('playwright');
       payload.contextRestart = {status: 'available', attempt: 0};
       await publish();
       assert.equal(await page.locator('[data-context-window]').inputValue(), '');
-      assert.equal(await preset.inputValue(), 'current');
-      assert.match(await page.locator('[data-context-preset-values]').innerText(), /Capacity and compaction use model defaults/);
+      assert.equal(await chosen(), 'manual');
+      assert.match(await page.locator('[data-context-preset-hint]').innerText(), /using model defaults/);
+      assert.equal(await saveButton.isDisabled(),true,'the 256K default badge must not apply a preset implicitly');
       assert.match(await page.locator('[data-context-default-status]').innerText(), /Restart Codex/);
       assert.equal(await page.locator('[data-context-restart]').isVisible(), true);
       assert.equal(await call({...base, action: 'hostRestart'}), null, 'saving never auto-restarts');
@@ -138,21 +164,39 @@ const {chromium, webkit} = require('playwright');
         await page.locator('[data-context-defaults]').screenshot({path: path.join(artifacts, engine.name() + '-context-defaults.png')});
         const bounds = await page.locator('[data-context-defaults]').evaluate(node => ({scroll: node.scrollWidth, client: node.clientWidth}));
         assert.ok(bounds.scroll <= bounds.client, 'no horizontal clipping');
-        await preset.selectOption('long');
+        await choose('long');
+        await page.addStyleTag({content:':root{color-scheme:light dark}body{background:Canvas;color:CanvasText}'});
+        for(const theme of ['light','dark']) for(const lang of ['zh','en']) {
+          await page.emulateMedia({colorScheme:theme});
+          await page.locator('[data-language]').selectOption(lang);
+          for(const size of ['mini','standard','large']) {
+            await page.locator(`[data-layout-preset="${size}"]`).click();
+            assert.equal(await chosen(),'long');
+            assert.ok(await page.locator('.cti-preset-grid').evaluate(n=>n.scrollWidth<=n.clientWidth+1));
+            assert.ok(await page.locator('.cti-preset-option').evaluateAll(nodes=>nodes.every(n=>n.scrollWidth<=n.clientWidth+1)));
+          }
+          await page.locator('[data-layout-preset="standard"]').click();
+          await page.locator('[data-context-defaults]').screenshot({path:path.join(artifacts,`${engine.name()}-${lang}-${theme}-selected.png`)});
+        }
+        await page.emulateMedia({colorScheme:'light'});
+        await page.locator('[data-language]').selectOption('zh');
         await page.locator('[data-context-defaults]').screenshot({path:path.join(artifacts, engine.name() + '-context-long.png')});
         await page.locator('[data-language]').selectOption('en');
-        assert.equal(await preset.inputValue(),'long','language change preserves chosen preset');
+        assert.equal(await chosen(),'long','language change preserves chosen preset');
         await page.locator('[data-language]').selectOption('zh');
-        await preset.selectOption('manual');
+        await choose('manual');
         assert.equal(await page.locator('[data-context-window]').inputValue(),'512000','manual starts from the selected preset');
         await page.locator('[data-context-defaults]').screenshot({path:path.join(artifacts, engine.name() + '-context-manual.png')});
-        await preset.selectOption('current');
+        await page.locator('[data-context-default-action="reset"]').click();
+        const backToModel=await call({...base,action:'contextDefaults'});
+        payload.contextDefaults={...payload.contextDefaults,requestId:backToModel.id};
+        await publish();
       }
       await page.locator('[data-context-restart-now]').click();
       assert.deepEqual(await call({...base, action: 'hostRestart'}), {revision: payload.contextDefaults.revision});
       assert.equal(await call({...base, action: 'hostRestart'}), null);
       assert.equal(await page.locator('[data-context-default-action="save"]').isDisabled(), true);
-      assert.equal(await preset.isDisabled(), true);
+      assert.equal(await locked(), true);
       payload.contextRestart = {status: 'restarting', revision: payload.contextDefaults.revision, attempt: 1};
       await publish();
       assert.match(await page.locator('[data-context-default-status]').innerText(), /正在重启/);
@@ -168,7 +212,7 @@ const {chromium, webkit} = require('playwright');
       payload.contextSource = 'chatgpt'; payload.contextDefaults = {status: 'not_applicable'};
       await publish();
       for (const action of ['read','save','reset']) assert.equal(await page.locator(`[data-context-default-action="${action}"]`).isDisabled(), true);
-      assert.equal(await preset.isDisabled(), true);
+      assert.equal(await locked(), true);
       assert.match(await page.locator('[data-context-default-status]').innerText(), /本机 Codex/);
       payload.contextSource = 'local'; payload.contextDefaults = {status: 'unavailable', requestId: 'timeout', feedback: 'write_unconfirmed'};
       await publish();
@@ -180,7 +224,7 @@ const {chromium, webkit} = require('playwright');
       assert.equal((await call({...base, action: 'contextDefaults'})).action, 'read');
       await call({...base, action: 'release'});
       assert.equal(await page.locator('[data-context-defaults]').count(), 0);
-      console.log(engine.name() + ': current default, 256K/512K/1M presets, manual input, explicit save, drafts, restart now/later/retry, scope and lifecycle passed');
+      console.log(engine.name() + ': actual selected preset, 256K default badge, 512K/1M presets, manual input, explicit save, drafts, restart now/later/retry, scope and lifecycle passed');
     } finally {await browser.close();}
   }
 })().catch(error => {console.error(error); process.exitCode = 1;});

@@ -70,13 +70,18 @@
       (contextDefaultsDraft.window !== String(state.windowTokens ?? '') ||
        contextDefaultsDraft.compact !== String(state.compactTokens ?? ''));
   }
+  function contextDefaultsStoredPreset(state) {
+    if (state.status !== 'ready') return null;
+    return Object.keys(contextDefaultsPresets).find(key =>
+      contextDefaultsPresets[key].window === String(state.windowTokens ?? '') &&
+      contextDefaultsPresets[key].compact === String(state.compactTokens ?? '')) || 'manual';
+  }
   function contextDefaultsPresetInput(root) {
-    const select = root.querySelector('[data-context-preset]');
-    if (select.disabled) return;
+    const select = root.querySelector('[data-context-preset]:checked');
+    if (!select || select.disabled) return;
     const preset = select.value;
     const state = window.__codexContextTokenInspectorPayload?.contextDefaults;
-    if (preset === 'current') contextDefaultsDraft = null;
-    else if (preset === 'manual') contextDefaultsDraft = {preset,
+    if (preset === 'manual') contextDefaultsDraft = {preset,
       window: contextDefaultsDraft?.window ?? String(state.windowTokens ?? ''),
       compact: contextDefaultsDraft?.compact ?? String(state.compactTokens ?? '')};
     else if (Object.hasOwn(contextDefaultsPresets, preset))
@@ -101,20 +106,22 @@
     const busy = state.status === 'busy' || contextDefaultsPending !== null || restarting;
     const ready = state.status === 'ready';
     const unavailable = ['not_configured', 'not_applicable'].includes(state.status);
-    const preset = contextDefaultsDraft?.preset ?? 'current';
-    const select = section.querySelector('[data-context-preset]');
-    select.value = preset;
-    select.disabled = busy || !ready || state.feedback === 'conflict';
+    const preset = contextDefaultsDraft?.preset ?? contextDefaultsStoredPreset(state);
+    for (const choice of section.querySelectorAll('[data-context-preset]')) {
+      choice.checked = choice.value === preset;
+      choice.disabled = busy || !ready || state.feedback === 'conflict';
+    }
     section.querySelector('[data-context-manual]').hidden = preset !== 'manual';
     const text = (zh, en) => contextDefaultsText(zh, en);
     const hints = {
-      current: text('保留现有设置。', 'Keep your existing settings.'),
-      everyday: text('适合日常多轮任务。', 'For everyday, multi-turn tasks.'),
+      everyday: text('默认推荐档位，保存后应用。', 'Recommended default. Apply by saving.'),
       long: text('适合长任务，需模型支持 512K 上下文。', 'For long tasks. Requires a model supporting 512K context.'),
       extended: text('适合超长任务，需模型支持 1M 上下文。', 'For extended tasks. Requires a model supporting 1M context.'),
-      manual: text('自行填写容量和压缩阈值。', 'Enter the capacity and compaction threshold.'),
+      manual: !contextDefaultsDraft && state.windowTokens == null && state.compactTokens == null
+        ? text('当前跟随模型，可选择档位或手动填写。', 'Currently using model defaults. Choose a preset or enter values.')
+        : text('自行填写容量和压缩阈值。', 'Enter the capacity and compaction threshold.'),
     };
-    section.querySelector('[data-context-preset-hint]').textContent = hints[preset];
+    section.querySelector('[data-context-preset-hint]').textContent = hints[preset] || text('读取后显示当前档位。', 'Read settings to show the current preset.');
     const values = section.querySelector('[data-context-preset-values]');
     values.hidden = preset === 'manual';
     const format = value => {

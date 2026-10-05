@@ -49,12 +49,14 @@ const {chromium} = require('playwright');
     await page.locator('[data-context-defaults] summary').click();
     await page.waitForFunction(()=>window.__quotaMonitorV2ContextDefaultsRequested?.action==='read');
     await waitFor(()=>page.evaluate(()=>window.__quotaMonitorV2Snapshot?.contextDefaults?.status==='ready'));
-    assert.equal(await page.locator('[data-context-preset]').inputValue(),'current');
+    const chosen=()=>page.locator('[data-context-preset]:checked').inputValue();
+    const choose=name=>page.locator(`[data-context-preset][value="${name}"]`).check();
+    assert.equal(await chosen(),'manual');
     assert.equal(await page.locator('[data-context-default-action="save"]').isDisabled(),true);
     const unchanged = await fs.readFile(config,'utf8');
     for (const [preset, capacity, threshold] of [['everyday',256000,192000],['long',512000,384000],['extended',1000000,750000]]) {
       const before = await fs.readFile(config,'utf8');
-      await page.locator('[data-context-preset]').selectOption(preset);
+      await choose(preset);
       await step();
       assert.equal(await fs.readFile(config,'utf8'),before,'choosing a preset does not save');
       await page.locator('[data-context-default-action="save"]').click();
@@ -62,10 +64,13 @@ const {chromium} = require('playwright');
         window.__quotaMonitorV2Snapshot.contextDefaults.windowTokens===capacity,capacity));
       const saved = await fs.readFile(config,'utf8');
       assert.ok(saved.includes(`model_context_window = ${capacity}`) && saved.includes(`model_auto_compact_token_limit = ${threshold}`));
-      assert.equal(await page.locator('[data-context-preset]').inputValue(),'current');
+      assert.equal(await chosen(),preset,'successful RPC must retain the matching selection');
+      await page.locator('[data-context-default-action="read"]').click();
+      await waitFor(()=>page.evaluate(()=>window.__quotaMonitorV2Snapshot?.contextDefaults?.status==='ready' && !window.__quotaMonitorV2Snapshot.contextDefaults.feedback));
+      assert.equal(await chosen(),preset,'real readback must retain the matching selection');
     }
     assert.ok(unchanged.includes('# keep') && !unchanged.includes('model_context_window'));
-    await page.locator('[data-context-preset]').selectOption('manual');
+    await choose('manual');
     await page.locator('[data-context-window]').fill('180000');
     await page.locator('[data-context-compact]').fill('150000');
     await page.locator('[data-context-default-action="save"]').click();
@@ -75,10 +80,11 @@ const {chromium} = require('playwright');
     assert.equal(await page.locator('[data-context] [role="meter"]').count(),0,'config edits never invent observed context usage');
     await page.locator('[data-context-default-action="reset"]').click();
     await waitFor(()=>page.evaluate(()=>window.__quotaMonitorV2Snapshot?.contextDefaults?.windowTokens===null && window.__quotaMonitorV2Snapshot?.contextDefaults?.feedback==='saved'));
+    assert.equal(await chosen(),'manual');
     const after = await fs.readFile(config,'utf8');
     assert.ok(after.includes('# keep') && after.includes('web_search = "disabled"'));
     assert.ok(!after.includes('model_context_window') && !after.includes('model_auto_compact_token_limit'));
-    console.log('runtime: current default, 256K/512K/1M preset saves, manual save/reset -> CDP -> monitor -> real Codex config RPC passed in temporary home');
+    console.log('runtime: stored preset selection, 256K/512K/1M save and readback, manual save/reset -> CDP -> monitor -> real Codex config RPC passed in temporary home');
   } finally {
     if (worker) {
       const stopped = new Promise(resolve => worker.once('exit',resolve));

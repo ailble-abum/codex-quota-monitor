@@ -54,15 +54,23 @@
           <summary>${text('默认上下文', 'Context defaults')}</summary>
           <p class="cti-muted">${text('本机 Codex 新对话默认值，ChatGPT 聊天不适用。', 'Defaults for new local Codex chats. Not applicable to ChatGPT chats.')}</p>
           <p class="cti-muted" data-context-default-model></p>
-          <label>${text('档位', 'Preset')}
-            <select data-context-preset disabled>
-              <option value="current">${text('保持当前（默认）', 'Keep current (default)')}</option>
-              <option value="everyday">${text('日常任务（256K）', 'Everyday tasks (256K)')}</option>
-              <option value="long">${text('长任务（512K）', 'Long tasks (512K)')}</option>
-              <option value="extended">${text('超长任务（1M）', 'Extended tasks (1M)')}</option>
-              <option value="manual">${text('手动输入', 'Manual')}</option>
-            </select>
-          </label>
+          <fieldset class="cti-preset-fieldset">
+            <legend>${text('档位', 'Preset')}</legend>
+            <div class="cti-preset-grid">
+              <label class="cti-preset-option"><input type="radio" name="cti-context-tier" data-context-preset value="everyday" disabled>
+                <span>${text('日常任务', 'Everyday')}</span><strong>256K <small>${text('默认', 'Default')}</small></strong>
+              </label>
+              <label class="cti-preset-option"><input type="radio" name="cti-context-tier" data-context-preset value="long" disabled>
+                <span>${text('长任务', 'Long tasks')}</span><strong>512K</strong>
+              </label>
+              <label class="cti-preset-option"><input type="radio" name="cti-context-tier" data-context-preset value="extended" disabled>
+                <span>${text('超长任务', 'Extended')}</span><strong>1M</strong>
+              </label>
+              <label class="cti-preset-option"><input type="radio" name="cti-context-tier" data-context-preset value="manual" disabled>
+                <span>${text('手动输入', 'Manual')}</span><strong>${text('自定义', 'Custom')}</strong>
+              </label>
+            </div>
+          </fieldset>
           <p class="cti-muted" data-context-preset-hint></p>
           <p data-context-preset-values></p>
           <div data-context-manual hidden>
