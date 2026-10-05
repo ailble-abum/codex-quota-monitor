@@ -39,7 +39,10 @@ for (const engine of [chromium, webkit]) {
    await publish();
    assert.equal(await page.locator('[data-history-disclosure]').evaluate(n=>n.open),false);
    assert.equal(await page.locator('.cti-account-breakdown').evaluate(n=>n.open),false);
-   assert.ok((await root.boundingBox()).height<550,'overview should fit without a long ledger');
+   assert.equal(await page.locator('[data-health]').isVisible(),false,'empty compaction history must not duplicate the empty context row');
+   assert.equal(await page.locator('[data-settings-back]').isVisible(),false);
+   assert.equal((await page.locator('[data-quota]').innerText()).includes(language==='zh'?'个百分点':'percentage points'),false);
+   assert.ok((await root.boundingBox()).height<440,'overview should fit without a long ledger');
    const buttons=await page.locator('.cti-header-actions button').evaluateAll(nodes=>nodes.map(n=>{
      const b=n.getBoundingClientRect();return {w:b.width,h:b.height,cy:b.y+b.height/2};}));
    for(const b of buttons) {assert.equal(b.w,buttons[0].w);assert.equal(b.h,buttons[0].h);assert.equal(b.cy,buttons[0].cy);}
@@ -47,9 +50,29 @@ for (const engine of [chromium, webkit]) {
    assert.deepEqual(iconSizes,[[16,16],[16,16]]);
    await root.screenshot({path:path.join(artifacts,`${engine.name()}-${language}-${colorScheme}-overview.png`)});
    await page.locator('.cti-account-breakdown > summary').click();
+   assert.ok((await page.locator('.cti-account-breakdown').innerText()).includes(language==='zh'?'用量偏慢 21 个百分点':'Slower usage 21 percentage points'));
    await publish();
    assert.equal(await page.locator('.cti-account-breakdown').evaluate(n=>n.open),true,'quota refresh must preserve open details');
    await page.locator('.cti-account-breakdown > summary').click();
+   const active=payload();active.summaries=[{thread_id:'synthetic',latest_context_percent:37,latest_context_tokens:94720,context_window:256000}];
+   await publish(active);
+   assert.equal(await page.locator('[data-context] [role=meter]').getAttribute('aria-valuenow'),'37');
+   await root.screenshot({path:path.join(artifacts,`${engine.name()}-${language}-${colorScheme}-active.png`)});
+   const normalSurface=await page.locator('[data-quota]').evaluate(n=>getComputedStyle(n).backgroundColor);
+   const multiple=payload();multiple.quota.windows.unshift({remaining:92,duration:300,resetsAt:Date.now()/1000+3600});
+   await publish(multiple);
+   assert.equal(await page.locator('[data-quota] [role=meter]').count(),2,'details must not duplicate the visible quota meters');
+   assert.ok(await page.locator('[data-quota]').evaluate(n=>n.scrollWidth<=n.clientWidth+1));
+   const warning=payload();warning.summaries=active.summaries;warning.quota.windows[0].remaining=8;warning.quota.windows[0].paceDelta=-21;warning.healthThreadId='synthetic';warning.health={count:2,after:120000,afterPercent:47,recommendHandoff:true,reason:'baseline'};
+   await publish(warning);
+   assert.equal(await page.locator('[data-health]').isVisible(),true,'handoff warnings must stay visible');
+   assert.notEqual(await page.locator('[data-quota]').evaluate(n=>getComputedStyle(n).backgroundColor),normalSurface,'warning surface must follow quota state');
+   const quotaFill=await page.locator('[data-quota] .cti-meter > span').evaluate(n=>getComputedStyle(n).backgroundColor);
+   const contextFill=await page.locator('[data-context] .cti-meter > span').evaluate(n=>getComputedStyle(n).backgroundColor);
+   assert.notEqual(quotaFill,contextFill,'low account quota must not paint a healthy context meter red');
+   assert.ok((await page.locator('.cti-quota-notice').innerText()).includes(language==='zh'?'用量偏快':'Faster usage'));
+   await root.screenshot({path:path.join(artifacts,`${engine.name()}-${language}-${colorScheme}-warning.png`)});
+   await publish();
    await page.locator('[data-history-disclosure] > summary').click();
    assert.ok(await page.locator('[data-history]').isVisible());
    await publish();
@@ -59,7 +82,22 @@ for (const engine of [chromium, webkit]) {
    assert.equal(await page.locator('[data-settings]').isVisible(),true);
    assert.equal(await page.locator('[data-companion-settings]').evaluate(n=>n.open),false);
    assert.ok(await page.locator('[data-edge-dock]').isVisible());
-   assert.equal(await page.locator('[data-edge-dock]').evaluate(n=>getComputedStyle(n).appearance),'auto');
+   assert.equal(await page.locator('[data-edge-dock]').getAttribute('role'),'switch');
+   await page.locator('[data-edge-dock]').focus();
+   const switchColor=await page.locator('[data-edge-dock]').evaluate(n=>getComputedStyle(n).backgroundColor);
+   await page.keyboard.press('Space');
+   assert.equal(await page.locator('[data-edge-dock]').isChecked(),false);
+   assert.notEqual(await page.locator('[data-edge-dock]').evaluate(n=>getComputedStyle(n).backgroundColor),switchColor);
+   await page.keyboard.press('Space');
+   assert.equal(await page.locator('[data-edge-dock]').isChecked(),true);
+   assert.equal(await page.locator('[data-edge-dock]').evaluate(n=>getComputedStyle(n).transitionDuration),'0s');
+   assert.equal(await page.locator('[data-settings-back]').getAttribute('aria-label'),language==='zh'?'返回用量':'Back to usage');
+   const backBox=await page.locator('[data-settings-back]').boundingBox();
+   const closeBox=await page.locator('[data-cti-toggle]').boundingBox();
+   assert.equal(backBox.height,closeBox.height);assert.equal(backBox.y,closeBox.y);
+   assert.equal(await page.locator('.cti-settings-heading').count(),0);
+   assert.equal(await page.locator('[data-settings] [data-handoff]').count(),0);
+   assert.equal(await page.locator('.cti-settings-group [data-position-reset]').count(),1);
    assert.ok((await root.boundingBox()).height<650,'settings must start as a short grouped view');
    await root.screenshot({path:path.join(artifacts,`${engine.name()}-${language}-${colorScheme}-settings.png`)});
    for(const preset of ['mini','large','standard']) {

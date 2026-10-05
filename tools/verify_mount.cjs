@@ -258,7 +258,7 @@ const {chromium, webkit} = require('playwright');
       assert.equal(await page.locator('[data-refresh]').evaluate(button => getComputedStyle(button).width), '28px');
       await page.locator('[data-companion-settings] > summary').click();
       await page.locator('[data-reminder-settings] > summary').click();
-      const readable = '[data-cti-unit],[data-layout-preset],[data-mascot-scale-auto],[data-handoff],[data-position-reset]';
+      const readable = '[data-cti-unit],[data-layout-preset],[data-mascot-scale-auto],[data-position-reset]';
       assert.ok(await page.locator(readable).evaluateAll(buttons => buttons.every(button => {
         const range = document.createRange(); range.selectNodeContents(button);
         return [...range.getClientRects()].filter(rect => rect.width && rect.height).length === 1;
@@ -326,6 +326,8 @@ const {chromium, webkit} = require('playwright');
           return new Promise(resolve => {window.finishHandoff = resolve;});
         }}});
       });
+      await page.locator('[data-settings-back]').click();
+      await page.locator('[data-details] > summary').click();
       await page.locator('[data-handoff]').click();
       await page.locator('[data-handoff]').evaluate(button => button.click());
       assert.equal(await page.evaluate(() => window.handoffCalls), 1);
@@ -341,6 +343,8 @@ const {chromium, webkit} = require('playwright');
           await page.locator('[data-handoff]').screenshot({path:path.join(process.argv[3],`${engine.name()}-handoff-${colorScheme}.png`)});
         }
       }
+      await page.locator('[data-details] > summary').click();
+      await page.locator('[data-settings-toggle]').click();
       await page.evaluate(() => {
         window.disclosureSetItem = Storage.prototype.setItem;
         Storage.prototype.setItem = function(key, value) {

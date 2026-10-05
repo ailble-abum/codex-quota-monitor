@@ -1,6 +1,7 @@
   // V2-owned static shell. Dynamic text and state are projected by modules.
   function panelHeader() {
     return `<header class="cti-header">
+      <button type="button" class="cti-back" data-settings-back hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg></button>
       <button type="button" class="cti-title" data-cti-title aria-expanded="true">Usage</button>
       <div class="cti-header-actions">
         <button type="button" data-refresh title="Refresh quota"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M20 12a8 8 0 1 0-2.3 5.7M20 12a8 8 0 0 0-2.3-5.7"/></svg></button>
@@ -31,10 +32,10 @@
         <summary>${text('聊天用量', 'Chat usage')}</summary>
         <div class="cti-metrics" data-metrics></div>
         <p class="cti-muted" data-explanation></p>
+        <button type="button" class="cti-text-action" data-handoff>${text('复制交接提示', 'Copy handoff prompt')}</button>
       </details>
       </div>
       <div class="cti-settings" data-settings hidden>
-        <div class="cti-settings-heading"><strong>${text('设置', 'Settings')}</strong><button type="button" data-settings-back>${text('返回用量', 'Back to usage')}</button></div>
         <section class="cti-settings-group">
           <h3>${text('显示', 'Display')}</h3>
           <div class="cti-setting-row"><span>${text('Token 单位', 'Token unit')}</span><div data-units></div></div>
@@ -46,7 +47,8 @@
             <button type="button" data-layout-preset="standard" aria-pressed="false">${text('标准', 'Standard')}</button>
             <button type="button" data-layout-preset="large" aria-pressed="false">${text('大', 'Large')}</button>
           </div></fieldset>
-          <label class="cti-check-row"><input type="checkbox" data-edge-dock> ${text('靠边收起', 'Edge docking')}</label>
+          <label class="cti-check-row"><input type="checkbox" role="switch" data-edge-dock> ${text('靠边收起', 'Edge docking')}</label>
+          <button type="button" class="cti-text-action" data-position-reset>${text('重置位置', 'Reset position')}</button>
         </section>
         <details data-context-defaults>
           <summary>${text('默认上下文', 'Context defaults')}</summary>
@@ -101,19 +103,15 @@
           <summary>${text('选择皮肤', 'Choose skin')}</summary>
           <div class="cti-skin-grid">${skinButtons()}</div>
         </details>
-        <label><input type="checkbox" data-companion-motion> ${text('伴宠动效', 'Companion motion')}</label>
-        <label><input type="checkbox" data-companion-reminders> ${text('伴宠提醒', 'Companion reminders')}</label>
+        <label><input type="checkbox" role="switch" data-companion-motion> ${text('伴宠动效', 'Companion motion')}</label>
+        <label><input type="checkbox" role="switch" data-companion-reminders> ${text('伴宠提醒', 'Companion reminders')}</label>
         </details>
         <details data-reminder-settings>
           <summary>${text('提醒', 'Reminders')}</summary>
-        <label><input type="checkbox" data-context-alerts> ${text('上下文提醒', 'Context reminders')}</label>
-        <label><input type="checkbox" data-alerts disabled aria-describedby="cti-quota-alerts-unavailable"> ${text('额度通知', 'Quota notifications')}</label>
+        <label><input type="checkbox" role="switch" data-context-alerts> ${text('上下文提醒', 'Context reminders')}</label>
+        <label><input type="checkbox" role="switch" data-alerts disabled aria-describedby="cti-quota-alerts-unavailable"> ${text('额度通知', 'Quota notifications')}</label>
         <p class="cti-muted" id="cti-quota-alerts-unavailable">${text('通知未启用，需先设置保存位置。', 'Notifications are off. Set a storage location to enable them.')}</p>
         </details>
-        <div class="cti-settings-tools">
-        <button type="button" data-handoff>${text('复制交接提示', 'Copy handoff prompt')}</button>
-        <button type="button" data-position-reset>${text('重置位置', 'Reset position')}</button>
-        </div>
         <details class="cti-diagnostics" data-diagnostics-details>
           <summary>${text('版本与连接', 'Version & connection')}</summary>
           <p data-build></p><div data-update></div><p data-dom></p>

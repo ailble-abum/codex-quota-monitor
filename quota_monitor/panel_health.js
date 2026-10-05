@@ -7,6 +7,8 @@
     const count = health == null ? 0 : health.count;
     const valid = Number.isSafeInteger(count) && count >= 0;
     const warning = valid && count > 0 && health?.recommendHandoff === true;
+    // Empty history is available in the data, but needs no second empty-state row.
+    next.hidden = valid && count === 0;
     next.dataset.warning = String(warning);
     next.title = text('压缩数据来自聊天记录；上下文与聊天累计用量不同。',
       'Compaction data comes from chat logs. Context differs from total chat usage.');
@@ -46,5 +48,6 @@
     }
     if (current.dataset.warning !== next.dataset.warning) current.dataset.warning = next.dataset.warning;
     if (current.title !== next.title) current.title = next.title;
+    if (current.hidden !== next.hidden) current.hidden = next.hidden;
     if (!current.isEqualNode(next)) current.replaceChildren(...next.childNodes);
   }

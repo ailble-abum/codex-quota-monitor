@@ -1,6 +1,6 @@
   // Called only with the complete window group accepted by accountFreshness.
   // Serialize text-built nodes for the retained account section's comparison/update.
-  function accountWindowHTML(windows, blocked, now = Date.now() / 1000) {
+  function accountWindowHTML(windows, blocked, now = Date.now() / 1000, detailed = false) {
     const zh = uiLanguage() === 'zh';
     const text = (chinese, english) => zh ? chinese : english;
     const node = (tag, className, content) => {
@@ -29,7 +29,7 @@
         pace = Math.abs(delta) < 2 ? text('用量平稳', 'Steady usage')
           : `${delta > 0 ? text('用量偏慢', 'Slower usage') : text('用量偏快', 'Faster usage')} ${Math.round(Math.abs(delta))}${text(' 个百分点', ' percentage points')}`;
       }
-      const status = node('div', 'cti-line'); status.style.marginBottom = '6px';
+      const status = node('div', 'cti-line cti-quota-status');
       status.append(node('span', 'cti-status', toneLabel(tone)), node('span', 'cti-muted', pace));
       let countdown = '';
       if (item.resetsAt != null) {
@@ -42,7 +42,26 @@
       const timing = node('div', 'cti-muted', `${item.resetsAt == null ? '—' : date(item.resetsAt)} ${text('重置', 'reset')} · ${countdown}`);
       if (item.projectedExhaustAt != null) timing.append(document.createElement('br'),
         document.createTextNode(`${text('预计', 'Estimated')} ${date(item.projectedExhaustAt)} ${text('耗尽', 'exhausted')}`));
-      windowNode.append(heading, meter, status, timing); container.append(windowNode);
+      if (detailed) {
+        const detail = node('div', 'cti-window-detail');
+        detail.append(node('div', 'cti-detail-heading', label), status, timing);
+        container.append(detail);
+      } else {
+        let resetText = text('重置时间未知', 'Reset time unavailable');
+        if (item.resetsAt != null) resetText = item.resetsAt <= now
+          ? text('等待刷新', 'Awaiting refresh')
+          : zh ? `${countdown}${countdown.endsWith('后') ? '' : '后'}重置` : `Resets in ${countdown}`;
+        const reset = node('div', 'cti-reset-countdown', resetText);
+        windowNode.append(heading, meter, reset);
+        // Surface actionable states, while routine pace and exact dates stay in details.
+        const notices = [];
+        if (blocked) notices.push(text('额度已用完', 'Quota exhausted'));
+        else if (tone !== 'safe') notices.push(toneLabel(tone));
+        if (item.paceDelta <= -2) notices.push(text('用量偏快', 'Faster usage'));
+        if (item.projectedExhaustAt != null) notices.push(`${text('预计', 'Estimated')} ${date(item.projectedExhaustAt)} ${text('耗尽', 'exhausted')}`);
+        if (notices.length) windowNode.append(node('div', 'cti-quota-notice', notices.join(' · ')));
+        container.append(windowNode);
+      }
     }
     return container.innerHTML;
   }

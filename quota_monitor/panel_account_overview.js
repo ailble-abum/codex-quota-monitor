@@ -70,13 +70,21 @@
           label += ` · ${text('到期', 'expires')} ${new Date(expiry * 1000).toLocaleString(zh ? 'zh-CN' : 'en', {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}`;
         parts.push(label);
       }
-      if (parts.length) {
+      if (parts.length || windows.length) {
         const details = document.createElement('details');
         details.className = 'cti-account-breakdown';
         details.open = current.querySelector('.cti-account-breakdown')?.open === true;
         const summary = document.createElement('summary');
         summary.textContent = text('账户明细', 'Account details');
-        details.append(summary, node('cti-account-quota', parts.join(' · ')));
+        details.append(summary);
+        const periods = document.createElement('div');
+        periods.innerHTML = accountWindowHTML(windows, blocked, undefined, true);
+        details.append(...periods.childNodes);
+        if (parts.length) {
+          const usage = node('cti-account-quota');
+          for (const part of parts) usage.append(node('cti-account-stat', part));
+          details.append(usage);
+        }
         next.append(details);
       }
     }

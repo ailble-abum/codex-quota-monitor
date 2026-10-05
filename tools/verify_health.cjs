@@ -18,12 +18,12 @@ const source = ['panel_format.js', 'panel_health.js'].map(name => fs.readFileSyn
         const box = document.querySelector('[data-health]');
         const first = box.firstChild;
         renderHealth(document.querySelector('section'), health);
-        return {text: box.textContent, title: box.title, warning: box.dataset.warning,
+        return {hidden:box.hidden, text: box.textContent, title: box.title, warning: box.dataset.warning,
           stable: first === box.firstChild, bold: box.querySelectorAll('strong').length, injected: box.querySelectorAll('img,b').length};
       }, {health, language});
       for (const language of ['zh', 'en']) {
         let result = await render({count: 2, after: 500, afterPercent: 50, recommendHandoff: true, reason: 'baseline'}, language);
-        assert.equal(result.warning, 'true'); assert.equal(result.bold, 1); assert.equal(result.stable, true);
+        assert.equal(result.hidden,false); assert.equal(result.warning, 'true'); assert.equal(result.bold, 1); assert.equal(result.stable, true);
         assert.ok(result.text.includes('500 (50.0%)')); assert.ok(result.title.includes('40%'));
         result = await render({count: 1, recommendHandoff: true, reason: 'frequency'}, language);
         assert.ok(result.title.includes('5'));
@@ -40,6 +40,8 @@ const source = ['panel_format.js', 'panel_health.js'].map(name => fs.readFileSyn
         result = await render({count: 1, after: -1, afterPercent: Infinity}, language);
         assert.ok(result.text.includes(language === 'zh' ? '暂不可读' : 'unavailable'));
         result = await render(null, language);
+        assert.equal(result.hidden,true);
+        assert.equal((await render({count:'invalid'},language)).hidden,false);
         assert.equal(result.warning, 'false'); assert.equal(result.bold, 0);
         assert.ok(result.text.includes(language === 'zh' ? '暂无压缩记录' : 'No compaction recorded'));
       }

@@ -43,6 +43,12 @@
     if (edgeDock) edgeDock.checked = edgeDockEnabled();
     const chinese = uiLanguage() === 'zh';
     root.lang = chinese ? 'zh-CN' : 'en';
+    const back = root.querySelector('[data-settings-back]');
+    if (back) {
+      back.hidden = root.dataset.collapsed === 'true' || root.querySelector('[data-settings]')?.hidden !== false;
+      back.setAttribute('aria-label', chinese ? '返回用量' : 'Back to usage');
+      back.title = chinese ? '返回用量' : 'Back to usage';
+    }
     const language = root.querySelector('[data-language]');
     if (language) language.value = languagePreference();
     const labels = [

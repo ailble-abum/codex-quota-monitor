@@ -27,6 +27,9 @@ const source = fs.readFileSync(path.join(__dirname, '../quota_monitor/panel_acco
      assert.ok((await page.locator('main').textContent()).includes('<b>window</b>'));
      assert.equal(await page.locator('[role=meter]').getAttribute('aria-valuenow'), '80');
      assert.equal(await page.locator('.cti-quota-window').getAttribute('data-tone'), 'safe');
+     assert.equal((await page.locator('main').textContent()).includes(language === 'zh' ? '用量偏慢' : 'Slower usage'),false);
+     await page.evaluate(() => {document.querySelector('main').innerHTML = accountWindowHTML([{remaining:80,paceDelta:3,resetsAt:3000,projectedExhaustAt:3000}],false,1000,true);});
+     assert.equal(await page.locator('[role=meter]').count(),0);
      assert.ok((await page.locator('main').textContent()).includes(language === 'zh' ? '用量偏慢 3 个百分点' : 'Slower usage 3 percentage points'));
      assert.ok((await page.locator('main').textContent()).includes(language === 'zh' ? '耗尽' : 'exhausted'));
     }
@@ -36,6 +39,8 @@ const source = fs.readFileSync(path.join(__dirname, '../quota_monitor/panel_acco
     }, language);
     assert.equal(await page.locator('[role=meter]').count(), 2);
     assert.deepEqual(await page.locator('.cti-quota-window').evaluateAll(nodes => nodes.map(node => node.dataset.tone)), ['low','low']);
+    assert.ok((await page.locator('main').textContent()).includes(language === 'zh' ? '额度已用完' : 'Quota exhausted'));
+    await page.evaluate(() => {document.querySelector('main').innerHTML = accountWindowHTML([{remaining:0,paceDelta:-3},{remaining:100,paceDelta:0}],true,1000,true);});
     assert.ok((await page.locator('main').textContent()).includes(language === 'zh' ? '用量偏快 3 个百分点' : 'Faster usage 3 percentage points'));
     assert.ok((await page.locator('main').textContent()).includes(language === 'zh' ? '用量平稳' : 'Steady usage'));
     assert.equal(await page.evaluate(() => accountWindowHTML([], false, 1000)), '');
