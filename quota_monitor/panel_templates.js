@@ -39,6 +39,7 @@
               <option value="current">${text('保持当前（默认）', 'Keep current (default)')}</option>
               <option value="everyday">${text('日常任务（256K）', 'Everyday tasks (256K)')}</option>
               <option value="long">${text('长任务（512K）', 'Long tasks (512K)')}</option>
+              <option value="extended">${text('超长任务（1M）', 'Extended tasks (1M)')}</option>
               <option value="manual">${text('手动输入', 'Manual')}</option>
             </select>
           </label>

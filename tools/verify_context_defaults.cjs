@@ -35,7 +35,7 @@ const {chromium, webkit} = require('playwright');
       const preset = page.locator('[data-context-preset]');
       const saveButton = page.locator('[data-context-default-action="save"]');
       assert.deepEqual(await preset.locator('option').evaluateAll(nodes=>nodes.map(node=>node.value)),
-        ['current','everyday','long','manual'], 'recommendations start at 256K; no short-task tier');
+        ['current','everyday','long','extended','manual'], 'recommendations cover 256K, 512K and 1M; no short-task tier');
       assert.equal(await preset.inputValue(), 'current', 'initial choice keeps the existing settings');
       assert.equal(await page.locator('[data-context-manual]').isVisible(), false);
       assert.equal(await saveButton.isDisabled(), true, 'keep current cannot write unchanged settings');
@@ -43,6 +43,7 @@ const {chromium, webkit} = require('playwright');
       assert.equal(await call({...base, action: 'contextDefaults'}), null);
       for (const [name, windowTokens, compactTokens] of [
         ['everyday', 256000, 192000], ['long', 512000, 384000],
+        ['extended', 1000000, 750000],
       ]) {
         const before = {...payload.contextDefaults};
         await preset.selectOption(name);
@@ -53,6 +54,14 @@ const {chromium, webkit} = require('playwright');
         assert.equal(await preset.inputValue(), name, 'polling preserves chosen preset');
         assert.equal(await call({...base, action: 'contextDefaults'}), null, 'selecting a preset never writes');
         if (name === 'long') assert.match(await page.locator('[data-context-preset-hint]').innerText(), /需模型支持 512K/);
+        if (name === 'extended') {
+          assert.match(await page.locator('[data-context-preset-hint]').innerText(), /需模型支持 1M/);
+          assert.match(await page.locator('[data-context-preset-values]').innerText(), /容量 1M.*压缩 750K/);
+          if (artifacts) {
+            fs.mkdirSync(artifacts,{recursive:true});
+            await page.locator('[data-context-defaults]').screenshot({path:path.join(artifacts,engine.name()+'-context-1m.png')});
+          }
+        }
         await preset.selectOption('current');
         assert.equal(await page.locator('[data-context-window]').inputValue(), String(before.windowTokens));
         assert.equal(await saveButton.isDisabled(), true);
@@ -171,7 +180,7 @@ const {chromium, webkit} = require('playwright');
       assert.equal((await call({...base, action: 'contextDefaults'})).action, 'read');
       await call({...base, action: 'release'});
       assert.equal(await page.locator('[data-context-defaults]').count(), 0);
-      console.log(engine.name() + ': current default, 256K/512K presets, manual input, explicit save, drafts, restart now/later/retry, scope and lifecycle passed');
+      console.log(engine.name() + ': current default, 256K/512K/1M presets, manual input, explicit save, drafts, restart now/later/retry, scope and lifecycle passed');
     } finally {await browser.close();}
   }
 })().catch(error => {console.error(error); process.exitCode = 1;});

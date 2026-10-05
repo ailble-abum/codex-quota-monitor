@@ -7,6 +7,7 @@
   const contextDefaultsPresets = {
     everyday: {window: '256000', compact: '192000'},
     long: {window: '512000', compact: '384000'},
+    extended: {window: '1000000', compact: '750000'},
   };
   let contextRestartPending = false;
   let contextRestartPendingAttempt = 0;
@@ -110,6 +111,7 @@
       current: text('保留现有设置。', 'Keep your existing settings.'),
       everyday: text('适合日常多轮任务。', 'For everyday, multi-turn tasks.'),
       long: text('适合长任务，需模型支持 512K 上下文。', 'For long tasks. Requires a model supporting 512K context.'),
+      extended: text('适合超长任务，需模型支持 1M 上下文。', 'For extended tasks. Requires a model supporting 1M context.'),
       manual: text('自行填写容量和压缩阈值。', 'Enter the capacity and compaction threshold.'),
     };
     section.querySelector('[data-context-preset-hint]').textContent = hints[preset];
