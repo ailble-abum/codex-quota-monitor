@@ -35,19 +35,19 @@
     applyStoredHudPosition(root);
   }
 
-  function undockHud(root) {
-    if (!root.__ctiLayout) return;
+  function undockHud(root, save = true) {
+    if (!root.__ctiLayout || root.dataset.docked !== 'true') return;
     const mode = hudMode(root);
-    const previous = root.__ctiLayout[mode] || {};
+    const previous = root.__ctiLayout[mode] || root.__ctiLayout.compact || {};
     const rect = root.getBoundingClientRect();
     root.__ctiLayout[mode] = {...previous,
       x:Math.max(8, Math.min(window.innerWidth - rect.width - 8, rect.left)),
-      y:Math.max(dockSafeTop(), Math.min(window.innerHeight - rect.height - 8, rect.top))};
+      y:Number.isFinite(previous.y) ? previous.y : rect.top};
     delete root.__ctiLayout[mode].edge;
     for (const key of ['docked', 'dockEdge', 'revealed', 'dockPinned']) delete root.dataset[key];
     const mascot = document.getElementById(MASCOT_ID);
     if (mascot) mascot.dataset.visible = 'false';
-    saveLayout(root);
+    if (save) saveLayout(root);
   }
 
   function applyDockPosition(root, wanted, edge) {
@@ -125,7 +125,7 @@
     setLayoutPreference(preset);
     const mode = hudMode(root);
     const rect = root.getBoundingClientRect();
-    const previous = root.__ctiLayout[mode] || {};
+    const previous = root.__ctiLayout[mode] || root.__ctiLayout.compact || {};
     root.__ctiLayout[mode] = {...previous,
       x:Number.isFinite(previous.x) ? previous.x : rect.left,
       y:Number.isFinite(previous.y) ? previous.y : rect.top,
@@ -167,25 +167,35 @@
       if (save) saveLayout(root);
     };
     root.addEventListener('pointerdown', event => {
-      if (event.button !== 0) return;
+      if (event.button !== 0 || root.__ctiGesture) return;
       const resize = event.target.closest('[data-resize]')?.dataset.resize || null;
       const control = event.target.closest('button,input,select,textarea,summary,a,label');
       if (!resize && control && !event.target.closest('[data-cti-title]')) return;
       if (!resize && root.scrollHeight > root.clientHeight && event.clientX >= root.getBoundingClientRect().left + root.clientWidth) return;
-      if (!resize && root.dataset.docked === 'true') undockHud(root);
       const rect = root.getBoundingClientRect();
-      root.__ctiGesture = {resize, x:event.clientX, y:event.clientY, left:rect.left, top:rect.top, right:rect.right, width:rect.width, moved:false};
+      const previous = root.__ctiLayout[hudMode(root)] || root.__ctiLayout.compact || {};
+      root.__ctiGesture = {resize, pointerId:event.pointerId,
+        x:event.clientX, y:event.clientY, left:rect.left, top:rect.top, right:rect.right, width:rect.width, moved:false,
+        anchorX:Number.isFinite(previous.x) ? previous.x : rect.left,
+        anchorY:Number.isFinite(previous.y) ? previous.y : rect.top,
+        layout:Object.fromEntries(Object.entries(root.__ctiLayout).map(([key, value]) => [key, {...value}])),
+        revealed:root.dataset.revealed, pinned:root.dataset.dockPinned};
       root.setPointerCapture(event.pointerId);
     }, true);
     const move = event => {
       const gesture = root.__ctiGesture;
-      if (!gesture) return;
+      if (!gesture || event.pointerId !== gesture.pointerId) return;
       const dx = event.clientX - gesture.x, dy = event.clientY - gesture.y;
       if (!gesture.moved && Math.abs(dx) + Math.abs(dy) < 4) return;
+      if (!gesture.moved && !gesture.resize) {
+        clearDockHide(root);
+        undockHud(root, false);
+      }
       gesture.moved = true; event.preventDefault(); root.dataset.dragging = 'true';
       if (gesture.resize) {
         const next = resizeGeometry(gesture, event.clientX, event.clientY, gesture.resize, window.innerWidth);
-        persist(next.left, gesture.top, next.width, false);
+        // Resizing changes width, not the retained vertical/viewport anchor.
+        persist(gesture.anchorX + next.left - gesture.left, gesture.anchorY, next.width, false);
         root.__ctiGesture = null; applyStoredHudPosition(root); root.__ctiGesture = gesture;
       } else {
         const x = gesture.left + dx, y = gesture.top + dy;
@@ -197,10 +207,20 @@
     };
     const end = event => {
       const gesture = root.__ctiGesture;
-      if (!gesture) return;
-      root.__ctiGesture = null; delete root.dataset.dragging; delete root.dataset.snapEdge;
+      if (!gesture || event.pointerId !== gesture.pointerId) return;
+      root.__ctiGesture = null; delete root.dataset.snapEdge;
       if (gesture.moved) root.__ctiSuppressClickUntil = performance.now() + 400;
       try { root.releasePointerCapture(event.pointerId); } catch (_) {}
+      if (event.type !== 'pointerup') {
+        root.__ctiLayout = gesture.layout;
+        for (const [key, value] of [['revealed', gesture.revealed], ['dockPinned', gesture.pinned]]) {
+          if (value === undefined) delete root.dataset[key]; else root.dataset[key] = value;
+        }
+        applyStoredHudPosition(root);
+        delete root.dataset.dragging;
+        return;
+      }
+      // Keep transitions disabled until clamping and the committed coordinates agree.
       applyStoredHudPosition(root);
       if (gesture.moved) saveLayout(root);
       if (gesture.moved && !gesture.resize && hudMode(root) === 'compact') {
@@ -214,15 +234,20 @@
         root.dataset.revealed = 'false'; root.dataset.dockPinned = 'false';
         saveLayout(root); applyStoredHudPosition(root);
       }
+      delete root.dataset.dragging;
     };
     window.addEventListener('pointermove', move, true);
     window.addEventListener('pointerup', end, true);
     window.addEventListener('pointercancel', end, true);
+    root.addEventListener('lostpointercapture', end);
     handles[3].addEventListener('keydown', event => {
       if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
       event.preventDefault(); const rect = root.getBoundingClientRect();
       const delta = ['ArrowLeft', 'ArrowDown'].includes(event.key) ? -12 : 12;
-      persist(rect.left, rect.top, Math.max(180, Math.min(600, rect.width + delta)));
+      const previous = root.__ctiLayout[hudMode(root)] || root.__ctiLayout.compact || {};
+      persist(Number.isFinite(previous.x) ? previous.x : rect.left,
+        Number.isFinite(previous.y) ? previous.y : rect.top,
+        Math.max(180, Math.min(600, rect.width + delta)));
       applyStoredHudPosition(root);
     });
     const resize = () => applyStoredHudPosition(root);
@@ -232,13 +257,14 @@
       window.removeEventListener('pointermove', move, true);
       window.removeEventListener('pointerup', end, true);
       window.removeEventListener('pointercancel', end, true);
+      root.removeEventListener('lostpointercapture', end);
     };
   }
 
   function keepTogglePosition(root, update) {
     const before = hudMode(root), rect = root.getBoundingClientRect();
     const dockedEdge = root.dataset.docked === 'true' ? root.dataset.dockEdge : null;
-    const beforeLayout = root.__ctiLayout[before] || {};
+    const beforeLayout = root.__ctiLayout[before] || root.__ctiLayout.compact || {};
     const mascot = dockedEdge ? document.getElementById(MASCOT_ID) : null;
     // Viewport clamping is temporary. Only a user drag changes the saved anchor;
     // copying rect.top here makes a bottom-anchored panel creep upward on collapse.

@@ -3,11 +3,11 @@
 </div>
 
 <p align="center">
-  <a href="https://github.com/ailble-abum/codex-quota-monitor/releases/tag/v2.0.14"><strong>下载 macOS 正式版</strong></a>
+  <a href="https://github.com/ailble-abum/codex-quota-monitor/releases/tag/v2.0.15"><strong>下载 macOS 正式版</strong></a>
   &nbsp;·&nbsp;
   <a href="#快速开始">快速开始</a>
   &nbsp;·&nbsp;
-  <a href="docs/RELEASE-v2.0.14.md">发行说明</a>
+  <a href="docs/RELEASE-v2.0.15.md">发行说明</a>
 </p>
 
 把 Codex 的账户额度、当前任务上下文和近 7 天的使用采样放在你看得见的地方：侧栏里有面板，菜单栏里有简要状态。数据主要在本机处理；不需要为这个项目再注册一个账号。
@@ -29,7 +29,7 @@
 
 「设置 → 默认上下文」提供日常任务（256K，默认推荐）、长任务（512K）、超长任务（1M）和手动输入。选择区显示实际保存的容量与压缩阈值所对应的档位，自定义值或跟随模型显示为手动输入。选择后点击保存才会应用，实际容量受模型上限限制；保存后可选「立即重启 / 稍后」。受本项目服务管理的 macOS 安装会自动恢复插件连接。此功能不适用于 ChatGPT 聊天。
 
-1. 从 [v2.0.14 发布页](https://github.com/ailble-abum/codex-quota-monitor/releases/tag/v2.0.14)下载 macOS ZIP 和 `SHA256SUMS`。在下载目录运行 `shasum -a 256 -c SHA256SUMS`，通过后解压到新目录。
+1. 从 [v2.0.15 发布页](https://github.com/ailble-abum/codex-quota-monitor/releases/tag/v2.0.15)下载 macOS ZIP 和 `SHA256SUMS`。在下载目录运行 `shasum -a 256 -c SHA256SUMS`，通过后解压到新目录。
 2. 停止旧版监视器。进入解压后的目录，创建 Python 3.9+ 虚拟环境、安装依赖，复制并填写私有配置：
 
 ```sh
@@ -59,4 +59,4 @@ cp config.example.json config.json
 - 7 天报告是本地采样摘要。没有采到的时段不会补成“完整用量”；系统通知的实际弹出仍受 macOS 权限影响。
 - V2 已替换本项目的运行链，但新猫“星瞳诺瓦”使用本项目新生成的图像，其余伴宠的来源和代码归因继续记录。发行包保留 Kevin Ke 与 Ailble 的 MIT `LICENSE` 和 `NOTICE`。
 
-[发行说明](docs/RELEASE-v2.0.14.md) · [验证记录](docs/BETA-VALIDATION.md) · [资源来源](docs/asset-provenance.md)
+[发行说明](docs/RELEASE-v2.0.15.md) · [验证记录](docs/BETA-VALIDATION.md) · [资源来源](docs/asset-provenance.md)

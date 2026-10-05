@@ -31,7 +31,7 @@
       if (action === 'pet') { gesture.mode = 'pet'; clearTimeout(mascot.__ctiPetTimer); event.preventDefault(); companionReact(root, 'pet'); return; }
       if (action === 'drag') { gesture.mode = 'drag'; clearTimeout(mascot.__ctiPetTimer); }
       const next = mascotDragGeometry(gesture, event.clientY, window.innerHeight,
-        root.getBoundingClientRect().height, 48 * mascotScale());
+        0, 52 * mascotScale());
       if (!next.moved) return;
       gesture.moved = true; event.preventDefault();
       root.__ctiLayout[gesture.layoutMode] = {...(root.__ctiLayout[gesture.layoutMode] || {}), y:next.y};

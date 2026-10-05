@@ -273,10 +273,10 @@
       }
       #codex-context-token-inspector-root [data-resize]:hover,
       #codex-context-token-inspector-root [data-resize]:focus-visible { opacity:.8; outline:1px solid currentColor; }
-      #codex-context-token-inspector-root [data-resize="nw"] { left:-4px; top:-4px; cursor:nwse-resize; }
-      #codex-context-token-inspector-root [data-resize="ne"] { right:-4px; top:-4px; cursor:nesw-resize; }
-      #codex-context-token-inspector-root [data-resize="sw"] { left:-4px; bottom:-4px; cursor:nesw-resize; }
-      #codex-context-token-inspector-root [data-resize="se"] { right:-4px; bottom:-4px; cursor:nwse-resize; }
+      #codex-context-token-inspector-root [data-resize="nw"] { left:0; top:0; cursor:nwse-resize; }
+      #codex-context-token-inspector-root [data-resize="ne"] { right:0; top:0; cursor:nesw-resize; }
+      #codex-context-token-inspector-root [data-resize="sw"] { left:0; bottom:0; cursor:nesw-resize; }
+      #codex-context-token-inspector-root [data-resize="se"] { right:0; bottom:0; cursor:nwse-resize; }
       #codex-context-token-inspector-mascot {
         position:fixed; z-index:2147483001; display:none; width:48px; height:52px; padding:0; border:0;
         --cti-safe:#70d4a6; --cti-watch:#8ab5ff; --cti-low:#ff929c;
