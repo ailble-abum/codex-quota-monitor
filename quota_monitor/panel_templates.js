@@ -3,8 +3,8 @@
     return `<header class="cti-header">
       <button type="button" class="cti-title" data-cti-title aria-expanded="true">Usage</button>
       <div class="cti-header-actions">
-        <button type="button" data-refresh title="Refresh quota">↻</button>
-        <button type="button" data-settings-toggle aria-expanded="false" title="Settings">⚙</button>
+        <button type="button" data-refresh title="Refresh quota"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M20 12a8 8 0 1 0-2.3 5.7M20 12a8 8 0 0 0-2.3-5.7"/></svg></button>
+        <button type="button" data-settings-toggle aria-expanded="false" title="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 3-1 3-3 1-2 5 2 5 3 1 1 3h6l1-3 3-1 2-5-2-5-3-1-1-3Z"/><circle cx="12" cy="12" r="3"/></svg></button>
         <button type="button" data-cti-toggle aria-label="Collapse monitor">−</button>
       </div>
     </header>
@@ -19,17 +19,35 @@
 
   function panelBodyTemplate(zh) {
     const text = (chinese, english) => zh ? chinese : english;
-    return `<section class="cti-section" data-quota></section>
+    return `<div data-overview><section class="cti-section" data-quota></section>
       <p class="cti-muted" data-freshness></p>
       <section class="cti-section" data-context></section>
       <section class="cti-section" data-health></section>
-      <section class="cti-section" data-history></section>
+      <details data-history-disclosure>
+        <summary><span>${text('用量记录', 'Usage history')}</span><span class="cti-summary-meta" data-history-summary></span></summary>
+        <section data-history></section>
+      </details>
       <details data-details>
         <summary>${text('聊天用量', 'Chat usage')}</summary>
         <div class="cti-metrics" data-metrics></div>
         <p class="cti-muted" data-explanation></p>
       </details>
+      </div>
       <div class="cti-settings" data-settings hidden>
+        <div class="cti-settings-heading"><strong>${text('设置', 'Settings')}</strong><button type="button" data-settings-back>${text('返回用量', 'Back to usage')}</button></div>
+        <section class="cti-settings-group">
+          <h3>${text('显示', 'Display')}</h3>
+          <div class="cti-setting-row"><span>${text('Token 单位', 'Token unit')}</span><div data-units></div></div>
+          <label class="cti-setting-row">${text('语言', 'Language')}
+            <select data-language><option value="auto">${text('跟随系统', 'System')}</option><option value="zh">中文</option><option value="en">English</option></select>
+          </label>
+          <fieldset><legend>${text('面板大小', 'Panel size')}</legend><div class="cti-segmented">
+            <button type="button" data-layout-preset="mini" aria-pressed="false">${text('紧凑', 'Compact')}</button>
+            <button type="button" data-layout-preset="standard" aria-pressed="false">${text('标准', 'Standard')}</button>
+            <button type="button" data-layout-preset="large" aria-pressed="false">${text('大', 'Large')}</button>
+          </div></fieldset>
+          <label class="cti-check-row"><input type="checkbox" data-edge-dock> ${text('靠边收起', 'Edge docking')}</label>
+        </section>
         <details data-context-defaults>
           <summary>${text('默认上下文', 'Context defaults')}</summary>
           <p class="cti-muted">${text('本机 Codex 新对话默认值，ChatGPT 聊天不适用。', 'Defaults for new local Codex chats. Not applicable to ChatGPT chats.')}</p>
@@ -69,19 +87,8 @@
             </div>
           </div>
         </details>
-        <div data-units></div>
-        <label>${text('语言', 'Language')}
-          <select data-language>
-            <option value="auto">${text('跟随系统', 'System')}</option>
-            <option value="zh">中文</option><option value="en">English</option>
-          </select>
-        </label>
-        <fieldset><legend>${text('面板大小', 'Panel size')}</legend>
-          <button type="button" data-layout-preset="mini" aria-pressed="false">${text('紧凑', 'Compact')}</button>
-          <button type="button" data-layout-preset="standard" aria-pressed="false">${text('标准', 'Standard')}</button>
-          <button type="button" data-layout-preset="large" aria-pressed="false">${text('大', 'Large')}</button>
-        </fieldset>
-        <label><input type="checkbox" data-edge-dock> ${text('靠边收起', 'Edge docking')}</label>
+        <details data-companion-settings>
+          <summary>${text('伴宠', 'Companion')}<span class="cti-summary-meta" data-skin-current></span></summary>
         <div class="cti-mascot-size">
           <div class="cti-line"><label for="cti-mascot-scale">${text('伴宠大小', 'Companion size')}</label>
             <span data-mascot-scale-value></span>
@@ -91,18 +98,25 @@
           <div class="cti-line cti-mascot-size-limits"><span>75%</span><span>200%</span></div>
         </div>
         <details data-skins>
-          <summary>${text('伴宠皮肤', 'Companion skin')} · <span data-skin-current></span></summary>
+          <summary>${text('选择皮肤', 'Choose skin')}</summary>
           <div class="cti-skin-grid">${skinButtons()}</div>
         </details>
         <label><input type="checkbox" data-companion-motion> ${text('伴宠动效', 'Companion motion')}</label>
         <label><input type="checkbox" data-companion-reminders> ${text('伴宠提醒', 'Companion reminders')}</label>
+        </details>
+        <details data-reminder-settings>
+          <summary>${text('提醒', 'Reminders')}</summary>
         <label><input type="checkbox" data-context-alerts> ${text('上下文提醒', 'Context reminders')}</label>
         <label><input type="checkbox" data-alerts disabled aria-describedby="cti-quota-alerts-unavailable"> ${text('额度通知', 'Quota notifications')}</label>
         <p class="cti-muted" id="cti-quota-alerts-unavailable">${text('通知未启用，需先设置保存位置。', 'Notifications are off. Set a storage location to enable them.')}</p>
+        </details>
+        <div class="cti-settings-tools">
         <button type="button" data-handoff>${text('复制交接提示', 'Copy handoff prompt')}</button>
         <button type="button" data-position-reset>${text('重置位置', 'Reset position')}</button>
-        <section class="cti-diagnostics">
+        </div>
+        <details class="cti-diagnostics" data-diagnostics-details>
+          <summary>${text('版本与连接', 'Version & connection')}</summary>
           <p data-build></p><div data-update></div><p data-dom></p>
-        </section>
+        </details>
       </div>`;
   }

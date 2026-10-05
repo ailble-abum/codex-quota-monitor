@@ -240,13 +240,16 @@
     const dockedEdge = root.dataset.docked === 'true' ? root.dataset.dockEdge : null;
     const beforeLayout = root.__ctiLayout[before] || {};
     const mascot = dockedEdge ? document.getElementById(MASCOT_ID) : null;
+    // Viewport clamping is temporary. Only a user drag changes the saved anchor;
+    // copying rect.top here makes a bottom-anchored panel creep upward on collapse.
     const anchorY = dockedEdge
       ? (Number.isFinite(beforeLayout.y) ? beforeLayout.y : mascot?.getBoundingClientRect().top)
-      : rect.top;
-    root.__ctiLayout[before] = {...beforeLayout, x:rect.left, y:anchorY};
+      : (Number.isFinite(beforeLayout.y) ? beforeLayout.y : rect.top);
+    const anchorX = Number.isFinite(beforeLayout.x) ? beforeLayout.x : rect.left;
+    root.__ctiLayout[before] = {...beforeLayout, x:anchorX, y:anchorY};
     update();
     const after = hudMode(root);
-    root.__ctiLayout[after] = {...(root.__ctiLayout[after] || {}), x:rect.left, y:anchorY};
+    root.__ctiLayout[after] = {...(root.__ctiLayout[after] || {}), x:anchorX, y:anchorY};
     if (dockedEdge === 'left' || dockedEdge === 'right') root.__ctiLayout[after].edge = dockedEdge;
     else delete root.__ctiLayout[after].edge;
     saveLayout(root); applyStoredHudPosition(root);

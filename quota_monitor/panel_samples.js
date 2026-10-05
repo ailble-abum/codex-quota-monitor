@@ -7,6 +7,8 @@
     const zh = uiLanguage() === 'zh';
     const text = (chinese, english) => zh ? chinese : english;
     const valid = samples && Number.isSafeInteger(samples.samples) && samples.samples > 0;
+    const preview = body.querySelector('[data-history-summary]');
+    if (preview) preview.textContent = valid ? `${samples.samples.toLocaleString(zh ? 'zh-CN' : 'en')} ${text('次采样', 'samples')}` : text('暂无记录', 'No records');
     if (!valid) {
       const empty = document.createElement('span');
       empty.className = 'cti-muted';

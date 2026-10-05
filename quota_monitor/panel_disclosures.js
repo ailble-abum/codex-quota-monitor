@@ -7,6 +7,10 @@
   function restoreDisclosures(fragment, previousBody) {
     const defaults = fragment.querySelector('[data-context-defaults]');
     if (defaults) defaults.open = previousBody.querySelector('[data-context-defaults]')?.open === true;
+    for (const selector of ['[data-history-disclosure]', '[data-companion-settings]', '[data-reminder-settings]', '[data-diagnostics-details]']) {
+      const node = fragment.querySelector(selector);
+      if (node) node.open = previousBody.querySelector(selector)?.open === true;
+    }
     for (const selector of ['details[data-details]', 'details[data-skins]']) {
       const node = fragment.querySelector(selector);
       const previous = previousBody.querySelector(selector);
@@ -21,7 +25,8 @@
   }
   function handleDisclosureToggle(root, event) {
     const node = event.target;
-    if (!root.isConnected || !root.contains(node) || !disclosureStates.has(node)) return;
+    if (!root.isConnected || !root.contains(node) || !node.matches('details')) return;
+    if (!disclosureStates.has(node)) { clampHud(root); return; }
     if (disclosureStates.get(node) === node.open) return;
     disclosureStates.set(node, node.open);
     try { localStorage.setItem(disclosureKey(node), String(node.open)); }

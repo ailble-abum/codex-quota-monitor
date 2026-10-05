@@ -111,6 +111,10 @@ const {chromium, webkit} = require('playwright');
      node.__ctiApplyPosition();
     });
     await page.locator('[data-settings-toggle]').click();
+    await page.locator('[data-companion-settings] > summary').click();
+    await page.locator('[data-context-defaults] > summary').click();
+    await page.waitForTimeout(220);
+    // Opening optional sections must still scroll inside the panel.
     // A real click waited for the post-resize position/transition to settle.
     const rect=await root.boundingBox();
     assert.ok(rect.x>=0 && rect.y>=0 && rect.x+rect.width<=901 && rect.y+rect.height<=701, JSON.stringify(rect));

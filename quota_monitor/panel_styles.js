@@ -3,6 +3,8 @@
     return `
       #codex-context-token-inspector-root {
         --cti-safe:#27b786; --cti-watch:#d69a28; --cti-low:#e05d68;
+        --cti-surface:color-mix(in srgb,CanvasText 4%,Canvas);
+        --cti-border:color-mix(in srgb,CanvasText 10%,transparent);
         position:fixed; z-index:2147483000; box-sizing:border-box;
         width:292px; max-height:calc(100vh - 80px); overflow-x:hidden; overflow-y:auto;
         color:CanvasText; background:color-mix(in srgb,Canvas 94%,transparent);
@@ -16,6 +18,9 @@
         box-shadow:0 0 0 2px color-mix(in srgb,#4f8cff 78%,transparent),0 12px 36px #0002;
       }
       #codex-context-token-inspector-root, #codex-context-token-inspector-root * { box-sizing:border-box; }
+      #codex-context-token-inspector-root [hidden] { display:none !important; }
+      #codex-context-token-inspector-root p { margin:6px 0 0; }
+      #codex-context-token-inspector-root button { margin:0; line-height:1; }
       #codex-context-token-inspector-root button,
       #codex-context-token-inspector-root select,
       #codex-context-token-inspector-root input { font:inherit; color:inherit; }
@@ -35,12 +40,12 @@
       #codex-context-token-inspector-mascot:focus-visible { outline:2px solid Highlight; outline-offset:2px; }
       #codex-context-token-inspector-root .cti-header {
         display:flex; align-items:center; justify-content:space-between; gap:12px;
-        padding:12px 16px; border-bottom:1px solid color-mix(in srgb,CanvasText 7%,transparent);
+        padding:10px 12px; border-bottom:1px solid color-mix(in srgb,CanvasText 7%,transparent);
         font-weight:650; cursor:move; touch-action:none; position:sticky; top:0; z-index:3;
         background:Canvas; zoom:var(--cti-scale,1);
       }
       #codex-context-token-inspector-root .cti-title {
-        width:auto; height:auto; display:flex; flex:1; min-width:0; gap:8px;
+        width:auto; height:auto; display:flex; align-items:center; justify-content:flex-start; flex:1; min-width:0; gap:8px;
         text-align:left; font:inherit; font-weight:650; padding:0; background:transparent;
         border:0;
       }
@@ -48,23 +53,68 @@
       #codex-context-token-inspector-root [data-cti-title]::before {
         content:''; width:7px; height:7px; flex:none; border-radius:50%; background:var(--cti-tone);
       }
-      #codex-context-token-inspector-root .cti-header-actions { display:flex; align-items:center; gap:4px; }
-      #codex-context-token-inspector-root .cti-unit-group { display:flex; gap:4px; padding:0 8px 8px; }
+      #codex-context-token-inspector-root .cti-header-actions { display:flex; align-items:center; flex:none; gap:4px; }
+      #codex-context-token-inspector-root .cti-header-actions button {
+        width:28px; height:28px; min-width:28px; min-height:28px; padding:0; margin:0;
+        flex:none; vertical-align:middle;
+      }
+      #codex-context-token-inspector-root .cti-header-actions svg {
+        display:block; width:16px; height:16px; fill:none; stroke:currentColor;
+        stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; pointer-events:none;
+      }
+      #codex-context-token-inspector-root button:hover,
+      #codex-context-token-inspector-root [data-settings-toggle][aria-expanded="true"] { background:var(--cti-surface); }
+      #codex-context-token-inspector-root .cti-settings-heading { display:flex; align-items:center; justify-content:space-between; }
+      #codex-context-token-inspector-root .cti-settings-heading strong { font-size:14px; }
+      #codex-context-token-inspector-root .cti-settings-heading button { color:color-mix(in srgb,CanvasText 68%,Canvas); }
+      #codex-context-token-inspector-root .cti-settings-group { padding:12px; border:1px solid var(--cti-border); border-radius:10px; display:grid; gap:12px; }
+      #codex-context-token-inspector-root h3 { margin:0; font:650 12px/1.4 system-ui; }
+      #codex-context-token-inspector-root .cti-setting-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; }
+      #codex-context-token-inspector-root .cti-check-row,
+      #codex-context-token-inspector-root details > label { display:flex; gap:8px; align-items:center; margin-top:8px; }
+      #codex-context-token-inspector-root input[type="checkbox"] { appearance:auto; width:14px; height:14px; margin:0; flex:none; accent-color:var(--cti-safe); }
+      #codex-context-token-inspector-root .cti-settings-tools { display:flex; flex-wrap:wrap; gap:8px; }
+      #codex-context-token-inspector-root .cti-segmented { display:flex; gap:4px; padding:3px; border-radius:8px; background:var(--cti-surface); }
+      #codex-context-token-inspector-root .cti-segmented button { flex:1; }
+      #codex-context-token-inspector-root .cti-summary-meta { margin-left:auto; font-size:11px; font-weight:400; color:color-mix(in srgb,CanvasText 60%,Canvas); }
+      #codex-context-token-inspector-root .cti-unit-group { display:flex; gap:2px; padding:2px; border-radius:8px; background:var(--cti-surface); }
       #codex-context-token-inspector-root .cti-unit-group button[data-active="true"],
       #codex-context-token-inspector-root [data-layout-preset][data-active="true"],
       #codex-context-token-inspector-root [data-skin-choice][data-active="true"] { border-color:Highlight; background:color-mix(in srgb,Highlight 18%,Canvas); }
-      #codex-context-token-inspector-root .cti-body { padding:0 10px 10px; zoom:var(--cti-scale,1); }
-      #codex-context-token-inspector-root .cti-section,
-      #codex-context-token-inspector-root details,
-      #codex-context-token-inspector-root .cti-settings { margin-top:8px; padding:8px; border-radius:10px; background:color-mix(in srgb,CanvasText 5%,transparent); }
-      #codex-context-token-inspector-root summary { cursor:pointer; font-weight:650; }
-      #codex-context-token-inspector-root .cti-settings { display:grid; gap:8px; }
+      #codex-context-token-inspector-root .cti-body { padding:12px; zoom:var(--cti-scale,1); }
+      #codex-context-token-inspector-root [data-overview] { display:grid; gap:10px; }
+      #codex-context-token-inspector-root .cti-section { padding:12px; border:1px solid var(--cti-border); border-radius:10px; background:var(--cti-surface); }
+      #codex-context-token-inspector-root details { margin:0; padding:10px 12px; border:1px solid var(--cti-border); border-radius:10px; background:Canvas; }
+      #codex-context-token-inspector-root summary { display:flex; align-items:center; gap:7px; list-style:none; cursor:pointer; font-weight:550; min-height:20px; }
+      #codex-context-token-inspector-root summary::-webkit-details-marker { display:none; }
+      #codex-context-token-inspector-root summary::before { content:''; width:5px; height:5px; border-right:1.5px solid currentColor; border-bottom:1.5px solid currentColor; transform:rotate(-45deg); flex:none; margin-right:2px; opacity:.55; }
+      #codex-context-token-inspector-root details[open] > summary { margin-bottom:10px; }
+      #codex-context-token-inspector-root details[open] > summary::before { transform:rotate(45deg); }
+      #codex-context-token-inspector-root summary:focus-visible { outline:2px solid Highlight; outline-offset:3px; border-radius:3px; }
+      #codex-context-token-inspector-root .cti-settings { display:grid; gap:10px; }
       #codex-context-token-inspector-root .cti-settings[hidden] { display:none; }
+      #codex-context-token-inspector-root [data-freshness] { margin:-4px 2px 0; font-size:11px; }
+      #codex-context-token-inspector-root [data-health] { padding:0 2px; border:0; background:transparent; font-size:11px; }
+      #codex-context-token-inspector-root [data-health] .cti-source-row { display:none; }
+      #codex-context-token-inspector-root [data-health][data-warning="true"] { padding:10px; background:color-mix(in srgb,var(--cti-watch) 12%,Canvas); border-radius:8px; }
+      #codex-context-token-inspector-root [data-quota] .cti-source-row .cti-trust { padding:0; background:transparent; color:color-mix(in srgb,CanvasText 64%,Canvas); }
+      #codex-context-token-inspector-root .cti-quota-value { font-size:24px; line-height:1.25; letter-spacing:-.5px; }
+      #codex-context-token-inspector-root .cti-quota-value small { font-size:13px; margin-left:2px; }
+      #codex-context-token-inspector-root .cti-quota-window > .cti-line { flex-wrap:wrap; }
+      #codex-context-token-inspector-root .cti-quota-window .cti-muted { font-size:11px; }
+      #codex-context-token-inspector-root .cti-quota-window .cti-meter { margin:7px 0 8px; }
+      #codex-context-token-inspector-root .cti-quota-window + .cti-quota-window { padding-top:10px; border-top:1px solid var(--cti-border); margin-top:10px; }
+      #codex-context-token-inspector-root .cti-account-breakdown { padding:8px 0 0; margin-top:10px; border:0; border-top:1px solid var(--cti-border); border-radius:0; background:transparent; font-size:11px; }
+      #codex-context-token-inspector-root [data-history] { font-size:12px; }
+      #codex-context-token-inspector-root [data-history] > .cti-line:first-child { display:none; }
+      #codex-context-token-inspector-root [data-history] .cti-line { flex-wrap:wrap; padding:3px 0; }
+      #codex-context-token-inspector-root [data-context] .cti-meter { margin:8px 0 6px; }
+      #codex-context-token-inspector-root [data-context] .cti-muted { font-size:12px; }
       /* Header controls are icons; settings controls carry text. */
       #codex-context-token-inspector-root .cti-settings { min-width:0; }
       #codex-context-token-inspector-root .cti-unit-group button,
       #codex-context-token-inspector-root .cti-settings button {
-        width:auto; height:auto; min-width:0; min-height:24px; overflow:hidden;
+        width:auto; height:auto; min-width:0; min-height:28px; overflow:hidden;
         text-overflow:ellipsis; white-space:nowrap;
       }
       #codex-context-token-inspector-root fieldset { border:0; margin:0; padding:0; }
@@ -106,7 +156,7 @@
       #codex-context-token-inspector-root .cti-mascot-size { display:grid; gap:6px; }
       #codex-context-token-inspector-root .cti-mascot-size > .cti-line { flex-wrap:wrap; }
       #codex-context-token-inspector-root [data-mascot-scale-auto] { flex:none; margin-left:auto; }
-      #codex-context-token-inspector-root .cti-mascot-size-preview { display:grid; place-items:center; min-height:112px; border:1px solid color-mix(in srgb,CanvasText 15%,transparent); border-radius:8px; }
+      #codex-context-token-inspector-root .cti-mascot-size-preview { display:grid; place-items:center; min-height:96px; border:1px solid color-mix(in srgb,CanvasText 15%,transparent); border-radius:8px; }
       #codex-context-token-inspector-root .cti-size-preview-art { display:block; object-fit:contain; }
       #codex-context-token-inspector-root [data-mascot-scale] { appearance:none; -webkit-appearance:none; width:100%; height:28px; margin:0; background:transparent; cursor:pointer; }
       #codex-context-token-inspector-root [data-mascot-scale]::-webkit-slider-runnable-track { height:6px; border-radius:999px; background:color-mix(in srgb,CanvasText 34%,Canvas); }
@@ -130,6 +180,7 @@
       #codex-context-token-inspector-root[data-collapsed="true"] .cti-header {
         padding:7px 9px; border:0; gap:7px;
       }
+      #codex-context-token-inspector-root[data-collapsed="true"] .cti-header-actions button { width:28px; height:24px; min-height:24px; }
       #codex-context-token-inspector-root[data-collapsed="true"] .cti-header-actions {
         align-self:stretch; justify-content:center;
       }

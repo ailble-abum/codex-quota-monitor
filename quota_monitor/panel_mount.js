@@ -171,11 +171,15 @@
         event.stopPropagation();
         setUnitMode(button.dataset.ctiUnit);
         applyAll(window.__codexContextTokenInspectorPayload);
-      } else if (button.hasAttribute('data-settings-toggle')) {
+      } else if (button.hasAttribute('data-settings-toggle') || button.hasAttribute('data-settings-back')) {
         const settings = panel.querySelector('[data-settings]');
         settings.hidden = !settings.hidden;
-        button.setAttribute('aria-expanded', String(!settings.hidden));
+        panel.querySelector('[data-overview]').hidden = !settings.hidden;
+        panel.querySelector('[data-settings-toggle]').setAttribute('aria-expanded', String(!settings.hidden));
+        panel.scrollTop = 0;
+        updateHudTitle(panel);
         clampHud(panel);
+        if (button.hasAttribute('data-settings-back')) panel.querySelector('[data-settings-toggle]').focus({preventScroll:true});
       } else if (button.hasAttribute('data-cti-toggle') || button.hasAttribute('data-cti-title')) {
         event.preventDefault();
         event.stopPropagation();

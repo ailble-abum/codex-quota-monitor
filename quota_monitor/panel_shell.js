@@ -127,6 +127,9 @@
       const compaction = health?.count
         ? `${chinese ? '压缩' : 'Compactions'} ${health.count} · ${chinese ? '压缩后首轮' : 'first turn after compaction'} ${afterPercent}` : '';
       title.setAttribute('aria-label', [compact, budget, `${chinese ? '上下文已用' : 'Context used'} ${pct(context)}`, compaction].filter(Boolean).join(' · '));
-    } else if (title.textContent !== tr('monitor')) title.textContent = tr('monitor');
+    } else {
+      const label = root.querySelector('[data-settings]')?.hidden === false ? tr('displaySettings') : tr('monitor');
+      if (title.textContent !== label) title.textContent = label;
+    }
     updateHudLanguage(root);
   }

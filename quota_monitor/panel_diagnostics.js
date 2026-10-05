@@ -29,6 +29,10 @@
           next.dataset.prompt = 'show';
           root.dataset.collapsed = 'false';
           body.querySelector('[data-settings]').hidden = false;
+          const overview = body.querySelector('[data-overview]');
+          if (overview) overview.hidden = true;
+          const diagnostics = body.querySelector('[data-diagnostics-details]');
+          if (diagnostics) diagnostics.open = true;
           root.querySelector('[data-settings-toggle]').setAttribute('aria-expanded', 'true');
           autoShow = true;
         }

@@ -146,6 +146,7 @@ const {chromium, webkit} = require('playwright');
         })), modelCounts: [{model: '<b>safe-model</b>', samples: 2}],
         projectCounts: [{project: '<b>My Project</b>', samples: 2}]}};
       await publish();
+      await page.locator('[data-history-disclosure] > summary').click();
       assert.equal(await page.locator('[data-history] .cti-line').count(), 8);
       assert.ok((await page.locator('[data-history]').textContent()).includes('模型采样'));
       assert.ok((await page.locator('[data-history]').textContent()).includes('项目采样'));
@@ -255,6 +256,8 @@ const {chromium, webkit} = require('playwright');
       await page.locator('[data-settings-toggle]').click();
       assert.equal(await page.locator('[data-settings-toggle]').getAttribute('aria-expanded'), 'true');
       assert.equal(await page.locator('[data-refresh]').evaluate(button => getComputedStyle(button).width), '28px');
+      await page.locator('[data-companion-settings] > summary').click();
+      await page.locator('[data-reminder-settings] > summary').click();
       const readable = '[data-cti-unit],[data-layout-preset],[data-mascot-scale-auto],[data-handoff],[data-position-reset]';
       assert.ok(await page.locator(readable).evaluateAll(buttons => buttons.every(button => {
         const range = document.createRange(); range.selectNodeContents(button);
@@ -345,7 +348,9 @@ const {chromium, webkit} = require('playwright');
           return window.disclosureSetItem.call(this, key, value);
         };
       });
+      await page.locator('[data-settings-back]').click();
       await page.locator('[data-details] > summary').click();
+      await page.locator('[data-settings-toggle]').click();
       await page.locator('[data-skins] > summary').click();
       await page.evaluate(() => { window.originalUnits = document.querySelector('.cti-unit-group'); });
       for (const language of ['en', 'zh']) {
@@ -406,7 +411,9 @@ const {chromium, webkit} = require('playwright');
       assert.equal(await page.locator('.cti-hud').getAttribute('lang'), 'zh-CN');
       assert.deepEqual(await page.evaluate(() => window.languageErrors), []);
       await page.evaluate(() => { Storage.prototype.setItem = window.disclosureSetItem; });
+      await page.locator('[data-settings-back]').click();
       await page.locator('[data-details] > summary').click();
+      await page.locator('[data-settings-toggle]').click();
       await page.locator('[data-skins] > summary').click();
       await page.waitForFunction(() => localStorage.getItem('cti-details-open') === 'false' && localStorage.getItem('cti-skins-open') === 'false');
       await page.evaluate(() => {
