@@ -7,7 +7,7 @@ from quota_monitor.update_state import CURRENT_VERSION, UpdateSource, project
 
 class UpdateStateTests(unittest.TestCase):
     def test_release_version(self):
-        self.assertEqual(CURRENT_VERSION, '2.0.15')
+        self.assertEqual(CURRENT_VERSION, '2.0.16')
 
     def test_projection_is_bounded_and_compares_release_versions(self):
         self.assertEqual(project({'tag_name': 'v2.0.15', 'html_url': 'https://example.invalid/release'}, current='2.0.14')['status'],

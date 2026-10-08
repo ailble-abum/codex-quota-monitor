@@ -28,7 +28,7 @@ class MenuTests(unittest.TestCase):
             result = subprocess.run([str(binary), '--report', str(history)],
                                     capture_output=True, text=True, timeout=5)
             self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn('Codex · 25%', result.stdout)
+            self.assertEqual(result.stdout.splitlines()[0], '25%')
             self.assertIn('近 7 天采样：1', result.stdout)
             self.assertIn('常用项目：New 1', result.stdout)
             self.assertNotIn('Old', result.stdout)
@@ -68,18 +68,46 @@ class MenuTests(unittest.TestCase):
             self.assertIn('等待用量更新', stale.stdout)
             self.assertNotIn('上下文已用：42%', stale.stdout)
             self.assertNotIn('Token：最近日用量', stale.stdout)
-            self.assertIn('Codex · 未更新', stale.stdout)
+            self.assertEqual(stale.stdout.splitlines()[0], '—')
 
             history.unlink()
             missing = subprocess.run([str(binary), '--report', str(history)],
                                      capture_output=True, text=True, timeout=5)
-            self.assertEqual(missing.stdout.splitlines(), ['Codex · 未更新', '用量记录暂不可用'])
+            self.assertEqual(missing.stdout.splitlines(), ['—', '用量记录暂不可用'])
             history.write_text('[]')
             empty = subprocess.run([str(binary), '--report', str(history)],
                                    capture_output=True, text=True, timeout=5)
             self.assertIn('等待用量更新', empty.stdout)
             self.assertIn('近 7 天采样：0', empty.stdout)
             self.assertNotIn('V2', empty.stdout)
+
+    def test_report_accepts_full_retention_history_and_bounds_oversized_reads(self):
+        import time
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            binary, history = root / 'QuotaMenu', root / 'history.json'
+            source = Path(__file__).resolve().parents[1] / 'quota_monitor/QuotaMenu.swift'
+            subprocess.run(['swiftc', str(source), '-o', str(binary)], check=True,
+                           capture_output=True, timeout=30)
+            now = time.time()
+            row = {'accountKey': 'a' * 64, 'model': 'model-' + 'x' * 100,
+                   'projectKey': 'b' * 64, 'projectLabel': '示例项目' * 20,
+                   'windows': [{'key': 'primary', 'remaining': 49, 'duration': 10080}],
+                   'context': {'latest_context_percent': 37}}
+            history.write_text(json.dumps([dict(row, at=now - i * 30) for i in range(10080)],
+                                          ensure_ascii=False, separators=(',', ':')))
+            self.assertGreater(history.stat().st_size, 4_000_000)
+            result = subprocess.run([str(binary), '--report', str(history)],
+                                    capture_output=True, text=True, check=True, timeout=5)
+            self.assertEqual(result.stdout.splitlines()[0], '49%')
+            self.assertIn('近 7 天采样：10080', result.stdout)
+            self.assertIn('上下文已用：37%', result.stdout)
+            with history.open('wb') as stream:
+                stream.seek(16 * 1024 * 1024)
+                stream.write(b' ')
+            result = subprocess.run([str(binary), '--report', str(history)],
+                                    capture_output=True, text=True, check=True, timeout=5)
+            self.assertEqual(result.stdout.splitlines(), ['—', '用量记录暂不可用'])
 
 
 if __name__ == '__main__':

@@ -444,3 +444,13 @@ class NamedDirectorySource(DirectorySource):
         result = super().read(key)
         self._remember_journals()
         return result
+
+    def read_sidebar(self, key):
+        """Read a verified local hover without selecting it as the open chat."""
+        result = self.read(key)
+        payload = panel_payload({}, None)
+        payload['summaries'] = [item for item in result['summaries']
+                                if item.get('thread_id') == key]
+        if 'sidebarStatus' in result:
+            payload['sidebarStatus'] = result['sidebarStatus']
+        return payload

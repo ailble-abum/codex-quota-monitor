@@ -6,10 +6,19 @@ struct LocalReport {
     let lines: [String]
 
     init(path: String, now: TimeInterval = Date().timeIntervalSince1970) {
-        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
-              data.count <= 4_000_000,
+        // 10,080 bounded samples can legitimately exceed 4 MB. Read only a
+        // bounded prefix before decoding so an oversized file cannot grow memory unboundedly.
+        let limit = 16 * 1024 * 1024
+        guard let handle = FileHandle(forReadingAtPath: path) else {
+            title = "—"
+            lines = ["用量记录暂不可用"]
+            return
+        }
+        defer { try? handle.close() }
+        guard let data = try? handle.read(upToCount: limit + 1),
+              data.count <= limit,
               let rows = (try? JSONSerialization.jsonObject(with: data)) as? [[String: Any]] else {
-            title = "Codex · 未更新"
+            title = "—"
             lines = ["用量记录暂不可用"]
             return
         }
@@ -29,7 +38,7 @@ struct LocalReport {
                   value.isFinite && value >= 0 && value <= 100 else { return nil }
             return value
         }.min()
-        title = recent && remaining != nil ? "Codex · \(Int(remaining!.rounded()))%" : "Codex · 未更新"
+        title = recent && remaining != nil ? "\(Int(remaining!.rounded()))%" : "—"
         var current = [String]()
         if recent, let latest {
             let windows = latest["windows"] as? [[String: Any]] ?? []
@@ -100,6 +109,11 @@ final class MenuApp: NSObject {
     init(path: String) {
         self.path = path
         super.init()
+        let icon = NSImage(systemSymbolName: "chart.pie", accessibilityDescription: "Codex 额度")
+        icon?.isTemplate = true
+        icon?.size = NSSize(width: 14, height: 14)
+        item.button?.image = icon
+        item.button?.imagePosition = .imageLeading
         refresh()
         timer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
             self?.refresh()
@@ -109,6 +123,9 @@ final class MenuApp: NSObject {
     private func refresh() {
         let report = LocalReport(path: path)
         item.button?.title = report.title
+        let label = report.title == "—" ? "Codex 额度未更新" : "Codex 额度剩余 \(report.title)"
+        item.button?.toolTip = label
+        item.button?.setAccessibilityLabel(label)
         let menu = NSMenu()
         for line in report.lines {
             let row = NSMenuItem(title: line, action: nil, keyEquivalent: "")

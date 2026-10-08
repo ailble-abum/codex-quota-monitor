@@ -217,11 +217,15 @@ class UpdateLoop:
                 if ready != 'ready':
                     self.status = 'changed'
                     return self.status
-            if key is not None and isinstance(self.source, NamedDirectorySource):
+            hovered = None
+            if isinstance(self.source, NamedDirectorySource):
                 hovered = await self.client.evaluate(page_expression(
                     action='sidebarHover', expected=self.page_url, key=key, host=self.host))
-                self.source.prioritize(thread_key(hovered))
-            payload = self.source.read(key) if key is not None else panel_payload({}, None)
+                hovered = thread_key(hovered)
+                self.source.prioritize(hovered)
+            payload = (self.source.read(key) if key is not None else
+                       self.source.read_sidebar(hovered) if hovered is not None else
+                       panel_payload({}, None))
             payload['contextSource'] = 'local' if key is not None else await self.client.evaluate(
                 page_expression(action='contextSource', expected=self.page_url, host=self.host))
             if self.context_defaults is not None:

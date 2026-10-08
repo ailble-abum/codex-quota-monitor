@@ -132,6 +132,17 @@ async function main() {
         .setAttribute('data-above-composer-conversation-id', 'chatgpt:chat-one'));
       assert.equal(await readHost(), null, 'ChatGPT must never read a local journal');
       assert.equal(await call({action:'contextSource', expected:'about:blank', host:'codex-sidebar'}), 'chatgpt');
+      await page.evaluate(() => {
+        const row = document.querySelector('button').cloneNode();
+        row.id = 'local-work-hover';
+        row.setAttribute('data-app-action-sidebar-thread-id', 'local:two');
+        row.setAttribute('data-app-action-sidebar-thread-active', 'false');
+        document.body.append(row);
+        window.__quotaMonitorV2SidebarThread = 'two';
+      });
+      assert.equal(await call({action:'sidebarHover', expected:'about:blank', host:'codex-sidebar', key:null}), 'two',
+        'local Work hover must remain readable while no local chat is active');
+      await page.evaluate(() => document.getElementById('local-work-hover').remove());
       const accountOptions = {...options, host:'codex-sidebar', key:null,
         payload:{activeThreadId:null, selectedThreadId:null, summaries:[],
           quota:{status:'live',updatedAt:Date.now()/1000,windows:[{remaining:75}]}}};

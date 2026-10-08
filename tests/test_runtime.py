@@ -43,6 +43,37 @@ class SelectionTests(unittest.TestCase):
 
 
 class LoopTests(unittest.IsolatedAsyncioTestCase):
+    async def test_local_work_hover_reads_numbers_without_an_active_local_chat(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for key in ('hover', 'other'):
+                (root / ('rollout-date-' + key + '.jsonl')).write_text(
+                    json.dumps({'type': 'session_meta', 'payload': {'id': key}}) + '\n')
+            loop = runtime.UpdateLoop('http://127.0.0.1:9222', 'about:blank',
+                                      session_root=root, session_layout='codex-rollout')
+            loop.update.snapshot = Mock(return_value={'status': 'unavailable'})
+            client = AsyncMock()
+            client.endpoint = 'ws://127.0.0.1:9222/devtools/page/one'
+            loop.client = client
+            with patch.object(runtime, 'list_pages', return_value=[]), \
+                    patch.object(runtime, 'select_page', return_value=client.endpoint):
+                client.evaluate.side_effect = [None, 'hover', 'chatgpt', False, False, True]
+                self.assertEqual(await loop.step(), 'updated')
+                payload = json.loads(client.evaluate.call_args.args[0][len(runtime._PAGE_BRIDGE) + 1:-1])['payload']
+                self.assertIsNone(payload['activeThreadId'])
+                self.assertIsNone(payload['selectedThreadId'])
+                self.assertIsNone(payload['detail'])
+                self.assertIsNone(payload['health'])
+                self.assertEqual(payload['detailsByThread'], {})
+                self.assertEqual(payload['contextSource'], 'chatgpt')
+                self.assertEqual([s['thread_id'] for s in payload['summaries']], ['hover'])
+                self.assertEqual(payload['sidebarStatus'], {'threadId': 'hover', 'status': 'ready'})
+                client.evaluate.side_effect = [None, None, 'unselected', False, False, True]
+                self.assertEqual(await loop.step(), 'updated')
+                payload = json.loads(client.evaluate.call_args.args[0][len(runtime._PAGE_BRIDGE) + 1:-1])['payload']
+                self.assertEqual(payload['summaries'], [])
+                self.assertIsNone(loop.source._priority_key)
+
     async def test_chatgpt_selection_keeps_account_and_history_without_reading_local_logs(self):
         loop = runtime.UpdateLoop('http://127.0.0.1:9222', 'about:blank', {},
                                   account_cli='/example/codex')

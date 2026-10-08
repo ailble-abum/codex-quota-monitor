@@ -20,7 +20,7 @@
 
   function hostLoadingNote(row, payload) {
     const zh = uiLanguage() === 'zh';
-    if (!payload || payload.activeThreadId === null) {
+    if (!payload) {
       return JSON.stringify([[zh ? '用量' : 'Usage',
         zh ? '打开 Codex 聊天查看用量' : 'Open a Codex chat to view usage']]);
     }
@@ -321,9 +321,9 @@
 
   function projectHostDetails(payload) {
     installHostListeners();
-    if (!payload || payload.activeThreadId === null) { clearHostProjection(); return; }
+    if (!payload) { clearHostProjection(); return; }
     projectSidebarNotes(payload);
-    projectMessageChips(payload);
+    projectMessageChips(payload.activeThreadId === null ? null : payload);
   }
 
   function disposeHostDetails() {

@@ -59,7 +59,8 @@ class SelfUpdateTests(unittest.TestCase):
             base + name: archive,
         }
         fetch = lambda url, limit: responses[url]
-        self.assertEqual(self_update._archive(version, fetch), archive)
+        with patch.object(self_update, 'CURRENT_VERSION', '2.0.14'):
+            self.assertEqual(self_update._archive(version, fetch), archive)
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory, 'bundle')
             root.mkdir()

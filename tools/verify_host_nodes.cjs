@@ -185,6 +185,15 @@ async function verifyTooltip(engine) {
     await page.evaluate(() => projectHostDetails({activeThreadId:'one', summaries:[],
       sidebarStatus:{threadId:'one',status:'index_wait'}}));
     assert.match(await page.locator('#cti-v2-sidebar-tooltip').innerText(), /正在更新聊天列表|Updating chat list/);
+    await page.evaluate(() => projectHostDetails({activeThreadId:null, selectedThreadId:null, summaries:[],
+      contextSource:'chatgpt', sidebarStatus:{threadId:'one',status:'loading'}}));
+    assert.match(await page.locator('#cti-v2-sidebar-tooltip').innerText(), /读取|Reading/,
+      'changing the active surface must retain the local hover request');
+    assert.equal(await page.evaluate(() => window.__quotaMonitorV2SidebarThread), 'one');
+    await page.evaluate(() => projectHostDetails({...window.testPayload, activeThreadId:null,
+      selectedThreadId:null, contextSource:'unselected'}));
+    assert.equal(await page.locator('#cti-v2-sidebar-tooltip span').count(), 14,
+      'local Work rows must show verified usage without an active local chat');
     await page.evaluate(() => clearHostProjection());
     for (const [kind, host] of [[null, 'local'], ['local', null], ['cloud', 'local'], ['local', 'remote']]) {
       await page.evaluate(({kind, host}) => {

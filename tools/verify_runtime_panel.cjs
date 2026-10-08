@@ -155,7 +155,8 @@ print(json.dumps({'id':request['id'],'error':{'code':-32601}}),flush=True)
       await meter(80);
       await page.mouse.move(600, 650);
       await fs.appendFile(logPath('one'), JSON.stringify({type: 'event_msg', payload: {
-        type: 'token_count', info: {last_token_usage: {input_tokens: 350}, model_context_window: 1000}}}) + '\n');
+        type: 'token_count', info: {last_token_usage: {input_tokens: 350},
+          total_token_usage: {total_tokens: 777}, model_context_window: 1000}}}) + '\n');
       assert.equal(await step(), 'updated');
       await meter(35);
       await page.evaluate(() => window.__quotaMonitorV2Delivery.stop());
@@ -172,7 +173,20 @@ print(json.dumps({'id':request['id'],'error':{'code':-32601}}),flush=True)
       assert.match(await page.locator('[data-quota]').innerText(), /Codex 额度/);
       assert.match(await page.locator('[data-context]').innerText(), /ChatGPT 未提供上下文数据/);
       assert.equal(await page.evaluate(() => window.__quotaMonitorV2Snapshot.quota.status), 'live');
+      await page.locator('[data-app-action-sidebar-thread-id="one"]').hover();
+      await page.waitForSelector('#cti-v2-sidebar-tooltip');
+      assert.equal(await step(), 'updated');
+      assert.equal(await page.evaluate(() => window.__quotaMonitorV2Snapshot.activeThreadId), null);
+      assert.equal(await page.evaluate(() => window.__quotaMonitorV2Snapshot.detail), null);
+      assert.deepEqual(await page.evaluate(() => window.__quotaMonitorV2Snapshot.summaries.map(s => s.thread_id)), ['one']);
+      assert.match(await page.locator('#cti-v2-sidebar-tooltip').innerText(), /777/,
+        'local Work hover reads its own numeric usage even from a non-local active page');
       await page.evaluate(() => document.querySelector('[data-above-composer-portal]').remove());
+      assert.equal(await step(), 'updated');
+      assert.equal(await page.evaluate(() => window.__quotaMonitorV2Snapshot.contextSource), 'unselected');
+      assert.match(await page.locator('#cti-v2-sidebar-tooltip').innerText(), /777/,
+        'local Work hover continues from the home page without an active chat');
+      await page.mouse.move(600, 650);
       await select('two');
       await empty();
       assert.equal(await page.locator('.cti-quota-window').count(), 1,
